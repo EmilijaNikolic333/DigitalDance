@@ -6,9 +6,11 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 
+import { BiometricLock } from '@/components/biometric-lock';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@/lib/supabase';
-import { syncProfileNameFromMetadata } from '@/services/auth';
+import { signOut, syncProfileNameFromMetadata } from '@/services/auth';
+import { isBiometricAvailable } from '@/services/biometrics';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -18,17 +20,26 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [session, setSession] = useState<Session | null>(null);
   const [isSessionLoaded, setIsSessionLoaded] = useState(false);
+  const [needsBiometricUnlock, setNeedsBiometricUnlock] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    // A session restored on cold start belongs to a returning user -> gate it behind
+    // biometrics if the device supports it. A session created via onAuthStateChange
+    // (fresh login/logout during this run) already proved identity, so it's not gated.
+    supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
       setIsSessionLoaded(true);
       syncProfileNameFromMetadata(data.session);
+
+      if (data.session && (await isBiometricAvailable())) {
+        setNeedsBiometricUnlock(true);
+      }
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       syncProfileNameFromMetadata(newSession);
+      setNeedsBiometricUnlock(false);
     });
 
     return () => subscription.subscription.unsubscribe();
@@ -39,6 +50,18 @@ export default function RootLayout() {
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" />
       </View>
+    );
+  }
+
+  if (needsBiometricUnlock) {
+    return (
+      <BiometricLock
+        onUnlock={() => setNeedsBiometricUnlock(false)}
+        onUsePassword={() => {
+          setNeedsBiometricUnlock(false);
+          signOut();
+        }}
+      />
     );
   }
 

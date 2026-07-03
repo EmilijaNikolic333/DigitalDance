@@ -14,7 +14,8 @@
         "NSCameraUsageDescription": "Allow DigitalDance to use your camera to record dance videos.",
         "NSMicrophoneUsageDescription": "Allow DigitalDance to use your microphone to record sound with your videos.",
         "NSPhotoLibraryUsageDescription": "Allow DigitalDance to access your photo library to upload videos and profile pictures.",
-        "NSLocationWhenInUseUsageDescription": "Allow DigitalDance to use your location to show auditions near you."
+        "NSLocationWhenInUseUsageDescription": "Allow DigitalDance to use your location to show auditions near you.",
+        "NSFaceIDUsageDescription": "Allow DigitalDance to use Face ID to log you in quickly and securely."
       }
     },
     "android": {
