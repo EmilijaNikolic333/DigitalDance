@@ -15,6 +15,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Spotlight",
+          headerShown: false,
           tabBarIcon: ({ color }) => (
             <Ionicons name="home" size={24} color={color} />
           ),

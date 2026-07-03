@@ -1,5 +1,9 @@
-import type { Video } from "@/lib/database.types";
+import type { Profile, Video } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+
+export type FeedVideo = Video & {
+  author: Pick<Profile, "full_name" | "avatar_url"> | null;
+};
 
 export async function getOwnVideos(): Promise<Video[]> {
   const {
@@ -14,6 +18,34 @@ export async function getOwnVideos(): Promise<Video[]> {
     .order("created_at", { ascending: false });
 
   return (data as Video[]) ?? [];
+}
+
+/** All videos for the swipeable feed, newest first, each with its author's name/avatar. */
+export async function getFeedVideos(): Promise<FeedVideo[]> {
+  const { data: videos } = await supabase
+    .from("videos")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (!videos || videos.length === 0) return [];
+
+  const userIds = [...new Set((videos as Video[]).map((v) => v.user_id))];
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name, avatar_url")
+    .in("id", userIds);
+
+  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+  return (videos as Video[]).map((video) => ({
+    ...video,
+    author: profileById.get(video.user_id) ?? null,
+  }));
+}
+
+/** Increments a video's view count regardless of who owns it (see supabase-video-views-function.sql). */
+export async function incrementViewCount(videoId: string) {
+  await supabase.rpc("increment_video_views", { video_id: videoId });
 }
 
 /** Uploads a locally picked video file to the `videos` bucket and returns its public URL. */

@@ -1,65 +1,107 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { StatusBar, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  View,
+  type ViewToken,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-export default function HomeScreen() {
-  return (
-    // 1. Proveri da LinearGradient ima flex: 1
-    <LinearGradient
-      colors={['#F8ECFF', '#D294FB']}
-      style={styles.background}
-    >
-      <StatusBar barStyle="dark-content" />
-      
-      {/* 2. Container ne sme imati svoju backgroundColor jer će prekriti gradijent */}
-      <View style={styles.container}>
-        <Text style={styles.title}>DIVE INTO SPOTLIGHT</Text>
-        
-        
+import { VideoFeedItem } from "@/components/video-feed-item";
+import { type FeedVideo, getFeedVideos } from "@/services/videos";
+
+export default function FeedScreen() {
+  const [videos, setVideos] = useState<FeedVideo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [containerHeight, setContainerHeight] = useState(0);
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      getFeedVideos().then((data) => {
+        if (isActive) {
+          setVideos(data);
+          setLoading(false);
+        }
+      });
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (viewableItems.length > 0) {
+      setActiveId(viewableItems[0].item.id);
+    }
+  }).current;
+
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 80 }).current;
+  const insets = useSafeAreaInsets();
+
+  const header = (
+    <Image
+      source={require("@/assets/images/icon.png")}
+      style={[styles.headerLogo, { top: insets.top + 8 }]}
+      contentFit="contain"
+    />
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        {header}
+        <ActivityIndicator size="large" color="#fff" />
       </View>
-    </LinearGradient>
+    );
+  }
+
+  if (videos.length === 0) {
+    return (
+      <View style={styles.centered}>
+        {header}
+        <Text style={styles.emptyText}>No videos yet. Be the first to post one!</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container} onLayout={(e) => setContainerHeight(e.nativeEvent.layout.height)}>
+      {containerHeight > 0 ? (
+        <FlatList
+          data={videos}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <VideoFeedItem video={item} height={containerHeight} active={item.id === activeId} />
+          )}
+          pagingEnabled
+          showsVerticalScrollIndicator={false}
+          snapToInterval={containerHeight}
+          decelerationRate="fast"
+          getItemLayout={(_, index) => ({ length: containerHeight, offset: containerHeight * index, index })}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
+        />
+      ) : null}
+      {header}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
-    flex: 1, // Ovo osigurava da gradijent pokrije ceo ekran
-  },
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-    // PAŽNJA: Ovde ne sme biti backgroundColor
-  },
-  title: {
-    fontSize: 44, 
-    fontWeight: "bold",
-    marginBottom: 30,
-    color: "#093A7D",
-    textAlign: 'center',
-  },
-  card: {
-    width: "100%",
-    padding: 25,
-    borderRadius: 15,
-    backgroundColor: "#ffffff",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  label: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 10,
-    textTransform: "uppercase",
-  },
-  plateDisplay: {
-    fontSize: 32,
-    fontWeight: "900",
-    color: "#007AFF",
-    letterSpacing: 2,
+  container: { flex: 1, backgroundColor: "#000" },
+  centered: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
+  emptyText: { color: "#fff", fontSize: 14, textAlign: "center", paddingHorizontal: 32 },
+  headerLogo: {
+    position: "absolute",
+    alignSelf: "center",
+    width: 270,
+    height: 78,
+    zIndex: 10,
   },
 });
