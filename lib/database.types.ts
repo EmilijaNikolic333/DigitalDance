@@ -1,0 +1,131 @@
+// lib/database.types.ts
+// Ručno pisani tipovi na osnovu šeme vidljive u seed SQL skripti.
+// Ako se šema promeni, ažurirati ovde.
+
+export type UserRole = "dancer" | "organizer" | "admin";
+export type ExperienceLevel = "beginner" | "intermediate" | "professional";
+export type EventType =
+  | "audicija"
+  | "radionica"
+  | "muzicki_spot"
+  | "festival";
+export type EventStatus = "active" | "closed";
+export type ApplicantStatus = "pending" | "accepted" | "rejected";
+
+export interface Profile {
+  id: string;
+  email: string;
+  role: UserRole;
+  full_name: string | null;
+  city: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  // dancer
+  dance_styles: string[] | null;
+  experience_level: ExperienceLevel | null;
+  availability: string | null;
+  // organizer
+  organization_name: string | null;
+  website: string | null;
+  about: string | null;
+  created_at: string;
+}
+
+export interface Video {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  video_url: string;
+  thumbnail_url: string | null;
+  dance_style: string | null;
+  views_count: number;
+  created_at: string;
+}
+
+export interface Event {
+  id: string;
+  organizer_id: string;
+  title: string;
+  description: string | null;
+  event_type: EventType;
+  city: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
+  event_date: string;
+  requirements: string | null;
+  status: EventStatus;
+  created_at: string;
+}
+
+export interface Applicant {
+  id: string;
+  event_id: string;
+  dancer_id: string;
+  status: ApplicantStatus;
+  message: string | null;
+  created_at: string;
+}
+
+export interface Comment {
+  id: string;
+  video_id: string;
+  user_id: string;
+  text: string;
+  created_at: string;
+}
+
+export interface Like {
+  id: string;
+  video_id: string;
+  user_id: string;
+  created_at: string;
+}
+
+export interface Follow {
+  id: string;
+  follower_id: string;
+  following_id: string;
+  created_at: string;
+}
+
+export interface SavedVideo {
+  id: string;
+  user_id: string;
+  video_id: string;
+  created_at: string;
+}
+
+export interface Message {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  text: string;
+  created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: string;
+  content: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface Database {
+  public: {
+    Tables: {
+      profiles: { Row: Profile; Insert: Partial<Profile>; Update: Partial<Profile> };
+      videos: { Row: Video; Insert: Partial<Video>; Update: Partial<Video> };
+      events: { Row: Event; Insert: Partial<Event>; Update: Partial<Event> };
+      applicants: { Row: Applicant; Insert: Partial<Applicant>; Update: Partial<Applicant> };
+      comments: { Row: Comment; Insert: Partial<Comment>; Update: Partial<Comment> };
+      likes: { Row: Like; Insert: Partial<Like>; Update: Partial<Like> };
+      follows: { Row: Follow; Insert: Partial<Follow>; Update: Partial<Follow> };
+      saved_videos: { Row: SavedVideo; Insert: Partial<SavedVideo>; Update: Partial<SavedVideo> };
+      messages: { Row: Message; Insert: Partial<Message>; Update: Partial<Message> };
+      notifications: { Row: Notification; Insert: Partial<Notification>; Update: Partial<Notification> };
+    };
+  };
+}
