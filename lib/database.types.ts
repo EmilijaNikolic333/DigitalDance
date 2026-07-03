@@ -40,6 +40,10 @@ export interface Video {
   thumbnail_url: string | null;
   dance_style: string | null;
   views_count: number;
+  // izabrana pesma (metapodatak, preko iTunes API-ja — nije umesana u video fajl)
+  song_title: string | null;
+  song_artist: string | null;
+  song_preview_url: string | null;
   created_at: string;
 }
 

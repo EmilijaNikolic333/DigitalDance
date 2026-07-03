@@ -11,9 +11,10 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "DigitalDance koristi kameru da bi snimila video svog plesa.",
-        "NSPhotoLibraryUsageDescription": "DigitalDance pristupa galeriji da bi otpremila video ili profilnu fotografiju.",
-        "NSLocationWhenInUseUsageDescription": "DigitalDance koristi lokaciju da bi prikazala audicije u tvojoj blizini."
+        "NSCameraUsageDescription": "Allow DigitalDance to use your camera to record dance videos.",
+        "NSMicrophoneUsageDescription": "Allow DigitalDance to use your microphone to record sound with your videos.",
+        "NSPhotoLibraryUsageDescription": "Allow DigitalDance to access your photo library to upload videos and profile pictures.",
+        "NSLocationWhenInUseUsageDescription": "Allow DigitalDance to use your location to show auditions near you."
       }
     },
     "android": {
@@ -27,7 +28,9 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "CAMERA",
+        "RECORD_AUDIO",
         "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
         "ACCESS_FINE_LOCATION",
         "POST_NOTIFICATIONS"
       ]
@@ -53,18 +56,20 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "DigitalDance pristupa galeriji da bi otpremila video ili profilnu fotografiju.",
-          "cameraPermission": "DigitalDance koristi kameru da bi snimila video svog plesa."
+          "photosPermission": "Allow DigitalDance to access your photo library to upload videos and profile pictures.",
+          "cameraPermission": "Allow DigitalDance to use your camera to record dance videos.",
+          "microphonePermission": "Allow DigitalDance to use your microphone to record sound with your videos."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "DigitalDance koristi lokaciju da bi prikazala audicije u tvojoj blizini."
+          "locationWhenInUsePermission": "Allow DigitalDance to use your location to show auditions near you."
         }
       ],
       "expo-notifications",
-      "expo-font"
+      "expo-font",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,

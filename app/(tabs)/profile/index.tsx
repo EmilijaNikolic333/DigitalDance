@@ -6,9 +6,10 @@ import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
-import type { Profile } from "@/lib/database.types";
+import type { Profile, Video } from "@/lib/database.types";
 import { signOut } from "@/services/auth";
 import { getOwnProfile } from "@/services/profiles";
+import { getOwnVideos } from "@/services/videos";
 
 const EXPERIENCE_LABEL: Record<string, string> = {
   beginner: "Beginner",
@@ -18,15 +19,17 @@ const EXPERIENCE_LABEL: Record<string, string> = {
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Reload every time the tab regains focus, so edits made on the edit screen show up immediately.
+  // Reload every time the tab regains focus, so edits/new videos show up immediately.
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      getOwnProfile().then((data) => {
+      Promise.all([getOwnProfile(), getOwnVideos()]).then(([profileData, videosData]) => {
         if (isActive) {
-          setProfile(data);
+          setProfile(profileData);
+          setVideos(videosData);
           setLoading(false);
         }
       });
@@ -70,10 +73,6 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        <Pressable style={styles.editButton} onPress={() => router.push("/(tabs)/profile/edit")}>
-          <Text style={styles.editButtonText}>Edit profile</Text>
-        </Pressable>
-
         {isOrganizer ? (
           <>
             {profile?.organization_name ? <InfoBlock label="Organization" value={profile.organization_name} /> : null}
@@ -101,9 +100,68 @@ export default function ProfileScreen() {
           </>
         )}
 
-        <Pressable style={styles.logoutButton} onPress={() => signOut()}>
-          <Text style={styles.logoutText}>Log out</Text>
-        </Pressable>
+        <View style={styles.buttonRow}>
+          <Pressable style={styles.editButton} onPress={() => router.push("/(tabs)/profile/edit")}>
+            <Text style={styles.editButtonText}>Edit profile</Text>
+          </Pressable>
+
+          <Pressable style={styles.logoutButton} onPress={() => signOut()}>
+            <Text style={styles.logoutText}>Log out</Text>
+          </Pressable>
+        </View>
+
+        {!isOrganizer && (
+          <>
+            <Pressable
+              style={styles.addVideoButton}
+              onPress={() => router.push("/(tabs)/profile/new-video")}
+            >
+              <Ionicons name="add-circle" size={26} color="#093A7D" />
+              <Text style={styles.addVideoText}>Add new video</Text>
+            </Pressable>
+            <Text style={styles.addVideoSubtitle}>Post your dance videos and connect with dancers worldwide!</Text>
+
+            {videos.length > 0 ? (
+              <Text style={styles.videosHeading}>Your videos</Text>
+            ) : null}
+
+            {videos.map((video) => (
+              <Pressable
+                key={video.id}
+                style={styles.videoCard}
+                onPress={() => router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)}
+              >
+                <View style={styles.videoThumb}>
+                  {video.thumbnail_url ? (
+                    <Image source={{ uri: video.thumbnail_url }} style={styles.videoThumbImage} contentFit="cover" />
+                  ) : null}
+                  <View style={styles.videoThumbPlayBadge}>
+                    <Ionicons name="play" size={16} color="#fff" />
+                  </View>
+                </View>
+                <View style={styles.videoInfo}>
+                  <Text style={styles.videoTitle} numberOfLines={1}>
+                    {video.description}
+                  </Text>
+                  {video.dance_style ? (
+                    <View style={styles.chip}>
+                      <Text style={styles.chipText}>#{video.dance_style.replace(" ", "")}</Text>
+                    </View>
+                  ) : null}
+                  <Text style={styles.videoSong} numberOfLines={1}>
+                    {video.song_title ? `🎵 ${video.song_title} · ${video.song_artist}` : "🎵 Original sound"}
+                  </Text>
+                  <View style={styles.videoStats}>
+                    <Ionicons name="eye-outline" size={13} color="#9B7FC7" />
+                    <Text style={styles.videoStatsText}>{video.views_count} views</Text>
+                    <Ionicons name="heart-outline" size={13} color="#9B7FC7" style={{ marginLeft: 10 }} />
+                    <Text style={styles.videoStatsText}>0 likes</Text>
+                  </View>
+                </View>
+              </Pressable>
+            ))}
+          </>
+        )}
       </ScrollView>
     </LinearGradient>
   );
@@ -143,11 +201,11 @@ const styles = StyleSheet.create({
   bio: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 6, paddingHorizontal: 16 },
   row: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
   rowText: { fontSize: 13, color: "#C06BE4", fontWeight: "600" },
+  buttonRow: { flexDirection: "row", gap: 10, marginTop: 20 },
   editButton: {
-    marginTop: 20,
     backgroundColor: "#fff",
     paddingVertical: 10,
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
     borderRadius: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -156,10 +214,24 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   editButtonText: { color: "#093A7D", fontWeight: "700", fontSize: 14 },
-  section: { width: "100%", marginTop: 20 },
-  sectionLabel: { fontSize: 12, fontWeight: "700", color: "#C06BE4", textTransform: "uppercase", marginBottom: 6 },
-  sectionValue: { fontSize: 15, color: "#093A7D", lineHeight: 21 },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  section: { width: "100%", marginTop: 20, alignItems: "center" },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#C06BE4",
+    textTransform: "uppercase",
+    marginBottom: 6,
+    textAlign: "center",
+  },
+  videosHeading: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#093A7D",
+    alignSelf: "flex-start",
+    marginTop: 24,
+  },
+  sectionValue: { fontSize: 15, color: "#093A7D", lineHeight: 21, textAlign: "center" },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
   chip: {
     backgroundColor: "#fff",
     paddingVertical: 6,
@@ -167,12 +239,53 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   chipText: { color: "#093A7D", fontSize: 13, fontWeight: "600" },
+  addVideoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 28,
+    alignSelf: "center",
+  },
+  addVideoText: { color: "#093A7D", fontWeight: "700", fontSize: 18 },
+  addVideoSubtitle: { fontSize: 12, color: "#9B7FC7", marginTop: 4, alignSelf: "center", textAlign: "center" },
+  videoCard: {
+    flexDirection: "row",
+    width: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 10,
+    marginTop: 14,
+    gap: 12,
+  },
+  videoThumb: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    backgroundColor: "#C06BE4",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  videoThumbImage: { ...StyleSheet.absoluteFillObject },
+  videoThumbPlayBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  videoInfo: { flex: 1, justifyContent: "center", gap: 4 },
+  videoSong: { fontSize: 11, color: "#9B7FC7", fontStyle: "italic" },
+  videoTitle: { fontSize: 14, fontWeight: "700", color: "#093A7D" },
+  videoStats: { flexDirection: "row", alignItems: "center", marginTop: 2 },
+  videoStatsText: { fontSize: 11, color: "#9B7FC7", marginLeft: 4 },
   logoutButton: {
-    marginTop: 32,
     backgroundColor: "#093A7D",
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 20,
   },
   logoutText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });
