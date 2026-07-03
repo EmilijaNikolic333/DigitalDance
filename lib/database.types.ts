@@ -113,19 +113,3 @@ export interface Notification {
   created_at: string;
 }
 
-export interface Database {
-  public: {
-    Tables: {
-      profiles: { Row: Profile; Insert: Partial<Profile>; Update: Partial<Profile> };
-      videos: { Row: Video; Insert: Partial<Video>; Update: Partial<Video> };
-      events: { Row: Event; Insert: Partial<Event>; Update: Partial<Event> };
-      applicants: { Row: Applicant; Insert: Partial<Applicant>; Update: Partial<Applicant> };
-      comments: { Row: Comment; Insert: Partial<Comment>; Update: Partial<Comment> };
-      likes: { Row: Like; Insert: Partial<Like>; Update: Partial<Like> };
-      follows: { Row: Follow; Insert: Partial<Follow>; Update: Partial<Follow> };
-      saved_videos: { Row: SavedVideo; Insert: Partial<SavedVideo>; Update: Partial<SavedVideo> };
-      messages: { Row: Message; Insert: Partial<Message>; Update: Partial<Message> };
-      notifications: { Row: Notification; Insert: Partial<Notification>; Update: Partial<Notification> };
-    };
-  };
-}

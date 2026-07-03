@@ -44,7 +44,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 400,
           "resizeMode": "contain",
-          "backgroundColor": "#F8ECFF",
+          "backgroundColor": "#D294FB",
           "dark": {
             "backgroundColor": "#000000"
           }
@@ -63,7 +63,8 @@
           "locationWhenInUsePermission": "DigitalDance koristi lokaciju da bi prikazala audicije u tvojoj blizini."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

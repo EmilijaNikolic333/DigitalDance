@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 export default function EventsScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Audicije</Text>
+      <Text style={styles.title}>Auditions</Text>
     </View>
   );
 }

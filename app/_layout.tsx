@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@/lib/supabase';
+import { syncProfileNameFromMetadata } from '@/services/auth';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -22,10 +23,12 @@ export default function RootLayout() {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setIsSessionLoaded(true);
+      syncProfileNameFromMetadata(data.session);
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
+      syncProfileNameFromMetadata(newSession);
     });
 
     return () => subscription.subscription.unsubscribe();
