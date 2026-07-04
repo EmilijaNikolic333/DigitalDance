@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
   metaText: { fontSize: 11, color: "#9B7FC7" },
   detailsButton: {
-    alignSelf: "flex-start",
+    alignSelf: "flex-end",
     backgroundColor: "#093A7D",
     paddingVertical: 6,
     paddingHorizontal: 16,

@@ -41,7 +41,11 @@ export default function AllEventsScreen() {
         ) : (
           <View style={styles.list}>
             {events.map((event) => (
-              <ProfileEventCard key={event.id} event={event} />
+              <ProfileEventCard
+                key={event.id}
+                event={event}
+                onEditPress={() => router.push(`/(tabs)/profile/edit-event?id=${event.id}`)}
+              />
             ))}
           </View>
         )}

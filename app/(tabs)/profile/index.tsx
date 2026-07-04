@@ -157,7 +157,11 @@ export default function ProfileScreen() {
             ) : null}
 
             {events.slice(0, VISIBLE_ITEMS_LIMIT).map((event) => (
-              <ProfileEventCard key={event.id} event={event} />
+              <ProfileEventCard
+                key={event.id}
+                event={event}
+                onEditPress={() => router.push(`/(tabs)/profile/edit-event?id=${event.id}`)}
+              />
             ))}
           </>
         )}

@@ -138,3 +138,39 @@ export async function createEvent(input: {
     status: "active",
   });
 }
+
+export async function updateEvent(
+  id: string,
+  input: {
+    title: string;
+    description: string;
+    event_type: EventType;
+    city: string;
+    location_lat: number;
+    location_lng: number;
+    event_date: string;
+    requirements: string;
+    cover_image_url: string | null;
+    price: number | null;
+  }
+) {
+  return supabase
+    .from("events")
+    .update({
+      title: input.title,
+      description: input.description,
+      event_type: input.event_type,
+      city: input.city,
+      location_lat: input.location_lat,
+      location_lng: input.location_lng,
+      event_date: input.event_date,
+      requirements: input.requirements,
+      cover_image_url: input.cover_image_url,
+      price: input.price,
+    })
+    .eq("id", id);
+}
+
+export async function deleteEvent(id: string) {
+  return supabase.from("events").delete().eq("id", id);
+}

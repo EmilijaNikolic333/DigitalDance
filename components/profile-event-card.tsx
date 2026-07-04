@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Event } from "@/lib/database.types";
 
@@ -11,7 +11,7 @@ function formatEventDate(iso: string) {
     date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
-export function ProfileEventCard({ event }: { event: Event }) {
+export function ProfileEventCard({ event, onEditPress }: { event: Event; onEditPress: () => void }) {
   return (
     <View style={styles.card}>
       <View style={styles.cover}>
@@ -39,6 +39,10 @@ export function ProfileEventCard({ event }: { event: Event }) {
           <Text style={styles.price}>{event.price === 0 ? "Free" : `${event.price} din`}</Text>
         ) : null}
       </View>
+
+      <Pressable style={styles.editButton} onPress={onEditPress} hitSlop={8}>
+        <Ionicons name="pencil" size={16} color="#093A7D" />
+      </Pressable>
     </View>
   );
 }
@@ -68,4 +72,10 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   metaText: { fontSize: 11, color: "#9B7FC7" },
   price: { fontSize: 12, fontWeight: "700", color: "#093A7D", marginTop: 2 },
+  editButton: {
+    alignSelf: "flex-start",
+    padding: 6,
+    backgroundColor: "#F8ECFF",
+    borderRadius: 14,
+  },
 });
