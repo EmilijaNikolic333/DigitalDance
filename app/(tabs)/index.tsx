@@ -1,3 +1,4 @@
+import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
@@ -43,6 +44,7 @@ export default function FeedScreen() {
 
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 80 }).current;
   const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
 
   const header = (
     <Image
@@ -77,7 +79,7 @@ export default function FeedScreen() {
           data={videos}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <VideoFeedItem video={item} height={containerHeight} active={item.id === activeId} />
+            <VideoFeedItem video={item} height={containerHeight} active={isFocused && item.id === activeId} />
           )}
           pagingEnabled
           showsVerticalScrollIndicator={false}
