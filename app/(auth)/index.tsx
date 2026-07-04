@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   logo: {
     width: "100%",
-    height: 140,
+    height: 110,
     marginBottom: 8,
   },
   dancer: {

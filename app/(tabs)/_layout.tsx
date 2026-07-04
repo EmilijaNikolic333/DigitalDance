@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { Tabs } from "expo-router";
 
 export default function TabLayout() {
@@ -16,8 +17,12 @@ export default function TabLayout() {
         options={{
           title: "Spotlight",
           headerShown: false,
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="home" size={24} color={color} />
+          tabBarIcon: ({ focused }) => (
+            <Image
+              source={focused ? require("@/assets/images/homePurple.png") : require("@/assets/images/homeBlue.png")}
+              style={{ width: 24, height: 24 }}
+              contentFit="contain"
+            />
           ),
         }}
       />
@@ -38,8 +43,8 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="person" size={24} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "person-circle" : "person-circle-outline"} size={26} color={color} />
           ),
         }}
       />

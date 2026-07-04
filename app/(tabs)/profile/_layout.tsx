@@ -7,6 +7,7 @@ export default function ProfileStackLayout() {
       <Stack.Screen name="edit" options={{ presentation: "modal" }} />
       <Stack.Screen name="new-video" options={{ presentation: "modal" }} />
       <Stack.Screen name="edit-video" options={{ presentation: "modal" }} />
+      <Stack.Screen name="all-videos" options={{ presentation: "modal" }} />
       <Stack.Screen name="watch" options={{ presentation: "fullScreenModal" }} />
     </Stack>
   );

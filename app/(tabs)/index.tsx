@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     alignSelf: "center",
     width: 270,
-    height: 78,
+    height: 50,
     zIndex: 10,
   },
 });

@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1, justifyContent: "center", padding: 28 },
   logo: {
     width: "100%",
-    height: 140,
+    height: 110,
     marginBottom: 8,
   },
   title: { fontSize: 28, fontWeight: "800", color: "#093A7D", marginBottom: 4 },
