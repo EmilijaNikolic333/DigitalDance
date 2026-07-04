@@ -15,6 +15,8 @@ interface ProfileUpdates {
   full_name?: string;
   city?: string;
   avatar_url?: string;
+  is_dancer?: boolean;
+  is_organizer?: boolean;
   bio?: string;
   dance_styles?: string[];
   experience_level?: ExperienceLevel | null;

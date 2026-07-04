@@ -9,7 +9,7 @@ import 'react-native-reanimated';
 import { BiometricLock } from '@/components/biometric-lock';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@/lib/supabase';
-import { signOut, syncProfileNameFromMetadata } from '@/services/auth';
+import { signOut, syncProfileFromMetadata } from '@/services/auth';
 import { isBiometricAvailable } from '@/services/biometrics';
 
 export const unstable_settings = {
@@ -29,7 +29,7 @@ export default function RootLayout() {
     supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
       setIsSessionLoaded(true);
-      syncProfileNameFromMetadata(data.session);
+      syncProfileFromMetadata(data.session);
 
       if (data.session && (await isBiometricAvailable())) {
         setNeedsBiometricUnlock(true);
@@ -38,7 +38,7 @@ export default function RootLayout() {
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
-      syncProfileNameFromMetadata(newSession);
+      syncProfileFromMetadata(newSession);
       setNeedsBiometricUnlock(false);
     });
 

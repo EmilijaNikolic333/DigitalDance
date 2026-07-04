@@ -6,13 +6,15 @@ import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
-import type { Profile, Video } from "@/lib/database.types";
+import type { Event, Profile, Video } from "@/lib/database.types";
 import { signOut } from "@/services/auth";
+import { getOwnEvents } from "@/services/events";
 import { getOwnProfile } from "@/services/profiles";
 import { getOwnVideos } from "@/services/videos";
 
-const VISIBLE_VIDEOS_LIMIT = 3;
+const VISIBLE_ITEMS_LIMIT = 3;
 
 const EXPERIENCE_LABEL: Record<string, string> = {
   beginner: "Beginner",
@@ -23,16 +25,18 @@ const EXPERIENCE_LABEL: Record<string, string> = {
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Reload every time the tab regains focus, so edits/new videos show up immediately.
+  // Reload every time the tab regains focus, so edits/new videos/events show up immediately.
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      Promise.all([getOwnProfile(), getOwnVideos()]).then(([profileData, videosData]) => {
+      Promise.all([getOwnProfile(), getOwnVideos(), getOwnEvents()]).then(([profileData, videosData, eventsData]) => {
         if (isActive) {
           setProfile(profileData);
           setVideos(videosData);
+          setEvents(eventsData);
           setLoading(false);
         }
       });
@@ -52,7 +56,37 @@ export default function ProfileScreen() {
     );
   }
 
-  const isOrganizer = profile?.role === "organizer";
+  const isDancer = profile?.is_dancer ?? false;
+  const isOrganizer = profile?.is_organizer ?? false;
+
+  const organizerFields = (
+    <>
+      {profile?.organization_name ? <InfoBlock label="Organization" value={profile.organization_name} /> : null}
+      {profile?.website ? <InfoBlock label="Website" value={profile.website} /> : null}
+      {profile?.about ? <InfoBlock label="About" value={profile.about} /> : null}
+    </>
+  );
+
+  const dancerFields = (
+    <>
+      {profile?.dance_styles && profile.dance_styles.length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Dance styles</Text>
+          <View style={styles.chipRow}>
+            {profile.dance_styles.map((style) => (
+              <View key={style} style={styles.chip}>
+                <Text style={styles.chipText}>{style}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
+      {profile?.experience_level ? (
+        <InfoBlock label="Experience" value={EXPERIENCE_LABEL[profile.experience_level]} />
+      ) : null}
+      {profile?.availability ? <InfoBlock label="Availability" value={profile.availability} /> : null}
+    </>
+  );
 
   return (
     <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
@@ -79,7 +113,7 @@ export default function ProfileScreen() {
 
         <Text style={styles.name}>{profile?.full_name || "Add your name"}</Text>
 
-        {!isOrganizer && profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+        {isDancer && profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
 
         {profile?.city ? (
           <View style={styles.row}>
@@ -88,34 +122,47 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        {isOrganizer ? (
-          <>
-            {profile?.organization_name ? <InfoBlock label="Organization" value={profile.organization_name} /> : null}
-            {profile?.website ? <InfoBlock label="Website" value={profile.website} /> : null}
-            {profile?.about ? <InfoBlock label="About" value={profile.about} /> : null}
-          </>
+        {isOrganizer && isDancer ? (
+          <View style={styles.dualRoleRow}>
+            <View style={styles.roleColumn}>{organizerFields}</View>
+            <View style={styles.roleColumn}>{dancerFields}</View>
+          </View>
         ) : (
           <>
-            {profile?.dance_styles && profile.dance_styles.length > 0 ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Dance styles</Text>
-                <View style={styles.chipRow}>
-                  {profile.dance_styles.map((style) => (
-                    <View key={style} style={styles.chip}>
-                      <Text style={styles.chipText}>{style}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ) : null}
-            {profile?.experience_level ? (
-              <InfoBlock label="Experience" value={EXPERIENCE_LABEL[profile.experience_level]} />
-            ) : null}
-            {profile?.availability ? <InfoBlock label="Availability" value={profile.availability} /> : null}
+            {isOrganizer && organizerFields}
+            {isDancer && dancerFields}
           </>
         )}
 
-        {!isOrganizer && (
+        {isOrganizer && (
+          <>
+            <Pressable
+              style={styles.addVideoButton}
+              onPress={() => router.push("/(tabs)/profile/new-event")}
+            >
+              <Ionicons name="add-circle" size={26} color="#093A7D" />
+              <Text style={styles.addVideoText}>Add new event</Text>
+            </Pressable>
+            <Text style={styles.addVideoSubtitle}>Post auditions and events to find your next dancers!</Text>
+
+            {events.length > 0 ? (
+              <View style={styles.videosHeadingRow}>
+                <Text style={styles.videosHeading}>Your events</Text>
+                {events.length > VISIBLE_ITEMS_LIMIT ? (
+                  <Pressable onPress={() => router.push("/(tabs)/profile/all-events")}>
+                    <Text style={styles.viewAllText}>View all events</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+
+            {events.slice(0, VISIBLE_ITEMS_LIMIT).map((event) => (
+              <ProfileEventCard key={event.id} event={event} />
+            ))}
+          </>
+        )}
+
+        {isDancer && (
           <>
             <Pressable
               style={styles.addVideoButton}
@@ -129,7 +176,7 @@ export default function ProfileScreen() {
             {videos.length > 0 ? (
               <View style={styles.videosHeadingRow}>
                 <Text style={styles.videosHeading}>Your videos</Text>
-                {videos.length > VISIBLE_VIDEOS_LIMIT ? (
+                {videos.length > VISIBLE_ITEMS_LIMIT ? (
                   <Pressable onPress={() => router.push("/(tabs)/profile/all-videos")}>
                     <Text style={styles.viewAllText}>View all videos</Text>
                   </Pressable>
@@ -137,7 +184,7 @@ export default function ProfileScreen() {
               </View>
             ) : null}
 
-            {videos.slice(0, VISIBLE_VIDEOS_LIMIT).map((video) => (
+            {videos.slice(0, VISIBLE_ITEMS_LIMIT).map((video) => (
               <ProfileVideoCard
                 key={video.id}
                 video={video}
@@ -217,6 +264,8 @@ const styles = StyleSheet.create({
   bio: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 6, paddingHorizontal: 16 },
   row: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
   rowText: { fontSize: 13, color: "#C06BE4", fontWeight: "600" },
+  dualRoleRow: { flexDirection: "row", width: "100%", marginTop: 20, gap: 12 },
+  roleColumn: { flex: 1, alignItems: "center" },
   section: { width: "100%", marginTop: 20, alignItems: "center" },
   sectionLabel: {
     fontSize: 12,

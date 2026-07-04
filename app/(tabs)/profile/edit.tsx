@@ -16,7 +16,7 @@ import {
 } from "react-native";
 
 import { Avatar } from "@/components/avatar";
-import type { ExperienceLevel, UserRole } from "@/lib/database.types";
+import type { ExperienceLevel } from "@/lib/database.types";
 import { getOwnProfile, updateOwnProfile, uploadAvatar } from "@/services/profiles";
 
 const NAME_MAX = 50;
@@ -31,7 +31,8 @@ const EXPERIENCE_LEVELS: { value: ExperienceLevel; label: string }[] = [
 
 export default function EditProfileScreen() {
   const [userId, setUserId] = useState<string | null>(null);
-  const [role, setRole] = useState<UserRole>("dancer");
+  const [isDancer, setIsDancer] = useState(false);
+  const [isOrganizer, setIsOrganizer] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [localImageUri, setLocalImageUri] = useState<string | null>(null);
 
@@ -57,7 +58,8 @@ export default function EditProfileScreen() {
     getOwnProfile().then((profile) => {
       if (profile) {
         setUserId(profile.id);
-        setRole(profile.role);
+        setIsDancer(profile.is_dancer);
+        setIsOrganizer(profile.is_organizer);
         setAvatarUrl(profile.avatar_url);
         setName(profile.full_name ?? "");
         setCity(profile.city ?? "");
@@ -105,6 +107,10 @@ export default function EditProfileScreen() {
       setError("Name can't be empty.");
       return;
     }
+    if (!isDancer && !isOrganizer) {
+      setError("Choose at least one: dancer or organizer.");
+      return;
+    }
 
     setSaving(true);
 
@@ -122,19 +128,24 @@ export default function EditProfileScreen() {
     const { error: updateError } = await updateOwnProfile({
       full_name: name.trim(),
       city: city.trim(),
+      is_dancer: isDancer,
+      is_organizer: isOrganizer,
       ...(newAvatarUrl ? { avatar_url: newAvatarUrl } : {}),
-      ...(role === "dancer"
+      ...(isDancer
         ? {
             bio: bio.trim(),
             dance_styles: danceStyles,
             experience_level: experienceLevel,
             availability: availability.trim(),
           }
-        : {
+        : {}),
+      ...(isOrganizer
+        ? {
             about: about.trim(),
             organization_name: organizationName.trim(),
             website: website.trim(),
-          }),
+          }
+        : {}),
     });
 
     setSaving(false);
@@ -176,7 +187,19 @@ export default function EditProfileScreen() {
           <Field label="Name" value={name} onChangeText={(t) => setName(t.slice(0, NAME_MAX))} max={NAME_MAX} />
           <Field label="City" value={city} onChangeText={setCity} placeholder="e.g. Belgrade" />
 
-          {role === "dancer" ? (
+          <Text style={styles.label}>I am a...</Text>
+          <View style={styles.roleRow}>
+            <Pressable style={styles.roleOption} onPress={() => setIsDancer((v) => !v)}>
+              <Ionicons name={isDancer ? "checkbox" : "square-outline"} size={20} color="#093A7D" />
+              <Text style={styles.roleOptionText}>Dancer</Text>
+            </Pressable>
+            <Pressable style={styles.roleOption} onPress={() => setIsOrganizer((v) => !v)}>
+              <Ionicons name={isOrganizer ? "checkbox" : "square-outline"} size={20} color="#093A7D" />
+              <Text style={styles.roleOptionText}>Organizer</Text>
+            </Pressable>
+          </View>
+
+          {isDancer ? (
             <>
               <Field
                 label="Bio"
@@ -224,7 +247,9 @@ export default function EditProfileScreen() {
                 placeholder="e.g. Available weekends"
               />
             </>
-          ) : (
+          ) : null}
+
+          {isOrganizer ? (
             <>
               <Field
                 label="About"
@@ -243,7 +268,7 @@ export default function EditProfileScreen() {
                 keyboardType="url"
               />
             </>
-          )}
+          ) : null}
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -311,6 +336,9 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   fieldWrapper: { width: "100%", marginTop: 16 },
+  roleRow: { flexDirection: "row", gap: 20, marginBottom: 4 },
+  roleOption: { flexDirection: "row", alignItems: "center", gap: 8 },
+  roleOptionText: { color: "#093A7D", fontSize: 14, fontWeight: "600" },
   input: {
     backgroundColor: "#fff",
     borderRadius: 20,

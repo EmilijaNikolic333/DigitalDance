@@ -14,7 +14,7 @@
         "NSCameraUsageDescription": "Allow DigitalDance to use your camera to record dance videos.",
         "NSMicrophoneUsageDescription": "Allow DigitalDance to use your microphone to record sound with your videos.",
         "NSPhotoLibraryUsageDescription": "Allow DigitalDance to access your photo library to upload videos and profile pictures.",
-        "NSLocationWhenInUseUsageDescription": "Allow DigitalDance to use your location to show auditions near you.",
+        "NSLocationWhenInUseUsageDescription": "DigitalDance uses your location to show auditions near you and help you set the location when creating an event.",
         "NSFaceIDUsageDescription": "Allow DigitalDance to use Face ID to log you in quickly and securely."
       }
     },
@@ -65,12 +65,13 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow DigitalDance to use your location to show auditions near you."
+          "locationWhenInUsePermission": "DigitalDance uses your location to show auditions near you and help you set the location when creating an event."
         }
       ],
       "expo-notifications",
       "expo-font",
-      "expo-video"
+      "expo-video",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

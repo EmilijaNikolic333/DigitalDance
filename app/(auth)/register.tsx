@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, router } from "expo-router";
@@ -10,6 +11,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  View,
 } from "react-native";
 
 import { AuthInput } from "@/components/auth-input";
@@ -20,6 +22,8 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isDancer, setIsDancer] = useState(false);
+  const [isOrganizer, setIsOrganizer] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -40,9 +44,16 @@ export default function RegisterScreen() {
       setError("Passwords don't match.");
       return;
     }
+    if (!isDancer && !isOrganizer) {
+      setError("Choose at least one: dancer or organizer.");
+      return;
+    }
 
     setLoading(true);
-    const { data, error: signUpError } = await signUp(email.trim(), password, fullName.trim());
+    const { data, error: signUpError } = await signUp(email.trim(), password, fullName.trim(), {
+      isDancer,
+      isOrganizer,
+    });
     setLoading(false);
 
     if (signUpError) {
@@ -101,6 +112,26 @@ export default function RegisterScreen() {
             placeholder="Confirm password"
           />
 
+          <Text style={styles.roleLabel}>I am a... (choose one or both)</Text>
+          <View style={styles.roleRow}>
+            <Pressable style={styles.roleOption} onPress={() => setIsDancer((v) => !v)}>
+              <Ionicons
+                name={isDancer ? "checkbox" : "square-outline"}
+                size={20}
+                color="#093A7D"
+              />
+              <Text style={styles.roleOptionText}>Dancer</Text>
+            </Pressable>
+            <Pressable style={styles.roleOption} onPress={() => setIsOrganizer((v) => !v)}>
+              <Ionicons
+                name={isOrganizer ? "checkbox" : "square-outline"}
+                size={20}
+                color="#093A7D"
+              />
+              <Text style={styles.roleOptionText}>Organizer</Text>
+            </Pressable>
+          </View>
+
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {info ? <Text style={styles.info}>{info}</Text> : null}
 
@@ -130,6 +161,10 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 28, fontWeight: "800", color: "#093A7D", marginBottom: 4 },
   subtitle: { fontSize: 14, color: "#C06BE4", marginBottom: 24 },
+  roleLabel: { fontSize: 13, fontWeight: "600", color: "#093A7D", marginBottom: 8 },
+  roleRow: { flexDirection: "row", gap: 20, marginBottom: 16 },
+  roleOption: { flexDirection: "row", alignItems: "center", gap: 8 },
+  roleOptionText: { color: "#093A7D", fontSize: 14, fontWeight: "600" },
   error: { color: "#D0342C", fontSize: 13, marginBottom: 10 },
   info: { color: "#093A7D", fontSize: 13, marginBottom: 10 },
   button: {

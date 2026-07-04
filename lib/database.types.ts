@@ -5,17 +5,32 @@
 export type UserRole = "dancer" | "organizer" | "admin";
 export type ExperienceLevel = "beginner" | "intermediate" | "professional";
 export type EventType =
-  | "audicija"
-  | "radionica"
-  | "muzicki_spot"
-  | "festival";
-export type EventStatus = "active" | "closed";
+  | "audition"
+  | "festival"
+  | "workshop"
+  | "concert"
+  | "music_video"
+  | "promotion"
+  | "celebration"
+  | "corporate_event"
+  | "other";
+export type EventStatus = "active" | "closed" | "cancelled";
 export type ApplicantStatus = "pending" | "accepted" | "rejected";
+export type NotificationType =
+  | "new_event"
+  | "new_message"
+  | "application_status"
+  | "new_follower"
+  | "new_comment"
+  | "new_like";
 
 export interface Profile {
   id: string;
   email: string;
   role: UserRole;
+  // Da li je korisnik plesac/organizator — nezavisni flegovi, oba mogu biti true.
+  is_dancer: boolean;
+  is_organizer: boolean;
   full_name: string | null;
   city: string | null;
   avatar_url: string | null;
@@ -59,6 +74,8 @@ export interface Event {
   event_date: string;
   requirements: string | null;
   status: EventStatus;
+  cover_image_url: string | null;
+  price: number | null;
   created_at: string;
 }
 
