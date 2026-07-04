@@ -2,10 +2,29 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import type { Applicant } from "@/lib/database.types";
+import { supabase } from "@/lib/supabase";
+import { applyToEvent, getMyApplication } from "@/services/applications";
 import { type EventWithOrganizer, getEventById } from "@/services/events";
+
+const APPLICATION_STATUS_LABEL: Record<string, string> = {
+  pending: "Application pending",
+  accepted: "Application accepted",
+  rejected: "Application rejected",
+};
 
 const EVENT_TYPE_LABEL: Record<string, string> = {
   audition: "Audition",
@@ -32,13 +51,42 @@ export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [event, setEvent] = useState<EventWithOrganizer | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [myApplication, setMyApplication] = useState<Applicant | null>(null);
+
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
 
   useEffect(() => {
-    getEventById(id).then((data) => {
-      setEvent(data);
-      setLoading(false);
-    });
+    Promise.all([getEventById(id), getMyApplication(id), supabase.auth.getUser()]).then(
+      ([eventData, applicationData, { data: userData }]) => {
+        setEvent(eventData);
+        setMyApplication(applicationData);
+        setCurrentUserId(userData.user?.id ?? null);
+        setLoading(false);
+      }
+    );
   }, [id]);
+
+  const handleApply = async () => {
+    setApplyError(null);
+    setSubmitting(true);
+    const { error } = await applyToEvent(id, message);
+    setSubmitting(false);
+
+    if (error) {
+      setApplyError(error.message);
+      return;
+    }
+
+    setShowApplyModal(false);
+    setMessage("");
+    const updated = await getMyApplication(id);
+    setMyApplication(updated);
+    Alert.alert("Successfully signed up", "The organizer will review your application.");
+  };
 
   if (loading) {
     return (
@@ -114,8 +162,51 @@ export default function EventDetailScreen() {
               </View>
             ) : null}
           </View>
+
+          {event.organizer_id !== currentUserId ? (
+            myApplication ? (
+              <View style={styles.appliedBadge}>
+                <Ionicons name="checkmark-circle" size={18} color="#093A7D" />
+                <Text style={styles.appliedText}>
+                  {APPLICATION_STATUS_LABEL[myApplication.status] ?? myApplication.status}
+                </Text>
+              </View>
+            ) : (
+              <Pressable style={styles.signUpButton} onPress={() => setShowApplyModal(true)}>
+                <Text style={styles.signUpButtonText}>Sign up for the event</Text>
+              </Pressable>
+            )
+          ) : null}
         </View>
       </ScrollView>
+
+      <Modal visible={showApplyModal} transparent animationType="fade" onRequestClose={() => setShowApplyModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Pressable onPress={() => setShowApplyModal(false)} style={styles.modalCloseButton} hitSlop={12}>
+              <Ionicons name="close" size={22} color="#093A7D" />
+            </Pressable>
+
+            <Text style={styles.modalTitle}>Sign up for this event</Text>
+            <Text style={styles.modalSubtitle}>Add a message for the organizer (optional).</Text>
+
+            <TextInput
+              style={styles.modalInput}
+              value={message}
+              onChangeText={setMessage}
+              placeholder="Tell the organizer about yourself..."
+              placeholderTextColor="#9AA5B8"
+              multiline
+            />
+
+            {applyError ? <Text style={styles.error}>{applyError}</Text> : null}
+
+            <Pressable style={styles.signUpButton} onPress={handleApply} disabled={submitting}>
+              {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.signUpButtonText}>Sign up</Text>}
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -154,4 +245,52 @@ const styles = StyleSheet.create({
   detailLabel: { fontSize: 13, color: "#9B7FC7", fontWeight: "600" },
   detailValue: { fontSize: 13, color: "#093A7D", fontWeight: "700", flexShrink: 1, textAlign: "right" },
   detailValueMultiline: { textAlign: "left", flex: 1 },
+  signUpButton: {
+    marginTop: 24,
+    backgroundColor: "#C06BE4",
+    paddingVertical: 15,
+    borderRadius: 28,
+    alignItems: "center",
+  },
+  signUpButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  appliedBadge: {
+    marginTop: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#fff",
+    paddingVertical: 14,
+    borderRadius: 28,
+  },
+  appliedText: { color: "#093A7D", fontWeight: "700", fontSize: 15 },
+  error: { color: "#D0342C", fontSize: 13, marginBottom: 12, textAlign: "center" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(9, 58, 125, 0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalCard: {
+    width: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+  },
+  modalCloseButton: { position: "absolute", top: 14, left: 14, zIndex: 1 },
+  modalTitle: { fontSize: 18, fontWeight: "800", color: "#093A7D", textAlign: "center", marginBottom: 6 },
+  modalSubtitle: { fontSize: 12, color: "#9B7FC7", textAlign: "center", marginBottom: 16 },
+  modalInput: {
+    width: "100%",
+    minHeight: 90,
+    backgroundColor: "#F8ECFF",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: "#093A7D",
+    textAlignVertical: "top",
+    marginBottom: 16,
+  },
 });
