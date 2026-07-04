@@ -1,7 +1,11 @@
 import * as Location from "expo-location";
 
-import type { Event, EventType } from "@/lib/database.types";
+import type { Event, EventType, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+
+export type EventWithOrganizer = Event & {
+  organizer: Pick<Profile, "full_name" | "avatar_url" | "organization_name"> | null;
+};
 
 export async function getOwnEvents(): Promise<Event[]> {
   const {
@@ -16,6 +20,43 @@ export async function getOwnEvents(): Promise<Event[]> {
     .order("event_date", { ascending: true });
 
   return (data as Event[]) ?? [];
+}
+
+/** All active events for the public feed, soonest first, each with its organizer's name/avatar. */
+export async function getActiveEvents(): Promise<EventWithOrganizer[]> {
+  const { data: events } = await supabase
+    .from("events")
+    .select("*")
+    .eq("status", "active")
+    .order("event_date", { ascending: true });
+
+  if (!events || events.length === 0) return [];
+
+  const organizerIds = [...new Set((events as Event[]).map((e) => e.organizer_id))];
+  const { data: organizers } = await supabase
+    .from("profiles")
+    .select("id, full_name, avatar_url, organization_name")
+    .in("id", organizerIds);
+
+  const organizerById = new Map((organizers ?? []).map((o) => [o.id, o]));
+
+  return (events as Event[]).map((event) => ({
+    ...event,
+    organizer: organizerById.get(event.organizer_id) ?? null,
+  }));
+}
+
+export async function getEventById(id: string): Promise<EventWithOrganizer | null> {
+  const { data: event } = await supabase.from("events").select("*").eq("id", id).single();
+  if (!event) return null;
+
+  const { data: organizer } = await supabase
+    .from("profiles")
+    .select("id, full_name, avatar_url, organization_name")
+    .eq("id", (event as Event).organizer_id)
+    .single();
+
+  return { ...(event as Event), organizer: organizer ?? null };
 }
 
 /** Uploads a locally picked cover image to the `events` bucket and returns its public URL. */
