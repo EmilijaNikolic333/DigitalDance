@@ -173,7 +173,7 @@ export default function NewVideoScreen() {
       return;
     }
     if (!caption.trim()) {
-      setError("Write a caption for your video.");
+      setError("Write a description for your video.");
       return;
     }
     if (!style) {
@@ -305,12 +305,12 @@ export default function NewVideoScreen() {
             </ScrollView>
           )}
 
-          <Text style={styles.label}>Caption</Text>
+          <Text style={styles.label}>Description</Text>
           <TextInput
             style={[styles.input, styles.inputMultiline]}
             value={caption}
             onChangeText={setCaption}
-            placeholder="Write a caption..."
+            placeholder="Write a description..."
             placeholderTextColor="#9AA5B8"
             multiline
           />
