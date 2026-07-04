@@ -114,3 +114,37 @@ export async function createVideo(input: {
     views_count: 0,
   });
 }
+
+export async function getVideoById(id: string): Promise<Video | null> {
+  const { data } = await supabase.from("videos").select("*").eq("id", id).single();
+  return (data as Video) ?? null;
+}
+
+export async function updateVideo(
+  id: string,
+  input: {
+    description: string;
+    dance_style: string;
+    thumbnail_url: string;
+    song_title?: string;
+    song_artist?: string;
+    song_preview_url?: string;
+  }
+) {
+  return supabase
+    .from("videos")
+    .update({
+      title: input.description,
+      description: input.description,
+      dance_style: input.dance_style,
+      thumbnail_url: input.thumbnail_url,
+      song_title: input.song_title ?? null,
+      song_artist: input.song_artist ?? null,
+      song_preview_url: input.song_preview_url ?? null,
+    })
+    .eq("id", id);
+}
+
+export async function deleteVideo(id: string) {
+  return supabase.from("videos").delete().eq("id", id);
+}

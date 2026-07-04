@@ -158,6 +158,14 @@ export default function ProfileScreen() {
                     <Text style={styles.videoStatsText}>0 likes</Text>
                   </View>
                 </View>
+
+                <Pressable
+                  style={styles.editVideoButton}
+                  onPress={() => router.push(`/(tabs)/profile/edit-video?id=${video.id}`)}
+                  hitSlop={8}
+                >
+                  <Ionicons name="pencil" size={16} color="#093A7D" />
+                </Pressable>
               </Pressable>
             ))}
           </>
@@ -281,6 +289,12 @@ const styles = StyleSheet.create({
   videoTitle: { fontSize: 14, fontWeight: "700", color: "#093A7D" },
   videoStats: { flexDirection: "row", alignItems: "center", marginTop: 2 },
   videoStatsText: { fontSize: 11, color: "#9B7FC7", marginLeft: 4 },
+  editVideoButton: {
+    alignSelf: "flex-start",
+    padding: 6,
+    backgroundColor: "#F8ECFF",
+    borderRadius: 14,
+  },
   logoutButton: {
     backgroundColor: "#093A7D",
     paddingVertical: 10,
