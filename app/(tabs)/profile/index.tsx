@@ -35,7 +35,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      Promise.all([getOwnProfile(), getOwnVideos(), getOwnEvents(), getMyApplications(VISIBLE_ITEMS_LIMIT)]).then(
+      Promise.all([getOwnProfile(), getOwnVideos(), getOwnEvents(), getMyApplications(VISIBLE_ITEMS_LIMIT + 1)]).then(
         ([profileData, videosData, eventsData, applicationsData]) => {
           if (isActive) {
             setProfile(profileData);
@@ -175,6 +175,8 @@ export default function ProfileScreen() {
 
         {isDancer && (
           <>
+            {isOrganizer ? <View style={styles.sectionDivider} /> : null}
+
             <Pressable
               style={styles.addVideoButton}
               onPress={() => router.push("/(tabs)/profile/new-video")}
@@ -204,10 +206,12 @@ export default function ProfileScreen() {
               />
             ))}
 
+            {applications.length > 0 ? <View style={styles.sectionDivider} /> : null}
+
             {applications.length > 0 ? (
               <View style={styles.videosHeadingRow}>
                 <Text style={styles.videosHeading}>Your applications</Text>
-                {applications.length >= VISIBLE_ITEMS_LIMIT ? (
+                {applications.length > VISIBLE_ITEMS_LIMIT ? (
                   <Pressable onPress={() => router.push("/(tabs)/profile/all-applications")}>
                     <Text style={styles.viewAllText}>View all applications</Text>
                   </Pressable>
@@ -215,7 +219,7 @@ export default function ProfileScreen() {
               </View>
             ) : null}
 
-            {applications.map((application) => (
+            {applications.slice(0, VISIBLE_ITEMS_LIMIT).map((application) => (
               <MyApplicationCard
                 key={application.id}
                 application={application}
@@ -335,4 +339,11 @@ const styles = StyleSheet.create({
   },
   addVideoText: { color: "#093A7D", fontWeight: "700", fontSize: 18 },
   addVideoSubtitle: { fontSize: 12, color: "#9B7FC7", marginTop: 4, alignSelf: "center", textAlign: "center" },
+  sectionDivider: {
+    width: "100%",
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: "rgba(192, 107, 228, 0.4)",
+    marginTop: 32,
+  },
 });
