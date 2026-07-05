@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   background: { flex: 1 },
   container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
   closeButton: { position: "absolute", top: 16, left: 16 },
-  title: { fontSize: 22, fontWeight: "800", color: "#093A7D" },
+  title: { fontSize: 22, fontWeight: "700", color: "#093A7D" },
   subtitle: { fontSize: 13, color: "#9B7FC7", marginTop: 4, marginBottom: 8, textAlign: "center" },
   emptyText: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 40 },
   errorText: { fontSize: 12, color: "#D0342C", textAlign: "center", marginTop: 12, paddingHorizontal: 16 },

@@ -42,7 +42,7 @@ export function AuthInput({ label, icon, isPassword, ...rest }: AuthInputProps) 
 
 const styles = StyleSheet.create({
   wrapper: { width: "100%", marginBottom: 14 },
-  label: { fontSize: 13, fontWeight: "600", color: "#093A7D", marginBottom: 6 },
+  label: { fontSize: 13, fontWeight: "700", color: "#093A7D", marginBottom: 6 },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",

@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   },
   coverImage: { width: "100%", height: "100%" },
   info: { flex: 1, gap: 3 },
-  title: { fontSize: 15, fontWeight: "800", color: "#093A7D" },
+  title: { fontSize: 15, fontWeight: "700", color: "#093A7D" },
   description: { fontSize: 12, color: "#093A7D", opacity: 0.8, marginTop: 2 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
   metaText: { fontSize: 11, color: "#9B7FC7" },

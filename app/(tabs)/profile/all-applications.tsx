@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
   background: { flex: 1 },
   container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
   closeButton: { position: "absolute", top: 16, left: 16 },
-  title: { fontSize: 22, fontWeight: "800", color: "#093A7D", marginBottom: 8 },
+  title: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginBottom: 8 },
   emptyText: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 40 },
   list: { width: "100%" },
   errorBox: { alignItems: "center" },

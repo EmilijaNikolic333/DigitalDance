@@ -8,7 +8,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: "#C06BE4",
         tabBarInactiveTintColor: "#093A7D",
-        headerShown: true,
+        headerShown: false,
       }}
     >
       {/* SPOTLIGHT */}

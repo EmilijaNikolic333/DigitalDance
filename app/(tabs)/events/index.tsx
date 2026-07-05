@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import MapView, { Marker, type Region } from "react-native-maps";
 
 import { EventCard } from "@/components/event-card";
+import { isExpoGo } from "@/lib/is-expo-go";
 import { type EventWithOrganizer, getActiveEvents } from "@/services/events";
 
 const DEFAULT_REGION: Region = {
@@ -65,25 +66,32 @@ export default function EventsListScreen() {
         <Text style={styles.subtitle}>Find and apply to upcoming auditions and dance workshops!</Text>
 
         <View style={styles.mapCard}>
-          <MapView style={styles.map} region={region}>
-            {eventsWithLocation.map((event) => (
-              <Marker
-                key={event.id}
-                coordinate={{ latitude: event.location_lat as number, longitude: event.location_lng as number }}
-                onPress={() => goToEvent(event.id)}
-                anchor={{ x: 0.5, y: 1 }}
-              >
-                <View style={styles.pin}>
-                  <View style={styles.pinLabel}>
-                    <Text style={styles.pinLabelText} numberOfLines={2}>
-                      {event.title}
-                    </Text>
+          {isExpoGo ? (
+            <MapView style={styles.map} region={region}>
+              {eventsWithLocation.map((event) => (
+                <Marker
+                  key={event.id}
+                  coordinate={{ latitude: event.location_lat as number, longitude: event.location_lng as number }}
+                  onPress={() => goToEvent(event.id)}
+                  anchor={{ x: 0.5, y: 1 }}
+                >
+                  <View style={styles.pin}>
+                    <View style={styles.pinLabel}>
+                      <Text style={styles.pinLabelText} numberOfLines={2}>
+                        {event.title}
+                      </Text>
+                    </View>
+                    <Ionicons name="location" size={30} color="#C06BE4" />
                   </View>
-                  <Ionicons name="location" size={30} color="#C06BE4" />
-                </View>
-              </Marker>
-            ))}
-          </MapView>
+                </Marker>
+              ))}
+            </MapView>
+          ) : (
+            <View style={styles.mapUnavailable}>
+              <Ionicons name="map-outline" size={28} color="#fff" />
+              <Text style={styles.mapUnavailableText}>Map view unavailable in this build</Text>
+            </View>
+          )}
         </View>
 
         {loading ? (
@@ -122,6 +130,14 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   map: { flex: 1 },
+  mapUnavailable: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#C06BE4",
+  },
+  mapUnavailableText: { color: "#fff", fontSize: 12, fontWeight: "700", paddingHorizontal: 24, textAlign: "center" },
   pin: { alignItems: "center" },
   pinLabel: {
     backgroundColor: "#C06BE4",

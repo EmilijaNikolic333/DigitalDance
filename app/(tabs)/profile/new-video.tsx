@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
   detailsContainer: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 60 },
   closeButton: { position: "absolute", top: 16, left: 16 },
-  title: { fontSize: 22, fontWeight: "800", color: "#093A7D", marginBottom: 24 },
+  title: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginBottom: 24 },
   error: { color: "#D0342C", fontSize: 13, marginBottom: 12, textAlign: "center" },
   sourceButton: {
     flexDirection: "row",
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     gap: 4,
     padding: 6,
   },
-  addFrameTileText: { color: "#093A7D", fontSize: 10, fontWeight: "600", textAlign: "center" },
+  addFrameTileText: { color: "#093A7D", fontSize: 10, fontWeight: "700", textAlign: "center" },
   frameThumb: {
     width: 70,
     height: 120,
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, width: "100%", marginBottom: 20 },
   chip: { backgroundColor: "#fff", paddingVertical: 8, paddingHorizontal: 16, borderRadius: 18 },
   chipSelected: { backgroundColor: "#093A7D" },
-  chipText: { color: "#093A7D", fontSize: 13, fontWeight: "600" },
+  chipText: { color: "#093A7D", fontSize: 13, fontWeight: "700" },
   chipTextSelected: { color: "#fff" },
   songResultRow: {
     flexDirection: "row",

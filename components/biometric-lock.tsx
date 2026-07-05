@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 24,
   },
-  title: { fontSize: 20, fontWeight: "800", color: "#093A7D", marginBottom: 8 },
+  title: { fontSize: 20, fontWeight: "700", color: "#093A7D", marginBottom: 8 },
   subtitle: { fontSize: 13, color: "#9B7FC7", textAlign: "center", marginBottom: 12, paddingHorizontal: 24 },
   errorDetail: { fontSize: 11, color: "#D0342C", textAlign: "center", marginBottom: 16, paddingHorizontal: 24 },
   button: {
@@ -92,5 +92,5 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  linkText: { color: "#093A7D", fontSize: 13, fontWeight: "600", textDecorationLine: "underline" },
+  linkText: { color: "#093A7D", fontSize: 13, fontWeight: "700", textDecorationLine: "underline" },
 });

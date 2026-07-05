@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     height: 110,
     marginBottom: 8,
   },
-  title: { fontSize: 28, fontWeight: "800", color: "#093A7D", marginBottom: 4 },
+  title: { fontSize: 28, fontWeight: "700", color: "#093A7D", marginBottom: 4 },
   subtitle: { fontSize: 14, color: "#C06BE4", marginBottom: 24 },
   error: { color: "#D0342C", fontSize: 13, marginBottom: 10 },
   button: {

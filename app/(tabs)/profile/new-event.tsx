@@ -21,8 +21,9 @@ import {
 } from "react-native";
 import MapView, { Marker, type Region } from "react-native-maps";
 
-import { supabase } from "@/lib/supabase";
 import type { EventType } from "@/lib/database.types";
+import { isExpoGo } from "@/lib/is-expo-go";
+import { supabase } from "@/lib/supabase";
 import { createEvent, type GeocodedPlace, reverseGeocode, searchPlace, uploadEventCover } from "@/services/events";
 
 const EVENT_TYPES: { value: EventType; label: string }[] = [
@@ -270,24 +271,33 @@ export default function NewEventScreen() {
         {error ? <Text style={styles.locationError}>{error}</Text> : null}
 
         <View style={styles.mapWrapper}>
-          <MapView
-            style={styles.map}
-            region={region}
-            onPress={(e) => handleMapPress(e.nativeEvent.coordinate)}
-          >
-            {marker ? (
-              <Marker coordinate={marker} anchor={{ x: 0.5, y: 1 }}>
-                <View style={styles.markerWrapper}>
-                  <View style={styles.markerLabel}>
-                    <Text style={styles.markerLabelText} numberOfLines={1}>
-                      {locationQuery || "Selected location"}
-                    </Text>
+          {isExpoGo ? (
+            <MapView
+              style={styles.map}
+              region={region}
+              onPress={(e) => handleMapPress(e.nativeEvent.coordinate)}
+            >
+              {marker ? (
+                <Marker coordinate={marker} anchor={{ x: 0.5, y: 1 }}>
+                  <View style={styles.markerWrapper}>
+                    <View style={styles.markerLabel}>
+                      <Text style={styles.markerLabelText} numberOfLines={1}>
+                        {locationQuery || "Selected location"}
+                      </Text>
+                    </View>
+                    <Ionicons name="location" size={34} color="#C06BE4" />
                   </View>
-                  <Ionicons name="location" size={34} color="#C06BE4" />
-                </View>
-              </Marker>
-            ) : null}
-          </MapView>
+                </Marker>
+              ) : null}
+            </MapView>
+          ) : (
+            <View style={styles.mapUnavailable}>
+              <Ionicons name={marker ? "checkmark-circle" : "map-outline"} size={28} color="#fff" />
+              <Text style={styles.mapUnavailableText}>
+                {marker ? locationQuery || "Location selected" : "Search above or use your current location"}
+              </Text>
+            </View>
+          )}
 
           <Pressable style={styles.locateButton} onPress={useCurrentLocation} disabled={locatingMe}>
             {locatingMe ? (
@@ -469,7 +479,7 @@ const styles = StyleSheet.create({
   background: { flex: 1 },
   formContainer: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 60 },
   closeButton: { position: "absolute", top: 16, left: 16 },
-  title: { fontSize: 22, fontWeight: "800", color: "#093A7D", marginBottom: 20 },
+  title: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginBottom: 20 },
   error: { color: "#D0342C", fontSize: 13, marginBottom: 12, textAlign: "center" },
   coverBox: {
     width: "100%",
@@ -483,7 +493,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   coverImage: { width: "100%", height: "100%" },
-  coverText: { color: "#093A7D", fontSize: 13, fontWeight: "600" },
+  coverText: { color: "#093A7D", fontSize: 13, fontWeight: "700" },
   label: { fontSize: 14, fontWeight: "700", color: "#093A7D", alignSelf: "flex-start", marginBottom: 6 },
   input: {
     width: "100%",
@@ -499,7 +509,7 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, width: "100%", marginBottom: 16 },
   chip: { backgroundColor: "#fff", paddingVertical: 8, paddingHorizontal: 16, borderRadius: 18 },
   chipSelected: { backgroundColor: "#093A7D" },
-  chipText: { color: "#093A7D", fontSize: 13, fontWeight: "600" },
+  chipText: { color: "#093A7D", fontSize: 13, fontWeight: "700" },
   chipTextSelected: { color: "#fff" },
   fieldButton: {
     flexDirection: "row",
@@ -512,7 +522,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginBottom: 16,
   },
-  fieldButtonText: { color: "#093A7D", fontSize: 15, fontWeight: "600" },
+  fieldButtonText: { color: "#093A7D", fontSize: 15, fontWeight: "700" },
   postButton: {
     marginTop: 10,
     backgroundColor: "#093A7D",
@@ -533,7 +543,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
   },
-  stepTitle: { fontSize: 18, fontWeight: "800", color: "#093A7D" },
+  stepTitle: { fontSize: 18, fontWeight: "700", color: "#093A7D" },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -549,6 +559,15 @@ const styles = StyleSheet.create({
   locationError: { color: "#D0342C", fontSize: 12, marginHorizontal: 20, marginBottom: 8, textAlign: "center" },
   mapWrapper: { flex: 1 },
   map: { flex: 1 },
+  mapUnavailable: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#C06BE4",
+    paddingHorizontal: 40,
+  },
+  mapUnavailableText: { color: "#fff", fontSize: 13, fontWeight: "700", textAlign: "center" },
   locateButton: {
     position: "absolute",
     bottom: 16,

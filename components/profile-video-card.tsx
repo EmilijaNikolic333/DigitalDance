@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 12,
   },
-  chipText: { color: "#093A7D", fontSize: 12, fontWeight: "600" },
+  chipText: { color: "#093A7D", fontSize: 12, fontWeight: "700" },
   videoStats: { flexDirection: "row", alignItems: "center", marginTop: 2 },
   videoStatsText: { fontSize: 11, color: "#9B7FC7", marginLeft: 4 },
   editVideoButton: {

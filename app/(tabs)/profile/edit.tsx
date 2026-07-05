@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   fieldWrapper: { width: "100%", marginTop: 16 },
   roleRow: { flexDirection: "row", gap: 20, marginBottom: 4 },
   roleOption: { flexDirection: "row", alignItems: "center", gap: 8 },
-  roleOptionText: { color: "#093A7D", fontSize: 14, fontWeight: "600" },
+  roleOptionText: { color: "#093A7D", fontSize: 14, fontWeight: "700" },
   input: {
     backgroundColor: "#fff",
     borderRadius: 20,
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   chipSelected: { backgroundColor: "#093A7D" },
-  chipText: { color: "#093A7D", fontSize: 13, fontWeight: "600" },
+  chipText: { color: "#093A7D", fontSize: 13, fontWeight: "700" },
   chipTextSelected: { color: "#fff" },
   error: { color: "#D0342C", fontSize: 13, marginTop: 16, textAlign: "center" },
   saveButton: {
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     marginTop: 24,
   },
-  passwordCardText: { flex: 1, color: "#093A7D", fontSize: 14, fontWeight: "600" },
+  passwordCardText: { flex: 1, color: "#093A7D", fontSize: 14, fontWeight: "700" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(9, 58, 125, 0.4)",
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalCloseButton: { position: "absolute", top: 14, left: 14, zIndex: 1 },
-  modalTitle: { fontSize: 18, fontWeight: "800", color: "#093A7D", textAlign: "center", marginBottom: 6 },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: "#093A7D", textAlign: "center", marginBottom: 6 },
   modalSubtitle: { fontSize: 12, color: "#9B7FC7", textAlign: "center", marginBottom: 16 },
   modalInput: {
     width: "100%",

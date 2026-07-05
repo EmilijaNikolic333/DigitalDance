@@ -163,9 +163,9 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   statItem: { alignItems: "center", gap: 2 },
-  statText: { color: "#fff", fontSize: 13, fontWeight: "800", ...TEXT_SHADOW },
+  statText: { color: "#fff", fontSize: 13, fontWeight: "700", ...TEXT_SHADOW },
   bottomInfo: { position: "absolute", left: 16, right: 90, bottom: 70 },
-  title: { color: "#fff", fontSize: 17, fontWeight: "800", ...TEXT_SHADOW },
+  title: { color: "#fff", fontSize: 17, fontWeight: "700", ...TEXT_SHADOW },
   moreText: { color: "#fff", fontSize: 13, fontWeight: "700", opacity: 0.85, marginTop: 2, ...TEXT_SHADOW },
   author: { color: "#fff", fontSize: 14, fontWeight: "700", marginTop: 4, ...TEXT_SHADOW },
   chip: {
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   },
   chipText: { color: "#fff", fontSize: 12, fontWeight: "700" },
   songRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
-  songText: { color: "#fff", fontSize: 13, fontWeight: "600", flexShrink: 1, ...TEXT_SHADOW },
+  songText: { color: "#fff", fontSize: 13, fontWeight: "700", flexShrink: 1, ...TEXT_SHADOW },
   progressRow: {
     position: "absolute",
     left: 12,
