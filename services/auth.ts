@@ -29,6 +29,10 @@ export function signOut() {
   return supabase.auth.signOut();
 }
 
+export function changePassword(newPassword: string) {
+  return supabase.auth.updateUser({ password: newPassword });
+}
+
 /**
  * signUp() stores full_name/roles in the auth user's metadata (works even before
  * the user has a session, e.g. while email confirmation is pending). The first

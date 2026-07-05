@@ -5,7 +5,9 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -17,6 +19,7 @@ import {
 
 import { Avatar } from "@/components/avatar";
 import type { ExperienceLevel } from "@/lib/database.types";
+import { changePassword } from "@/services/auth";
 import { getOwnProfile, updateOwnProfile, uploadAvatar } from "@/services/profiles";
 
 const NAME_MAX = 50;
@@ -53,6 +56,12 @@ export default function EditProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   useEffect(() => {
     getOwnProfile().then((profile) => {
@@ -156,6 +165,33 @@ export default function EditProfileScreen() {
     }
 
     router.back();
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+
+    if (newPassword.length < 6) {
+      setPasswordError("Password must be at least 6 characters.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("Passwords don't match.");
+      return;
+    }
+
+    setPasswordSaving(true);
+    const { error: passwordUpdateError } = await changePassword(newPassword);
+    setPasswordSaving(false);
+
+    if (passwordUpdateError) {
+      setPasswordError(passwordUpdateError.message);
+      return;
+    }
+
+    setShowPasswordModal(false);
+    setNewPassword("");
+    setConfirmPassword("");
+    Alert.alert("Password changed", "Your password has been updated successfully.");
   };
 
   if (loading) {
@@ -270,6 +306,12 @@ export default function EditProfileScreen() {
             </>
           ) : null}
 
+          <Pressable style={styles.passwordCard} onPress={() => setShowPasswordModal(true)}>
+            <Ionicons name="lock-closed-outline" size={18} color="#093A7D" />
+            <Text style={styles.passwordCardText}>Change password</Text>
+            <Ionicons name="chevron-forward" size={18} color="#9B7FC7" />
+          </Pressable>
+
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <Pressable style={styles.saveButton} onPress={handleSave} disabled={saving}>
@@ -277,6 +319,51 @@ export default function EditProfileScreen() {
           </Pressable>
         </ScrollView>
       </LinearGradient>
+
+      <Modal
+        visible={showPasswordModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPasswordModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Pressable onPress={() => setShowPasswordModal(false)} style={styles.modalCloseButton} hitSlop={12}>
+              <Ionicons name="close" size={22} color="#093A7D" />
+            </Pressable>
+
+            <Text style={styles.modalTitle}>Change password</Text>
+            <Text style={styles.modalSubtitle}>Enter a new password for your account.</Text>
+
+            <TextInput
+              style={styles.modalInput}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              placeholder="New password"
+              placeholderTextColor="#9AA5B8"
+              secureTextEntry
+            />
+            <TextInput
+              style={styles.modalInput}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder="Confirm new password"
+              placeholderTextColor="#9AA5B8"
+              secureTextEntry
+            />
+
+            {passwordError ? <Text style={styles.error}>{passwordError}</Text> : null}
+
+            <Pressable style={styles.saveButton} onPress={handleChangePassword} disabled={passwordSaving}>
+              {passwordSaving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.saveButtonText}>Save password</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -374,4 +461,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  passwordCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    width: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    marginTop: 24,
+  },
+  passwordCardText: { flex: 1, color: "#093A7D", fontSize: 14, fontWeight: "600" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(9, 58, 125, 0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalCard: {
+    width: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 24,
+  },
+  modalCloseButton: { position: "absolute", top: 14, left: 14, zIndex: 1 },
+  modalTitle: { fontSize: 18, fontWeight: "800", color: "#093A7D", textAlign: "center", marginBottom: 6 },
+  modalSubtitle: { fontSize: 12, color: "#9B7FC7", textAlign: "center", marginBottom: 16 },
+  modalInput: {
+    width: "100%",
+    backgroundColor: "#F8ECFF",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: "#093A7D",
+    marginBottom: 12,
+  },
 });
