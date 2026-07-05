@@ -11,37 +11,49 @@ function formatEventDate(iso: string) {
     date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
-export function ProfileEventCard({ event, onEditPress }: { event: Event; onEditPress: () => void }) {
+interface ProfileEventCardProps {
+  event: Event;
+  onEditPress: () => void;
+  onApplicationsPress: () => void;
+}
+
+export function ProfileEventCard({ event, onEditPress, onApplicationsPress }: ProfileEventCardProps) {
   return (
     <View style={styles.card}>
-      <View style={styles.cover}>
-        {event.cover_image_url ? (
-          <Image source={{ uri: event.cover_image_url }} style={styles.coverImage} contentFit="cover" />
-        ) : (
-          <Ionicons name="calendar" size={22} color="#fff" />
-        )}
-      </View>
-      <View style={styles.info}>
-        <Text style={styles.title} numberOfLines={1}>
-          {event.title}
-        </Text>
-        <View style={styles.metaRow}>
-          <Ionicons name="calendar-outline" size={12} color="#9B7FC7" />
-          <Text style={styles.metaText}>{formatEventDate(event.event_date)}</Text>
+      <View style={styles.row}>
+        <View style={styles.cover}>
+          {event.cover_image_url ? (
+            <Image source={{ uri: event.cover_image_url }} style={styles.coverImage} contentFit="cover" />
+          ) : (
+            <Ionicons name="calendar" size={22} color="#fff" />
+          )}
         </View>
-        {event.city ? (
+        <View style={styles.info}>
+          <Text style={styles.title} numberOfLines={1}>
+            {event.title}
+          </Text>
           <View style={styles.metaRow}>
-            <Ionicons name="location-outline" size={12} color="#9B7FC7" />
-            <Text style={styles.metaText}>{event.city}</Text>
+            <Ionicons name="calendar-outline" size={12} color="#9B7FC7" />
+            <Text style={styles.metaText}>{formatEventDate(event.event_date)}</Text>
           </View>
-        ) : null}
-        {event.price !== null ? (
-          <Text style={styles.price}>{event.price === 0 ? "Free" : `${event.price} din`}</Text>
-        ) : null}
+          {event.city ? (
+            <View style={styles.metaRow}>
+              <Ionicons name="location-outline" size={12} color="#9B7FC7" />
+              <Text style={styles.metaText}>{event.city}</Text>
+            </View>
+          ) : null}
+          {event.price !== null ? (
+            <Text style={styles.price}>{event.price === 0 ? "Free" : `${event.price} din`}</Text>
+          ) : null}
+        </View>
+
+        <Pressable style={styles.editButton} onPress={onEditPress} hitSlop={8}>
+          <Ionicons name="pencil" size={16} color="#093A7D" />
+        </Pressable>
       </View>
 
-      <Pressable style={styles.editButton} onPress={onEditPress} hitSlop={8}>
-        <Ionicons name="pencil" size={16} color="#093A7D" />
+      <Pressable style={styles.applicationsButton} onPress={onApplicationsPress}>
+        <Text style={styles.applicationsButtonText}>View applications</Text>
       </Pressable>
     </View>
   );
@@ -49,12 +61,14 @@ export function ProfileEventCard({ event, onEditPress }: { event: Event; onEditP
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: "row",
     width: "100%",
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 10,
     marginTop: 14,
+  },
+  row: {
+    flexDirection: "row",
     gap: 12,
   },
   cover: {
@@ -78,4 +92,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8ECFF",
     borderRadius: 14,
   },
+  applicationsButton: {
+    alignSelf: "flex-end",
+    backgroundColor: "#093A7D",
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    marginTop: 10,
+  },
+  applicationsButtonText: { color: "#fff", fontSize: 12, fontWeight: "700" },
 });

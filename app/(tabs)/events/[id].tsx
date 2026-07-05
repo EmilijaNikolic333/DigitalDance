@@ -26,6 +26,12 @@ const APPLICATION_STATUS_LABEL: Record<string, string> = {
   rejected: "Application rejected",
 };
 
+const APPLICATION_STATUS_STYLE: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
+  pending: { icon: "time-outline", color: "#093A7D" },
+  accepted: { icon: "checkmark-circle", color: "#2E9E5B" },
+  rejected: { icon: "close-circle", color: "#D0342C" },
+};
+
 const EVENT_TYPE_LABEL: Record<string, string> = {
   audition: "Audition",
   festival: "Festival",
@@ -166,8 +172,17 @@ export default function EventDetailScreen() {
           {event.organizer_id !== currentUserId ? (
             myApplication ? (
               <View style={styles.appliedBadge}>
-                <Ionicons name="checkmark-circle" size={18} color="#093A7D" />
-                <Text style={styles.appliedText}>
+                <Ionicons
+                  name={APPLICATION_STATUS_STYLE[myApplication.status]?.icon ?? "help-circle-outline"}
+                  size={18}
+                  color={APPLICATION_STATUS_STYLE[myApplication.status]?.color ?? "#093A7D"}
+                />
+                <Text
+                  style={[
+                    styles.appliedText,
+                    { color: APPLICATION_STATUS_STYLE[myApplication.status]?.color ?? "#093A7D" },
+                  ]}
+                >
                   {APPLICATION_STATUS_LABEL[myApplication.status] ?? myApplication.status}
                 </Text>
               </View>

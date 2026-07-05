@@ -161,6 +161,7 @@ export default function ProfileScreen() {
                 key={event.id}
                 event={event}
                 onEditPress={() => router.push(`/(tabs)/profile/edit-event?id=${event.id}`)}
+                onApplicationsPress={() => router.push(`/(tabs)/profile/event-applications?id=${event.id}`)}
               />
             ))}
           </>

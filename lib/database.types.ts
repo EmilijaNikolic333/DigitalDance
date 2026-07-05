@@ -85,7 +85,6 @@ export interface Applicant {
   dancer_id: string;
   status: ApplicantStatus;
   message: string | null;
-  created_at: string;
 }
 
 export interface Comment {

@@ -45,6 +45,7 @@ export default function AllEventsScreen() {
                 key={event.id}
                 event={event}
                 onEditPress={() => router.push(`/(tabs)/profile/edit-event?id=${event.id}`)}
+                onApplicationsPress={() => router.push(`/(tabs)/profile/event-applications?id=${event.id}`)}
               />
             ))}
           </View>
