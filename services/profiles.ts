@@ -1,14 +1,20 @@
 import type { ExperienceLevel, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
-export async function getOwnProfile(): Promise<Profile | null> {
+export async function getOwnProfile(): Promise<{ data: Profile | null; error?: string }> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return null;
+  if (!user) return { data: null };
 
-  const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-  return data as Profile | null;
+  const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+
+  if (error) {
+    console.error("getOwnProfile failed:", error.message, error);
+    return { data: null, error: error.message };
+  }
+
+  return { data: data as Profile | null };
 }
 
 interface ProfileUpdates {

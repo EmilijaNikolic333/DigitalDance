@@ -7,30 +7,39 @@ export type EventWithOrganizer = Event & {
   organizer: Pick<Profile, "full_name" | "avatar_url" | "organization_name"> | null;
 };
 
-export async function getOwnEvents(): Promise<Event[]> {
+export async function getOwnEvents(): Promise<{ data: Event[]; error?: string }> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return [];
+  if (!user) return { data: [] };
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("events")
     .select("*")
     .eq("organizer_id", user.id)
     .order("event_date", { ascending: true });
 
-  return (data as Event[]) ?? [];
+  if (error) {
+    console.error("getOwnEvents failed:", error.message, error);
+    return { data: [], error: error.message };
+  }
+
+  return { data: (data as Event[]) ?? [] };
 }
 
 /** All active events for the public feed, soonest first, each with its organizer's name/avatar. */
-export async function getActiveEvents(): Promise<EventWithOrganizer[]> {
-  const { data: events } = await supabase
+export async function getActiveEvents(): Promise<{ data: EventWithOrganizer[]; error?: string }> {
+  const { data: events, error } = await supabase
     .from("events")
     .select("*")
     .eq("status", "active")
     .order("event_date", { ascending: true });
 
-  if (!events || events.length === 0) return [];
+  if (error) {
+    console.error("getActiveEvents failed:", error.message, error);
+    return { data: [], error: error.message };
+  }
+  if (!events || events.length === 0) return { data: [] };
 
   const organizerIds = [...new Set((events as Event[]).map((e) => e.organizer_id))];
   const { data: organizers } = await supabase
@@ -40,10 +49,12 @@ export async function getActiveEvents(): Promise<EventWithOrganizer[]> {
 
   const organizerById = new Map((organizers ?? []).map((o) => [o.id, o]));
 
-  return (events as Event[]).map((event) => ({
-    ...event,
-    organizer: organizerById.get(event.organizer_id) ?? null,
-  }));
+  return {
+    data: (events as Event[]).map((event) => ({
+      ...event,
+      organizer: organizerById.get(event.organizer_id) ?? null,
+    })),
+  };
 }
 
 export async function getEventById(id: string): Promise<EventWithOrganizer | null> {

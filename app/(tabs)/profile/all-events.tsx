@@ -11,20 +11,21 @@ import { getOwnEvents } from "@/services/events";
 export default function AllEventsScreen() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    getOwnEvents().then(({ data, error: loadError }) => {
+      setEvents(data);
+      setError(loadError ?? null);
+      setLoading(false);
+    });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-      getOwnEvents().then((data) => {
-        if (isActive) {
-          setEvents(data);
-          setLoading(false);
-        }
-      });
-      return () => {
-        isActive = false;
-      };
-    }, [])
+      load();
+    }, [load])
   );
 
   return (
@@ -38,6 +39,13 @@ export default function AllEventsScreen() {
 
         {loading ? (
           <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
+        ) : error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.emptyText}>Couldn&apos;t load your events. Check your connection.</Text>
+            <Pressable style={styles.retryButton} onPress={load}>
+              <Text style={styles.retryButtonText}>Try again</Text>
+            </Pressable>
+          </View>
         ) : (
           <View style={styles.list}>
             {events.map((event) => (
@@ -61,4 +69,14 @@ const styles = StyleSheet.create({
   closeButton: { position: "absolute", top: 16, left: 16 },
   title: { fontSize: 22, fontWeight: "800", color: "#093A7D", marginBottom: 8 },
   list: { width: "100%" },
+  errorBox: { alignItems: "center", marginTop: 40 },
+  emptyText: { fontSize: 14, color: "#093A7D", textAlign: "center" },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: "#093A7D",
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+  },
+  retryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 });

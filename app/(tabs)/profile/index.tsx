@@ -30,26 +30,36 @@ export default function ProfileScreen() {
   const [events, setEvents] = useState<Event[]>([]);
   const [applications, setApplications] = useState<MyApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [videosError, setVideosError] = useState<string | null>(null);
+  const [eventsError, setEventsError] = useState<string | null>(null);
+  const [applicationsError, setApplicationsError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    Promise.all([
+      getOwnProfile(),
+      getOwnVideos(),
+      getOwnEvents(),
+      getMyApplications(VISIBLE_ITEMS_LIMIT + 1),
+    ]).then(([profileResult, videosResult, eventsResult, applicationsResult]) => {
+      setProfile(profileResult.data);
+      setProfileError(profileResult.error ?? null);
+      setVideos(videosResult.data);
+      setVideosError(videosResult.error ?? null);
+      setEvents(eventsResult.data);
+      setEventsError(eventsResult.error ?? null);
+      setApplications(applicationsResult.data);
+      setApplicationsError(applicationsResult.error ?? null);
+      setLoading(false);
+    });
+  }, []);
 
   // Reload every time the tab regains focus, so edits/new videos/events show up immediately.
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-      Promise.all([getOwnProfile(), getOwnVideos(), getOwnEvents(), getMyApplications(VISIBLE_ITEMS_LIMIT + 1)]).then(
-        ([profileData, videosData, eventsData, applicationsData]) => {
-          if (isActive) {
-            setProfile(profileData);
-            setVideos(videosData);
-            setEvents(eventsData);
-            setApplications(applicationsData);
-            setLoading(false);
-          }
-        }
-      );
-      return () => {
-        isActive = false;
-      };
-    }, [])
+      load();
+    }, [load])
   );
 
   if (loading) {
@@ -57,6 +67,19 @@ export default function ProfileScreen() {
       <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#093A7D" />
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  if (profileError && !profile) {
+    return (
+      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+        <View style={styles.centered}>
+          <Text style={styles.errorText}>Couldn&apos;t load your profile. Check your connection.</Text>
+          <Pressable style={styles.retryButton} onPress={load}>
+            <Text style={styles.retryButtonText}>Try again</Text>
+          </Pressable>
         </View>
       </LinearGradient>
     );
@@ -155,6 +178,8 @@ export default function ProfileScreen() {
             </Pressable>
             <Text style={styles.addVideoSubtitle}>Post auditions and events to find your next dancers!</Text>
 
+            {eventsError ? <Text style={styles.inlineError}>Couldn&apos;t load your events.</Text> : null}
+
             {events.length > 0 ? (
               <View style={styles.videosHeadingRow}>
                 <Text style={styles.videosHeading}>Your events</Text>
@@ -190,6 +215,8 @@ export default function ProfileScreen() {
             </Pressable>
             <Text style={styles.addVideoSubtitle}>Post your dance videos and connect with dancers worldwide!</Text>
 
+            {videosError ? <Text style={styles.inlineError}>Couldn&apos;t load your videos.</Text> : null}
+
             {videos.length > 0 ? (
               <View style={styles.videosHeadingRow}>
                 <Text style={styles.videosHeading}>Your videos</Text>
@@ -211,6 +238,8 @@ export default function ProfileScreen() {
             ))}
 
             {applications.length > 0 ? <View style={styles.sectionDivider} /> : null}
+
+            {applicationsError ? <Text style={styles.inlineError}>Couldn&apos;t load your applications.</Text> : null}
 
             {applications.length > 0 ? (
               <View style={styles.videosHeadingRow}>
@@ -350,4 +379,14 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(192, 107, 228, 0.4)",
     marginTop: 32,
   },
+  errorText: { fontSize: 14, color: "#093A7D", textAlign: "center", paddingHorizontal: 24 },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: "#093A7D",
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+  },
+  retryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  inlineError: { fontSize: 12, color: "#D0342C", marginTop: 10, textAlign: "center" },
 });

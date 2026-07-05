@@ -11,20 +11,21 @@ import { getOwnVideos } from "@/services/videos";
 export default function AllVideosScreen() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    getOwnVideos().then(({ data, error: loadError }) => {
+      setVideos(data);
+      setError(loadError ?? null);
+      setLoading(false);
+    });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-      getOwnVideos().then((data) => {
-        if (isActive) {
-          setVideos(data);
-          setLoading(false);
-        }
-      });
-      return () => {
-        isActive = false;
-      };
-    }, [])
+      load();
+    }, [load])
   );
 
   return (
@@ -38,6 +39,13 @@ export default function AllVideosScreen() {
 
         {loading ? (
           <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
+        ) : error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.emptyText}>Couldn&apos;t load your videos. Check your connection.</Text>
+            <Pressable style={styles.retryButton} onPress={load}>
+              <Text style={styles.retryButtonText}>Try again</Text>
+            </Pressable>
+          </View>
         ) : (
           <View style={styles.list}>
             {videos.map((video) => (
@@ -61,4 +69,14 @@ const styles = StyleSheet.create({
   closeButton: { position: "absolute", top: 16, left: 16 },
   title: { fontSize: 22, fontWeight: "800", color: "#093A7D", marginBottom: 8 },
   list: { width: "100%" },
+  errorBox: { alignItems: "center", marginTop: 40 },
+  emptyText: { fontSize: 14, color: "#093A7D", textAlign: "center" },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: "#093A7D",
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+  },
+  retryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 });

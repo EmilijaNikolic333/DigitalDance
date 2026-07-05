@@ -10,20 +10,21 @@ import { getMyApplications, type MyApplication } from "@/services/applications";
 export default function AllApplicationsScreen() {
   const [applications, setApplications] = useState<MyApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    getMyApplications().then(({ data, error: loadError }) => {
+      setApplications(data);
+      setError(loadError ?? null);
+      setLoading(false);
+    });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-      getMyApplications().then((data) => {
-        if (isActive) {
-          setApplications(data);
-          setLoading(false);
-        }
-      });
-      return () => {
-        isActive = false;
-      };
-    }, [])
+      load();
+    }, [load])
   );
 
   return (
@@ -37,6 +38,13 @@ export default function AllApplicationsScreen() {
 
         {loading ? (
           <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
+        ) : error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.emptyText}>Couldn&apos;t load your applications. Check your connection.</Text>
+            <Pressable style={styles.retryButton} onPress={load}>
+              <Text style={styles.retryButtonText}>Try again</Text>
+            </Pressable>
+          </View>
         ) : applications.length === 0 ? (
           <Text style={styles.emptyText}>You haven&apos;t applied to any events yet.</Text>
         ) : (
@@ -64,4 +72,13 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: "800", color: "#093A7D", marginBottom: 8 },
   emptyText: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 40 },
   list: { width: "100%" },
+  errorBox: { alignItems: "center" },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: "#093A7D",
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+  },
+  retryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 });

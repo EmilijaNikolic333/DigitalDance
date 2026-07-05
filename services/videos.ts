@@ -5,29 +5,38 @@ export type FeedVideo = Video & {
   author: Pick<Profile, "full_name" | "avatar_url"> | null;
 };
 
-export async function getOwnVideos(): Promise<Video[]> {
+export async function getOwnVideos(): Promise<{ data: Video[]; error?: string }> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return [];
+  if (!user) return { data: [] };
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("videos")
     .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  return (data as Video[]) ?? [];
+  if (error) {
+    console.error("getOwnVideos failed:", error.message, error);
+    return { data: [], error: error.message };
+  }
+
+  return { data: (data as Video[]) ?? [] };
 }
 
 /** All videos for the swipeable feed, newest first, each with its author's name/avatar. */
-export async function getFeedVideos(): Promise<FeedVideo[]> {
-  const { data: videos } = await supabase
+export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: string }> {
+  const { data: videos, error } = await supabase
     .from("videos")
     .select("*")
     .order("created_at", { ascending: false });
 
-  if (!videos || videos.length === 0) return [];
+  if (error) {
+    console.error("getFeedVideos failed:", error.message, error);
+    return { data: [], error: error.message };
+  }
+  if (!videos || videos.length === 0) return { data: [] };
 
   const userIds = [...new Set((videos as Video[]).map((v) => v.user_id))];
   const { data: profiles } = await supabase
@@ -37,10 +46,12 @@ export async function getFeedVideos(): Promise<FeedVideo[]> {
 
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
-  return (videos as Video[]).map((video) => ({
-    ...video,
-    author: profileById.get(video.user_id) ?? null,
-  }));
+  return {
+    data: (videos as Video[]).map((video) => ({
+      ...video,
+      author: profileById.get(video.user_id) ?? null,
+    })),
+  };
 }
 
 /** Increments a video's view count regardless of who owns it (see supabase-video-views-function.sql). */

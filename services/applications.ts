@@ -77,11 +77,11 @@ export async function updateApplicationStatus(applicationId: string, status: App
 }
 
 /** All of the current dancer's applications, each with the event it belongs to. Pass `limit` to fetch only a preview. */
-export async function getMyApplications(limit?: number): Promise<MyApplication[]> {
+export async function getMyApplications(limit?: number): Promise<{ data: MyApplication[]; error?: string }> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return [];
+  if (!user) return { data: [] };
 
   let query = supabase.from("applicants").select("*").eq("dancer_id", user.id);
   if (limit) query = query.limit(limit);
@@ -89,9 +89,9 @@ export async function getMyApplications(limit?: number): Promise<MyApplication[]
 
   if (error) {
     console.error("getMyApplications failed:", error.message, error);
-    return [];
+    return { data: [], error: error.message };
   }
-  if (!applications || applications.length === 0) return [];
+  if (!applications || applications.length === 0) return { data: [] };
 
   const eventIds = [...new Set((applications as Applicant[]).map((a) => a.event_id))];
   const { data: events } = await supabase
@@ -101,10 +101,12 @@ export async function getMyApplications(limit?: number): Promise<MyApplication[]
 
   const eventById = new Map((events ?? []).map((e) => [e.id, e]));
 
-  return (applications as Applicant[]).map((application) => ({
-    ...application,
-    event: eventById.get(application.event_id) ?? null,
-  }));
+  return {
+    data: (applications as Applicant[]).map((application) => ({
+      ...application,
+      event: eventById.get(application.event_id) ?? null,
+    })),
+  };
 }
 
 export async function cancelApplication(applicationId: string) {

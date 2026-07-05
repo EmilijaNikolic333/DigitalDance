@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -54,6 +54,7 @@ export default function EditProfileScreen() {
   const [website, setWebsite] = useState("");
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,8 +64,9 @@ export default function EditProfileScreen() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
 
-  useEffect(() => {
-    getOwnProfile().then((profile) => {
+  const loadProfile = useCallback(() => {
+    setLoading(true);
+    getOwnProfile().then(({ data: profile, error: fetchError }) => {
       if (profile) {
         setUserId(profile.id);
         setIsDancer(profile.is_dancer);
@@ -80,9 +82,14 @@ export default function EditProfileScreen() {
         setOrganizationName(profile.organization_name ?? "");
         setWebsite(profile.website ?? "");
       }
+      setLoadError(fetchError ?? null);
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   const toggleDanceStyle = (style: string) => {
     setDanceStyles((current) =>
@@ -199,6 +206,19 @@ export default function EditProfileScreen() {
       <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#093A7D" />
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+        <View style={styles.centered}>
+          <Text style={styles.error}>Couldn&apos;t load your profile. Check your connection.</Text>
+          <Pressable style={styles.saveButton} onPress={loadProfile}>
+            <Text style={styles.saveButtonText}>Try again</Text>
+          </Pressable>
         </View>
       </LinearGradient>
     );

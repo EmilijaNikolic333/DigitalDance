@@ -3,7 +3,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, type Region } from "react-native-maps";
 
 import { EventCard } from "@/components/event-card";
@@ -19,20 +19,21 @@ const DEFAULT_REGION: Region = {
 export default function EventsListScreen() {
   const [events, setEvents] = useState<EventWithOrganizer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    getActiveEvents().then(({ data, error: loadError }) => {
+      setEvents(data);
+      setError(loadError ?? null);
+      setLoading(false);
+    });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-      getActiveEvents().then((data) => {
-        if (isActive) {
-          setEvents(data);
-          setLoading(false);
-        }
-      });
-      return () => {
-        isActive = false;
-      };
-    }, [])
+      load();
+    }, [load])
   );
 
   const eventsWithLocation = events.filter((e) => e.location_lat !== null && e.location_lng !== null);
@@ -87,6 +88,13 @@ export default function EventsListScreen() {
 
         {loading ? (
           <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
+        ) : error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.emptyText}>Couldn&apos;t load events. Check your connection.</Text>
+            <Pressable style={styles.retryButton} onPress={load}>
+              <Text style={styles.retryButtonText}>Try again</Text>
+            </Pressable>
+          </View>
         ) : events.length === 0 ? (
           <Text style={styles.emptyText}>No events yet. Check back soon!</Text>
         ) : (
@@ -125,4 +133,13 @@ const styles = StyleSheet.create({
   },
   pinLabelText: { color: "#fff", fontSize: 11, fontWeight: "700", textAlign: "center" },
   emptyText: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 40 },
+  errorBox: { alignItems: "center", marginTop: 40 },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: "#093A7D",
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+  },
+  retryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 });

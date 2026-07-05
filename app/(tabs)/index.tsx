@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -18,22 +19,23 @@ import { type FeedVideo, getFeedVideos } from "@/services/videos";
 export default function FeedScreen() {
   const [videos, setVideos] = useState<FeedVideo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [containerHeight, setContainerHeight] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  const load = useCallback(() => {
+    setLoading(true);
+    getFeedVideos().then(({ data, error: loadError }) => {
+      setVideos(data);
+      setError(loadError ?? null);
+      setLoading(false);
+    });
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      let isActive = true;
-      getFeedVideos().then((data) => {
-        if (isActive) {
-          setVideos(data);
-          setLoading(false);
-        }
-      });
-      return () => {
-        isActive = false;
-      };
-    }, [])
+      load();
+    }, [load])
   );
 
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -59,6 +61,18 @@ export default function FeedScreen() {
       <View style={styles.centered}>
         {header}
         <ActivityIndicator size="large" color="#fff" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        {header}
+        <Text style={styles.emptyText}>Couldn&apos;t load videos. Check your connection.</Text>
+        <Pressable style={styles.retryButton} onPress={load}>
+          <Text style={styles.retryButtonText}>Try again</Text>
+        </Pressable>
       </View>
     );
   }
@@ -99,6 +113,14 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
   centered: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
   emptyText: { color: "#fff", fontSize: 14, textAlign: "center", paddingHorizontal: 32 },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: "#C06BE4",
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 20,
+  },
+  retryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   headerLogo: {
     position: "absolute",
     alignSelf: "center",
