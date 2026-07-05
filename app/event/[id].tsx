@@ -15,22 +15,11 @@ import {
 } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { APPLICATION_STATUS_LABEL, APPLICATION_STATUS_STYLE } from "@/lib/application-status";
 import type { Applicant } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
-import { applyToEvent, getMyApplication } from "@/services/applications";
+import { applyToEvent, cancelApplication, getMyApplication } from "@/services/applications";
 import { type EventWithOrganizer, getEventById } from "@/services/events";
-
-const APPLICATION_STATUS_LABEL: Record<string, string> = {
-  pending: "Application pending",
-  accepted: "Application accepted",
-  rejected: "Application rejected",
-};
-
-const APPLICATION_STATUS_STYLE: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string }> = {
-  pending: { icon: "time-outline", color: "#093A7D" },
-  accepted: { icon: "checkmark-circle", color: "#2E9E5B" },
-  rejected: { icon: "close-circle", color: "#D0342C" },
-};
 
 const EVENT_TYPE_LABEL: Record<string, string> = {
   audition: "Audition",
@@ -92,6 +81,25 @@ export default function EventDetailScreen() {
     const updated = await getMyApplication(id);
     setMyApplication(updated);
     Alert.alert("Successfully signed up", "The organizer will review your application.");
+  };
+
+  const handleCancelApplication = () => {
+    if (!myApplication) return;
+
+    Alert.alert("Cancel application", "Are you sure you want to cancel your application?", [
+      { text: "No", style: "cancel" },
+      {
+        text: "Yes, cancel",
+        style: "destructive",
+        onPress: async () => {
+          const { error } = await cancelApplication(myApplication.id);
+          if (error) return;
+
+          setMyApplication(null);
+          Alert.alert("Successfully canceled your application");
+        },
+      },
+    ]);
   };
 
   if (loading) {
@@ -171,21 +179,22 @@ export default function EventDetailScreen() {
 
           {event.organizer_id !== currentUserId ? (
             myApplication ? (
-              <View style={styles.appliedBadge}>
-                <Ionicons
-                  name={APPLICATION_STATUS_STYLE[myApplication.status]?.icon ?? "help-circle-outline"}
-                  size={18}
-                  color={APPLICATION_STATUS_STYLE[myApplication.status]?.color ?? "#093A7D"}
-                />
-                <Text
-                  style={[
-                    styles.appliedText,
-                    { color: APPLICATION_STATUS_STYLE[myApplication.status]?.color ?? "#093A7D" },
-                  ]}
-                >
-                  {APPLICATION_STATUS_LABEL[myApplication.status] ?? myApplication.status}
-                </Text>
-              </View>
+              <>
+                <View style={styles.appliedBadge}>
+                  <Ionicons
+                    name={APPLICATION_STATUS_STYLE[myApplication.status].icon}
+                    size={18}
+                    color={APPLICATION_STATUS_STYLE[myApplication.status].color}
+                  />
+                  <Text style={[styles.appliedText, { color: APPLICATION_STATUS_STYLE[myApplication.status].color }]}>
+                    {APPLICATION_STATUS_LABEL[myApplication.status]}
+                  </Text>
+                </View>
+
+                <Pressable style={styles.cancelButton} onPress={handleCancelApplication}>
+                  <Text style={styles.cancelButtonText}>Cancel application</Text>
+                </Pressable>
+              </>
             ) : (
               <Pressable style={styles.signUpButton} onPress={() => setShowApplyModal(true)}>
                 <Text style={styles.signUpButtonText}>Sign up for the event</Text>
@@ -279,6 +288,12 @@ const styles = StyleSheet.create({
     borderRadius: 28,
   },
   appliedText: { color: "#093A7D", fontWeight: "700", fontSize: 15 },
+  cancelButton: {
+    marginTop: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  cancelButtonText: { color: "#D0342C", fontWeight: "700", fontSize: 14 },
   error: { color: "#D0342C", fontSize: 13, marginBottom: 12, textAlign: "center" },
   modalOverlay: {
     flex: 1,

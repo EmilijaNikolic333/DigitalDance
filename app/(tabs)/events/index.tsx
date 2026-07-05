@@ -55,7 +55,7 @@ export default function EventsListScreen() {
     };
   }, [eventsWithLocation]);
 
-  const goToEvent = (id: string) => router.push({ pathname: "/(tabs)/events/[id]", params: { id } });
+  const goToEvent = (id: string) => router.push({ pathname: "/event/[id]", params: { id } });
 
   return (
     <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>

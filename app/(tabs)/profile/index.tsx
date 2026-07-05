@@ -6,9 +6,11 @@ import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { MyApplicationCard } from "@/components/my-application-card";
 import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
 import type { Event, Profile, Video } from "@/lib/database.types";
+import { getMyApplications, type MyApplication } from "@/services/applications";
 import { signOut } from "@/services/auth";
 import { getOwnEvents } from "@/services/events";
 import { getOwnProfile } from "@/services/profiles";
@@ -26,20 +28,24 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [applications, setApplications] = useState<MyApplication[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Reload every time the tab regains focus, so edits/new videos/events show up immediately.
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
-      Promise.all([getOwnProfile(), getOwnVideos(), getOwnEvents()]).then(([profileData, videosData, eventsData]) => {
-        if (isActive) {
-          setProfile(profileData);
-          setVideos(videosData);
-          setEvents(eventsData);
-          setLoading(false);
+      Promise.all([getOwnProfile(), getOwnVideos(), getOwnEvents(), getMyApplications(VISIBLE_ITEMS_LIMIT)]).then(
+        ([profileData, videosData, eventsData, applicationsData]) => {
+          if (isActive) {
+            setProfile(profileData);
+            setVideos(videosData);
+            setEvents(eventsData);
+            setApplications(applicationsData);
+            setLoading(false);
+          }
         }
-      });
+      );
       return () => {
         isActive = false;
       };
@@ -195,6 +201,27 @@ export default function ProfileScreen() {
                 video={video}
                 onPress={() => router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)}
                 onEditPress={() => router.push(`/(tabs)/profile/edit-video?id=${video.id}`)}
+              />
+            ))}
+
+            {applications.length > 0 ? (
+              <View style={styles.videosHeadingRow}>
+                <Text style={styles.videosHeading}>Your applications</Text>
+                {applications.length >= VISIBLE_ITEMS_LIMIT ? (
+                  <Pressable onPress={() => router.push("/(tabs)/profile/all-applications")}>
+                    <Text style={styles.viewAllText}>View all applications</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+
+            {applications.map((application) => (
+              <MyApplicationCard
+                key={application.id}
+                application={application}
+                onViewDetails={() =>
+                  router.push({ pathname: "/event/[id]", params: { id: application.event_id } })
+                }
               />
             ))}
           </>

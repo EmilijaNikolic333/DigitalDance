@@ -1,8 +1,12 @@
-import type { Applicant, ApplicantStatus, Profile } from "@/lib/database.types";
+import type { Applicant, ApplicantStatus, Event, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
 export type ApplicantWithDancer = Applicant & {
   dancer: Pick<Profile, "full_name" | "avatar_url"> | null;
+};
+
+export type MyApplication = Applicant & {
+  event: Pick<Event, "id" | "title" | "cover_image_url" | "event_date" | "city"> | null;
 };
 
 /** The current dancer's application for a given event, if any. */
@@ -70,4 +74,39 @@ export async function getApplicationsForEvent(
 
 export async function updateApplicationStatus(applicationId: string, status: ApplicantStatus) {
   return supabase.from("applicants").update({ status }).eq("id", applicationId);
+}
+
+/** All of the current dancer's applications, each with the event it belongs to. Pass `limit` to fetch only a preview. */
+export async function getMyApplications(limit?: number): Promise<MyApplication[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  let query = supabase.from("applicants").select("*").eq("dancer_id", user.id);
+  if (limit) query = query.limit(limit);
+  const { data: applications, error } = await query;
+
+  if (error) {
+    console.error("getMyApplications failed:", error.message, error);
+    return [];
+  }
+  if (!applications || applications.length === 0) return [];
+
+  const eventIds = [...new Set((applications as Applicant[]).map((a) => a.event_id))];
+  const { data: events } = await supabase
+    .from("events")
+    .select("id, title, cover_image_url, event_date, city")
+    .in("id", eventIds);
+
+  const eventById = new Map((events ?? []).map((e) => [e.id, e]));
+
+  return (applications as Applicant[]).map((application) => ({
+    ...application,
+    event: eventById.get(application.event_id) ?? null,
+  }));
+}
+
+export async function cancelApplication(applicationId: string) {
+  return supabase.from("applicants").delete().eq("id", applicationId);
 }
