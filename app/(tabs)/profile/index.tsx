@@ -128,6 +128,8 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
+        <View style={styles.sectionDivider} />
+
         {isOrganizer && isDancer ? (
           <View style={styles.dualRoleRow}>
             <View style={styles.roleColumn}>{organizerFields}</View>
@@ -142,6 +144,8 @@ export default function ProfileScreen() {
 
         {isOrganizer && (
           <>
+            <View style={styles.sectionDivider} />
+
             <Pressable
               style={styles.addVideoButton}
               onPress={() => router.push("/(tabs)/profile/new-event")}
