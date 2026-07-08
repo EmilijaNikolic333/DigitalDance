@@ -65,6 +65,14 @@ export default function RegisterScreen() {
       return;
     }
 
+    // Supabase silently "succeeds" (resending the confirmation email) instead of
+    // erroring when you sign up again with an email that's already registered but
+    // unconfirmed - an empty identities array is the only way to detect that here.
+    if (data?.user && data.user.identities?.length === 0) {
+      setError("An account with this email already exists.");
+      return;
+    }
+
     if (data?.session) {
       router.replace("/(tabs)/profile");
     } else {
