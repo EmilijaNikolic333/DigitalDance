@@ -4,7 +4,7 @@
     "slug": "DigitalDance",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon-1024.png",
     "scheme": "digitaldance",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -24,9 +24,8 @@
       "package": "com.emmiilijja.digitaldance",
       "adaptiveIcon": {
         "backgroundColor": "#F8ECFF",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/android-icon-foreground-new.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome-new.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
