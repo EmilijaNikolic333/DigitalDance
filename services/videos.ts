@@ -6,52 +6,63 @@ export type FeedVideo = Video & {
 };
 
 export async function getOwnVideos(): Promise<{ data: Video[]; error?: string }> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { data: [] };
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return { data: [] };
 
-  const { data, error } = await supabase
-    .from("videos")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("videos")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("getOwnVideos failed:", error.message, error);
-    return { data: [], error: error.message };
+    if (error) {
+      console.error("getOwnVideos failed:", error.message, error);
+      return { data: [], error: error.message };
+    }
+
+    return { data: (data as Video[]) ?? [] };
+  } catch (err) {
+    console.error("getOwnVideos failed:", err);
+    return { data: [], error: err instanceof Error ? err.message : "Network error" };
   }
-
-  return { data: (data as Video[]) ?? [] };
 }
 
 /** All videos for the swipeable feed, newest first, each with its author's name/avatar. */
 export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: string }> {
-  const { data: videos, error } = await supabase
-    .from("videos")
-    .select("*")
-    .order("created_at", { ascending: false });
+  try {
+    const { data: videos, error } = await supabase
+      .from("videos")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("getFeedVideos failed:", error.message, error);
-    return { data: [], error: error.message };
+    if (error) {
+      console.error("getFeedVideos failed:", error.message, error);
+      return { data: [], error: error.message };
+    }
+    if (!videos || videos.length === 0) return { data: [] };
+
+    const userIds = [...new Set((videos as Video[]).map((v) => v.user_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, avatar_url")
+      .in("id", userIds);
+
+    const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+    return {
+      data: (videos as Video[]).map((video) => ({
+        ...video,
+        author: profileById.get(video.user_id) ?? null,
+      })),
+    };
+  } catch (err) {
+    console.error("getFeedVideos failed:", err);
+    return { data: [], error: err instanceof Error ? err.message : "Network error" };
   }
-  if (!videos || videos.length === 0) return { data: [] };
-
-  const userIds = [...new Set((videos as Video[]).map((v) => v.user_id))];
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, full_name, avatar_url")
-    .in("id", userIds);
-
-  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
-
-  return {
-    data: (videos as Video[]).map((video) => ({
-      ...video,
-      author: profileById.get(video.user_id) ?? null,
-    })),
-  };
 }
 
 /** Increments a video's view count regardless of who owns it (see supabase-video-views-function.sql). */
@@ -107,8 +118,9 @@ export async function createVideo(input: {
   song_preview_url?: string;
 }) {
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
   if (!user) return { error: new Error("Not authenticated") };
 
   return supabase.from("videos").insert({

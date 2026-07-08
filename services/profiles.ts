@@ -2,19 +2,25 @@ import type { ExperienceLevel, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
 export async function getOwnProfile(): Promise<{ data: Profile | null; error?: string }> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { data: null };
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return { data: null };
 
-  const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single();
 
-  if (error) {
-    console.error("getOwnProfile failed:", error.message, error);
-    return { data: null, error: error.message };
+    if (error) {
+      console.error("getOwnProfile failed:", error.message, error);
+      return { data: null, error: error.message };
+    }
+
+    return { data: data as Profile | null };
+  } catch (err) {
+    console.error("getOwnProfile failed:", err);
+    return { data: null, error: err instanceof Error ? err.message : "Network error" };
   }
-
-  return { data: data as Profile | null };
 }
 
 interface ProfileUpdates {
@@ -34,8 +40,9 @@ interface ProfileUpdates {
 
 export async function updateOwnProfile(updates: ProfileUpdates) {
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
   if (!user) return { error: new Error("Not authenticated") };
 
   return supabase.from("profiles").update(updates).eq("id", user.id);

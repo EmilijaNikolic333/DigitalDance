@@ -8,53 +8,64 @@ export type EventWithOrganizer = Event & {
 };
 
 export async function getOwnEvents(): Promise<{ data: Event[]; error?: string }> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { data: [] };
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return { data: [] };
 
-  const { data, error } = await supabase
-    .from("events")
-    .select("*")
-    .eq("organizer_id", user.id)
-    .order("event_date", { ascending: true });
+    const { data, error } = await supabase
+      .from("events")
+      .select("*")
+      .eq("organizer_id", user.id)
+      .order("event_date", { ascending: true });
 
-  if (error) {
-    console.error("getOwnEvents failed:", error.message, error);
-    return { data: [], error: error.message };
+    if (error) {
+      console.error("getOwnEvents failed:", error.message, error);
+      return { data: [], error: error.message };
+    }
+
+    return { data: (data as Event[]) ?? [] };
+  } catch (err) {
+    console.error("getOwnEvents failed:", err);
+    return { data: [], error: err instanceof Error ? err.message : "Network error" };
   }
-
-  return { data: (data as Event[]) ?? [] };
 }
 
 /** All active events for the public feed, soonest first, each with its organizer's name/avatar. */
 export async function getActiveEvents(): Promise<{ data: EventWithOrganizer[]; error?: string }> {
-  const { data: events, error } = await supabase
-    .from("events")
-    .select("*")
-    .eq("status", "active")
-    .order("event_date", { ascending: true });
+  try {
+    const { data: events, error } = await supabase
+      .from("events")
+      .select("*")
+      .eq("status", "active")
+      .order("event_date", { ascending: true });
 
-  if (error) {
-    console.error("getActiveEvents failed:", error.message, error);
-    return { data: [], error: error.message };
+    if (error) {
+      console.error("getActiveEvents failed:", error.message, error);
+      return { data: [], error: error.message };
+    }
+    if (!events || events.length === 0) return { data: [] };
+
+    const organizerIds = [...new Set((events as Event[]).map((e) => e.organizer_id))];
+    const { data: organizers } = await supabase
+      .from("profiles")
+      .select("id, full_name, avatar_url, organization_name")
+      .in("id", organizerIds);
+
+    const organizerById = new Map((organizers ?? []).map((o) => [o.id, o]));
+
+    return {
+      data: (events as Event[]).map((event) => ({
+        ...event,
+        organizer: organizerById.get(event.organizer_id) ?? null,
+      })),
+    };
+  } catch (err) {
+    console.error("getActiveEvents failed:", err);
+    return { data: [], error: err instanceof Error ? err.message : "Network error" };
   }
-  if (!events || events.length === 0) return { data: [] };
-
-  const organizerIds = [...new Set((events as Event[]).map((e) => e.organizer_id))];
-  const { data: organizers } = await supabase
-    .from("profiles")
-    .select("id, full_name, avatar_url, organization_name")
-    .in("id", organizerIds);
-
-  const organizerById = new Map((organizers ?? []).map((o) => [o.id, o]));
-
-  return {
-    data: (events as Event[]).map((event) => ({
-      ...event,
-      organizer: organizerById.get(event.organizer_id) ?? null,
-    })),
-  };
 }
 
 export async function getEventById(id: string): Promise<EventWithOrganizer | null> {
@@ -130,8 +141,9 @@ export async function createEvent(input: {
   price: number | null;
 }) {
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
   if (!user) return { error: new Error("Not authenticated") };
 
   return supabase.from("events").insert({

@@ -120,6 +120,10 @@ export default function ProfileScreen() {
   return (
     <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
       <ScrollView contentContainerStyle={styles.container}>
+        {profileError && profile ? (
+          <Text style={styles.inlineError}>Couldn&apos;t refresh your profile. Check your connection.</Text>
+        ) : null}
+
         <View style={styles.headerRow}>
           <LinearGradient colors={["#093A7D", "#C06BE4"]} style={styles.avatarRing}>
             <View style={styles.avatarGap}>
