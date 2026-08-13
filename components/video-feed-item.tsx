@@ -294,10 +294,10 @@ const styles = StyleSheet.create({
   bottomInfo: { position: "absolute", left: 16, right: 90, bottom: 70 },
   title: { color: "#fff", fontSize: 17, fontWeight: "700", ...TEXT_SHADOW },
   moreText: { color: "#fff", fontSize: 13, fontWeight: "700", opacity: 0.85, marginTop: 2, ...TEXT_SHADOW },
-  author: { color: "#fff", fontSize: 14, fontWeight: "700", marginTop: 4, ...TEXT_SHADOW },
+  author: { color: "#E3B8FF", fontSize: 14, fontWeight: "700", marginTop: 4, ...TEXT_SHADOW },
   chip: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(192, 107, 228, 0.35)",
     paddingVertical: 3,
     paddingHorizontal: 10,
     borderRadius: 12,
