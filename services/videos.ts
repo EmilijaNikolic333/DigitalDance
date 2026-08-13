@@ -5,19 +5,20 @@ export type FeedVideo = Video & {
   author: Pick<Profile, "id" | "full_name" | "avatar_url"> | null;
   likesCount: number;
   isLiked: boolean;
+  commentsCount: number;
 };
 
-export type OwnVideo = Video & { likesCount: number };
+export type OwnVideo = Video & { likesCount: number; commentsCount: number };
 
-/** Number of likes per video, for the given video ids. */
-async function getLikesCountByVideoId(videoIds: string[]): Promise<Map<string, number>> {
+/** Row count per video id, for either the "likes" or "comments" table. */
+async function getCountByVideoId(table: "likes" | "comments", videoIds: string[]): Promise<Map<string, number>> {
   if (videoIds.length === 0) return new Map();
 
-  const { data: likes } = await supabase.from("likes").select("video_id").in("video_id", videoIds);
+  const { data } = await supabase.from(table).select("video_id").in("video_id", videoIds);
 
   const counts = new Map<string, number>();
-  for (const like of likes ?? []) {
-    counts.set(like.video_id, (counts.get(like.video_id) ?? 0) + 1);
+  for (const row of data ?? []) {
+    counts.set(row.video_id, (counts.get(row.video_id) ?? 0) + 1);
   }
   return counts;
 }
@@ -42,12 +43,17 @@ export async function getOwnVideos(): Promise<{ data: OwnVideo[]; error?: string
     }
     if (!data || data.length === 0) return { data: [] };
 
-    const likesCountByVideo = await getLikesCountByVideoId((data as Video[]).map((v) => v.id));
+    const videoIds = (data as Video[]).map((v) => v.id);
+    const [likesCountByVideo, commentsCountByVideo] = await Promise.all([
+      getCountByVideoId("likes", videoIds),
+      getCountByVideoId("comments", videoIds),
+    ]);
 
     return {
       data: (data as Video[]).map((video) => ({
         ...video,
         likesCount: likesCountByVideo.get(video.id) ?? 0,
+        commentsCount: commentsCountByVideo.get(video.id) ?? 0,
       })),
     };
   } catch (err) {
@@ -79,10 +85,11 @@ export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: stri
     const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
     const videoIds = (videos as Video[]).map((v) => v.id);
-    const [{ data: likes }, {
+    const [{ data: likes }, commentsCountByVideo, {
       data: { session },
     }] = await Promise.all([
       supabase.from("likes").select("video_id, user_id").in("video_id", videoIds),
+      getCountByVideoId("comments", videoIds),
       supabase.auth.getSession(),
     ]);
     const currentUserId = session?.user?.id;
@@ -100,6 +107,7 @@ export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: stri
         author: profileById.get(video.user_id) ?? null,
         likesCount: likesCountByVideo.get(video.id) ?? 0,
         isLiked: likedByMe.has(video.id),
+        commentsCount: commentsCountByVideo.get(video.id) ?? 0,
       })),
     };
   } catch (err) {

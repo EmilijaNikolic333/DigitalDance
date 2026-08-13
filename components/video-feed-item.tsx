@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { VideoCommentsSheet } from "@/components/video-comments-sheet";
 import { toggleLike } from "@/services/likes";
 import type { FeedVideo } from "@/services/videos";
 import { incrementViewCount } from "@/services/videos";
@@ -30,6 +31,8 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
   const [expanded, setExpanded] = useState(false);
   const [liked, setLiked] = useState(video.isLiked);
   const [likesCount, setLikesCount] = useState(video.likesCount);
+  const [commentsCount, setCommentsCount] = useState(video.commentsCount);
+  const [showComments, setShowComments] = useState(false);
 
   const player = useVideoPlayer(video.video_url, (p) => {
     p.loop = true;
@@ -119,6 +122,10 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
           <Ionicons name={liked ? "heart" : "heart-outline"} size={22} color={liked ? "#C06BE4" : "#fff"} />
           <Text style={styles.statText}>{likesCount}</Text>
         </Pressable>
+        <Pressable style={styles.statItem} onPress={() => setShowComments(true)} hitSlop={8}>
+          <Ionicons name="chatbubble-ellipses-outline" size={22} color="#fff" />
+          <Text style={styles.statText}>{commentsCount}</Text>
+        </Pressable>
       </View>
 
       <View style={styles.bottomInfo}>
@@ -160,6 +167,13 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
           {formatTime(currentTime)} / {formatTime(player.duration)}
         </Text>
       </View>
+
+      <VideoCommentsSheet
+        videoId={video.id}
+        visible={showComments}
+        onClose={() => setShowComments(false)}
+        onCommentAdded={() => setCommentsCount((count) => count + 1)}
+      />
     </View>
   );
 }

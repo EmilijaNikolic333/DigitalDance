@@ -93,6 +93,7 @@ export interface Comment {
   user_id: string;
   text: string;
   created_at: string;
+  parent_comment_id: string | null;
 }
 
 export interface Like {
