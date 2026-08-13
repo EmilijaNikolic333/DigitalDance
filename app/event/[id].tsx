@@ -15,11 +15,13 @@ import {
 } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { FollowBadge } from "@/components/follow-badge";
 import { APPLICATION_STATUS_LABEL, APPLICATION_STATUS_STYLE } from "@/lib/application-status";
 import type { Applicant } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { applyToEvent, cancelApplication, getMyApplication } from "@/services/applications";
 import { type EventWithOrganizer, getEventById } from "@/services/events";
+import { isFollowing as fetchIsFollowing, toggleFollow } from "@/services/follows";
 
 const EVENT_TYPE_LABEL: Record<string, string> = {
   audition: "Audition",
@@ -48,6 +50,7 @@ export default function EventDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [myApplication, setMyApplication] = useState<Applicant | null>(null);
+  const [followingOrganizer, setFollowingOrganizer] = useState(false);
 
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [message, setMessage] = useState("");
@@ -61,9 +64,27 @@ export default function EventDetailScreen() {
         setMyApplication(applicationData);
         setCurrentUserId(userData.user?.id ?? null);
         setLoading(false);
+
+        if (eventData?.organizer_id && eventData.organizer_id !== userData.user?.id) {
+          fetchIsFollowing(eventData.organizer_id).then(setFollowingOrganizer);
+        }
       }
     );
   }, [id]);
+
+  const handleToggleFollowOrganizer = async () => {
+    if (!event?.organizer_id) return;
+
+    const nextFollowing = !followingOrganizer;
+    setFollowingOrganizer(nextFollowing);
+
+    const { following: confirmedFollowing, error } = await toggleFollow(event.organizer_id);
+    if (error) {
+      setFollowingOrganizer(!nextFollowing);
+      return;
+    }
+    setFollowingOrganizer(confirmedFollowing);
+  };
 
   const handleApply = async () => {
     setApplyError(null);
@@ -141,7 +162,12 @@ export default function EventDetailScreen() {
               onPress={() => router.push({ pathname: "/user/[id]", params: { id: event.organizer!.id } })}
               hitSlop={8}
             >
-              <Avatar url={event.organizer.avatar_url} size={28} />
+              <View style={styles.organizerAvatarWrap}>
+                <Avatar url={event.organizer.avatar_url} size={28} />
+                {event.organizer_id !== currentUserId && !followingOrganizer ? (
+                  <FollowBadge onPress={handleToggleFollowOrganizer} size={14} />
+                ) : null}
+              </View>
               <Text style={styles.organizerText}>
                 {event.organizer.organization_name || event.organizer.full_name || "Organizer"}
               </Text>
@@ -263,6 +289,7 @@ const styles = StyleSheet.create({
   content: { padding: 24 },
   title: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginBottom: 8 },
   organizerRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
+  organizerAvatarWrap: { width: 28, height: 28 },
   organizerText: { fontSize: 13, fontWeight: "700", color: "#093A7D" },
   description: { fontSize: 14, color: "#093A7D", lineHeight: 21, marginBottom: 16 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },

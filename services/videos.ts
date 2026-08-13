@@ -6,6 +6,8 @@ export type FeedVideo = Video & {
   likesCount: number;
   isLiked: boolean;
   commentsCount: number;
+  isFollowingAuthor: boolean;
+  isOwnVideo: boolean;
 };
 
 export type OwnVideo = Video & { likesCount: number; commentsCount: number };
@@ -84,15 +86,19 @@ export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: stri
 
     const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
-    const videoIds = (videos as Video[]).map((v) => v.id);
-    const [{ data: likes }, commentsCountByVideo, {
+    const {
       data: { session },
-    }] = await Promise.all([
+    } = await supabase.auth.getSession();
+    const currentUserId = session?.user?.id;
+
+    const videoIds = (videos as Video[]).map((v) => v.id);
+    const [{ data: likes }, commentsCountByVideo, { data: followingRows }] = await Promise.all([
       supabase.from("likes").select("video_id, user_id").in("video_id", videoIds),
       getCountByVideoId("comments", videoIds),
-      supabase.auth.getSession(),
+      currentUserId
+        ? supabase.from("follows").select("following_id").eq("follower_id", currentUserId).in("following_id", userIds)
+        : Promise.resolve({ data: [] as { following_id: string }[] }),
     ]);
-    const currentUserId = session?.user?.id;
 
     const likesCountByVideo = new Map<string, number>();
     const likedByMe = new Set<string>();
@@ -101,6 +107,8 @@ export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: stri
       if (like.user_id === currentUserId) likedByMe.add(like.video_id);
     }
 
+    const followingSet = new Set((followingRows ?? []).map((f) => f.following_id));
+
     return {
       data: (videos as Video[]).map((video) => ({
         ...video,
@@ -108,6 +116,8 @@ export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: stri
         likesCount: likesCountByVideo.get(video.id) ?? 0,
         isLiked: likedByMe.has(video.id),
         commentsCount: commentsCountByVideo.get(video.id) ?? 0,
+        isFollowingAuthor: followingSet.has(video.user_id),
+        isOwnVideo: video.user_id === currentUserId,
       })),
     };
   } catch (err) {

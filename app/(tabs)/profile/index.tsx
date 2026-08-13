@@ -6,13 +6,16 @@ import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { FollowListSheet } from "@/components/follow-list-sheet";
 import { MyApplicationCard } from "@/components/my-application-card";
 import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
 import type { Event, Profile } from "@/lib/database.types";
+import { supabase } from "@/lib/supabase";
 import { getMyApplications, type MyApplication } from "@/services/applications";
 import { signOut } from "@/services/auth";
 import { getOwnEvents } from "@/services/events";
+import { getFollowCounts } from "@/services/follows";
 import { getOwnProfile } from "@/services/profiles";
 import { getOwnVideos, type OwnVideo } from "@/services/videos";
 
@@ -34,24 +37,35 @@ export default function ProfileScreen() {
   const [videosError, setVideosError] = useState<string | null>(null);
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [applicationsError, setApplicationsError] = useState<string | null>(null);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [showFollowers, setShowFollowers] = useState(false);
+  const [showFollowing, setShowFollowing] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
-    Promise.all([
-      getOwnProfile(),
-      getOwnVideos(),
-      getOwnEvents(),
-      getMyApplications(VISIBLE_ITEMS_LIMIT + 1),
-    ]).then(([profileResult, videosResult, eventsResult, applicationsResult]) => {
-      setProfile(profileResult.data);
-      setProfileError(profileResult.error ?? null);
-      setVideos(videosResult.data);
-      setVideosError(videosResult.error ?? null);
-      setEvents(eventsResult.data);
-      setEventsError(eventsResult.error ?? null);
-      setApplications(applicationsResult.data);
-      setApplicationsError(applicationsResult.error ?? null);
-      setLoading(false);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const userId = session?.user?.id;
+
+      Promise.all([
+        getOwnProfile(),
+        getOwnVideos(),
+        getOwnEvents(),
+        getMyApplications(VISIBLE_ITEMS_LIMIT + 1),
+        userId ? getFollowCounts(userId) : Promise.resolve({ followers: 0, following: 0 }),
+      ]).then(([profileResult, videosResult, eventsResult, applicationsResult, followCounts]) => {
+        setProfile(profileResult.data);
+        setProfileError(profileResult.error ?? null);
+        setVideos(videosResult.data);
+        setVideosError(videosResult.error ?? null);
+        setEvents(eventsResult.data);
+        setEventsError(eventsResult.error ?? null);
+        setApplications(applicationsResult.data);
+        setApplicationsError(applicationsResult.error ?? null);
+        setFollowerCount(followCounts.followers);
+        setFollowingCount(followCounts.following);
+        setLoading(false);
+      });
     });
   }, []);
 
@@ -154,6 +168,17 @@ export default function ProfileScreen() {
             <Text style={styles.rowText}>{profile.city}</Text>
           </View>
         ) : null}
+
+        <View style={styles.followStatsRow}>
+          <Pressable style={styles.followStat} onPress={() => setShowFollowers(true)}>
+            <Text style={styles.followStatCount}>{followerCount}</Text>
+            <Text style={styles.followStatLabel}>Followers</Text>
+          </Pressable>
+          <Pressable style={styles.followStat} onPress={() => setShowFollowing(true)}>
+            <Text style={styles.followStatCount}>{followingCount}</Text>
+            <Text style={styles.followStatLabel}>Following</Text>
+          </Pressable>
+        </View>
 
         <View style={styles.sectionDivider} />
 
@@ -268,6 +293,23 @@ export default function ProfileScreen() {
           </>
         )}
       </ScrollView>
+
+      {profile ? (
+        <>
+          <FollowListSheet
+            userId={profile.id}
+            mode="followers"
+            visible={showFollowers}
+            onClose={() => setShowFollowers(false)}
+          />
+          <FollowListSheet
+            userId={profile.id}
+            mode="following"
+            visible={showFollowing}
+            onClose={() => setShowFollowing(false)}
+          />
+        </>
+      ) : null}
     </LinearGradient>
   );
 }
@@ -337,6 +379,10 @@ const styles = StyleSheet.create({
   bio: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 6, paddingHorizontal: 16 },
   row: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
   rowText: { fontSize: 13, color: "#C06BE4", fontWeight: "700" },
+  followStatsRow: { flexDirection: "row", gap: 28, marginTop: 16 },
+  followStat: { alignItems: "center" },
+  followStatCount: { fontSize: 16, fontWeight: "700", color: "#093A7D" },
+  followStatLabel: { fontSize: 11, color: "#9B7FC7", fontWeight: "700", marginTop: 1 },
   dualRoleRow: { flexDirection: "row", width: "100%", marginTop: 20, gap: 12 },
   roleColumn: { flex: 1, alignItems: "center" },
   section: { width: "100%", marginTop: 20, alignItems: "center" },

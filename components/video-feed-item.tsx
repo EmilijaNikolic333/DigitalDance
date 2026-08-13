@@ -7,7 +7,9 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { FollowBadge } from "@/components/follow-badge";
 import { VideoCommentsSheet } from "@/components/video-comments-sheet";
+import { toggleFollow } from "@/services/follows";
 import { toggleLike } from "@/services/likes";
 import type { FeedVideo } from "@/services/videos";
 import { incrementViewCount } from "@/services/videos";
@@ -33,6 +35,7 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
   const [likesCount, setLikesCount] = useState(video.likesCount);
   const [commentsCount, setCommentsCount] = useState(video.commentsCount);
   const [showComments, setShowComments] = useState(false);
+  const [followingAuthor, setFollowingAuthor] = useState(video.isFollowingAuthor);
 
   const lastTapRef = useRef(0);
   const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -90,6 +93,20 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
       return;
     }
     setLiked(confirmedLiked);
+  };
+
+  const handleToggleFollow = async () => {
+    if (!video.author) return;
+
+    const nextFollowing = !followingAuthor;
+    setFollowingAuthor(nextFollowing);
+
+    const { following: confirmedFollowing, error } = await toggleFollow(video.author.id);
+    if (error) {
+      setFollowingAuthor(!nextFollowing);
+      return;
+    }
+    setFollowingAuthor(confirmedFollowing);
   };
 
   const playHeartBurst = () => {
@@ -164,12 +181,17 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
       />
 
       <View style={styles.rightRail}>
-        <Pressable
-          onPress={() => video.author && router.push({ pathname: "/user/[id]", params: { id: video.author.id } })}
-          hitSlop={8}
-        >
-          <Avatar url={video.author?.avatar_url} size={46} />
-        </Pressable>
+        <View style={styles.avatarWrap}>
+          <Pressable
+            onPress={() => video.author && router.push({ pathname: "/user/[id]", params: { id: video.author.id } })}
+            hitSlop={8}
+          >
+            <Avatar url={video.author?.avatar_url} size={46} />
+          </Pressable>
+          {video.author && !followingAuthor && !video.isOwnVideo ? (
+            <FollowBadge onPress={handleToggleFollow} />
+          ) : null}
+        </View>
         <View style={styles.statItem}>
           <Ionicons name="eye" size={22} color="#fff" />
           <Text style={styles.statText}>{displayedViews}</Text>
@@ -266,6 +288,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 18,
   },
+  avatarWrap: { width: 46, height: 46 },
   statItem: { alignItems: "center", gap: 2 },
   statText: { color: "#fff", fontSize: 13, fontWeight: "700", ...TEXT_SHADOW },
   bottomInfo: { position: "absolute", left: 16, right: 90, bottom: 70 },
