@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
@@ -27,8 +27,11 @@ const EXPERIENCE_LABEL: Record<string, string> = {
   professional: "Professional",
 };
 
+type ProfileTab = "videos" | "events" | "applications";
+
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [activeTab, setActiveTab] = useState<ProfileTab | null>(null);
   const [videos, setVideos] = useState<OwnVideo[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [applications, setApplications] = useState<MyApplication[]>([]);
@@ -41,6 +44,7 @@ export default function ProfileScreen() {
   const [followingCount, setFollowingCount] = useState(0);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
+  const previousRoleRef = useRef<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -64,6 +68,22 @@ export default function ProfileScreen() {
         setApplicationsError(applicationsResult.error ?? null);
         setFollowerCount(followCounts.followers);
         setFollowingCount(followCounts.following);
+        // Keep the user's chosen tab across a plain background refocus reload, but jump back
+        // to the role default whenever the roles themselves changed (e.g. they just checked
+        // "Dancer" on Edit Profile, on top of already being an organizer) - dancer always
+        // wins the default regardless of which tab happened to be selected before.
+        const roleSignature = `${profileResult.data?.is_dancer}-${profileResult.data?.is_organizer}`;
+        const roleChanged = previousRoleRef.current !== null && previousRoleRef.current !== roleSignature;
+        previousRoleRef.current = roleSignature;
+
+        setActiveTab((current) => {
+          const validTabs: ProfileTab[] = [
+            ...(profileResult.data?.is_dancer ? (["videos", "applications"] as const) : []),
+            ...(profileResult.data?.is_organizer ? (["events"] as const) : []),
+          ];
+          if (!roleChanged && current && validTabs.includes(current)) return current;
+          return profileResult.data?.is_dancer ? "videos" : "events";
+        });
         setLoading(false);
       });
     });
@@ -105,10 +125,22 @@ export default function ProfileScreen() {
   const organizerFields = (
     <>
       {profile?.organization_name ? <InfoBlock label="Organization" value={profile.organization_name} /> : null}
+      {profile?.about ? (
+        <Text style={styles.aboutText}>{profile.about}</Text>
+      ) : (
+        <Pressable onPress={() => router.push("/(tabs)/profile/edit")}>
+          <Text style={styles.aboutPlaceholder}>Go edit your profile to add bio</Text>
+        </Pressable>
+      )}
       {profile?.website ? <InfoBlock label="Website" value={profile.website} /> : null}
-      {profile?.about ? <InfoBlock label="About" value={profile.about} /> : null}
     </>
   );
+
+  const profileTabs: { key: ProfileTab; label: string }[] = [
+    ...(isDancer ? [{ key: "videos" as const, label: "VIDEOS" }] : []),
+    ...(isOrganizer ? [{ key: "events" as const, label: "EVENTS" }] : []),
+    ...(isDancer ? [{ key: "applications" as const, label: "APPLICATIONS" }] : []),
+  ];
 
   const dancerFields = (
     <>
@@ -160,7 +192,15 @@ export default function ProfileScreen() {
 
         <Text style={styles.name}>{profile?.full_name || "Add your name"}</Text>
 
-        {isDancer && profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+        {isDancer ? (
+          profile?.bio ? (
+            <Text style={styles.bio}>{profile.bio}</Text>
+          ) : (
+            <Pressable onPress={() => router.push("/(tabs)/profile/edit")}>
+              <Text style={styles.bioPlaceholder}>Go edit your profile to add bio</Text>
+            </Pressable>
+          )
+        ) : null}
 
         {profile?.city ? (
           <View style={styles.row}>
@@ -194,104 +234,122 @@ export default function ProfileScreen() {
           </>
         )}
 
-        {isOrganizer && (
+        {profileTabs.length > 0 ? (
           <>
             <View style={styles.sectionDivider} />
 
-            <Pressable
-              style={styles.addVideoButton}
-              onPress={() => router.push("/(tabs)/profile/new-event")}
-            >
-              <Ionicons name="add-circle" size={26} color="#093A7D" />
-              <Text style={styles.addVideoText}>Add new event</Text>
-            </Pressable>
-            <Text style={styles.addVideoSubtitle}>Post auditions and events to find your next dancers!</Text>
+            <View style={styles.tagRow}>
+              {profileTabs.map((tab) => (
+                <Pressable
+                  key={tab.key}
+                  style={[styles.tag, activeTab === tab.key && styles.tagSelected]}
+                  onPress={() => setActiveTab(tab.key)}
+                >
+                  <Text style={[styles.tagText, activeTab === tab.key && styles.tagTextSelected]}>
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
 
-            {eventsError ? <Text style={styles.inlineError}>Couldn&apos;t load your events.</Text> : null}
+            {activeTab === "events" && isOrganizer ? (
+              <View style={styles.tabContent}>
+                <Pressable
+                  style={styles.addVideoButton}
+                  onPress={() => router.push("/(tabs)/profile/new-event")}
+                >
+                  <Ionicons name="add-circle" size={26} color="#093A7D" />
+                  <Text style={styles.addVideoText}>Add new event</Text>
+                </Pressable>
+                <Text style={styles.addVideoSubtitle}>Post auditions and events to find your next dancers!</Text>
 
-            {events.length > 0 ? (
-              <View style={styles.videosHeadingRow}>
-                <Text style={styles.videosHeading}>Your events</Text>
+                {eventsError ? <Text style={styles.inlineError}>Couldn&apos;t load your events.</Text> : null}
+
+                {!eventsError && events.length === 0 ? (
+                  <Text style={styles.emptyTabText}>You haven&apos;t posted any events yet.</Text>
+                ) : null}
+
                 {events.length > VISIBLE_ITEMS_LIMIT ? (
-                  <Pressable onPress={() => router.push("/(tabs)/profile/all-events")}>
+                  <Pressable style={styles.viewAllRow} onPress={() => router.push("/(tabs)/profile/all-events")}>
                     <Text style={styles.viewAllText}>View all events</Text>
                   </Pressable>
                 ) : null}
+
+                {events.slice(0, VISIBLE_ITEMS_LIMIT).map((event) => (
+                  <ProfileEventCard
+                    key={event.id}
+                    event={event}
+                    onEditPress={() => router.push(`/(tabs)/profile/edit-event?id=${event.id}`)}
+                    onApplicationsPress={() => router.push(`/(tabs)/profile/event-applications?id=${event.id}`)}
+                  />
+                ))}
               </View>
             ) : null}
 
-            {events.slice(0, VISIBLE_ITEMS_LIMIT).map((event) => (
-              <ProfileEventCard
-                key={event.id}
-                event={event}
-                onEditPress={() => router.push(`/(tabs)/profile/edit-event?id=${event.id}`)}
-                onApplicationsPress={() => router.push(`/(tabs)/profile/event-applications?id=${event.id}`)}
-              />
-            ))}
-          </>
-        )}
+            {activeTab === "videos" && isDancer ? (
+              <View style={styles.tabContent}>
+                <Pressable
+                  style={styles.addVideoButton}
+                  onPress={() => router.push("/(tabs)/profile/new-video")}
+                >
+                  <Ionicons name="add-circle" size={26} color="#093A7D" />
+                  <Text style={styles.addVideoText}>Add new video</Text>
+                </Pressable>
+                <Text style={styles.addVideoSubtitle}>Post your dance videos and connect with dancers worldwide!</Text>
 
-        {isDancer && (
-          <>
-            {isOrganizer ? <View style={styles.sectionDivider} /> : null}
+                {videosError ? <Text style={styles.inlineError}>Couldn&apos;t load your videos.</Text> : null}
 
-            <Pressable
-              style={styles.addVideoButton}
-              onPress={() => router.push("/(tabs)/profile/new-video")}
-            >
-              <Ionicons name="add-circle" size={26} color="#093A7D" />
-              <Text style={styles.addVideoText}>Add new video</Text>
-            </Pressable>
-            <Text style={styles.addVideoSubtitle}>Post your dance videos and connect with dancers worldwide!</Text>
+                {!videosError && videos.length === 0 ? (
+                  <Text style={styles.emptyTabText}>You haven&apos;t posted any videos yet.</Text>
+                ) : null}
 
-            {videosError ? <Text style={styles.inlineError}>Couldn&apos;t load your videos.</Text> : null}
-
-            {videos.length > 0 ? (
-              <View style={styles.videosHeadingRow}>
-                <Text style={styles.videosHeading}>Your videos</Text>
                 {videos.length > VISIBLE_ITEMS_LIMIT ? (
-                  <Pressable onPress={() => router.push("/(tabs)/profile/all-videos")}>
+                  <Pressable style={styles.viewAllRow} onPress={() => router.push("/(tabs)/profile/all-videos")}>
                     <Text style={styles.viewAllText}>View all videos</Text>
                   </Pressable>
                 ) : null}
+
+                {videos.slice(0, VISIBLE_ITEMS_LIMIT).map((video) => (
+                  <ProfileVideoCard
+                    key={video.id}
+                    video={video}
+                    onPress={() => router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)}
+                    onEditPress={() => router.push(`/(tabs)/profile/edit-video?id=${video.id}`)}
+                  />
+                ))}
               </View>
             ) : null}
 
-            {videos.slice(0, VISIBLE_ITEMS_LIMIT).map((video) => (
-              <ProfileVideoCard
-                key={video.id}
-                video={video}
-                onPress={() => router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)}
-                onEditPress={() => router.push(`/(tabs)/profile/edit-video?id=${video.id}`)}
-              />
-            ))}
+            {activeTab === "applications" && isDancer ? (
+              <View style={styles.tabContent}>
+                {applicationsError ? <Text style={styles.inlineError}>Couldn&apos;t load your applications.</Text> : null}
 
-            {applications.length > 0 ? <View style={styles.sectionDivider} /> : null}
+                {!applicationsError && applications.length === 0 ? (
+                  <Text style={styles.emptyTabText}>You haven&apos;t applied to any events yet.</Text>
+                ) : null}
 
-            {applicationsError ? <Text style={styles.inlineError}>Couldn&apos;t load your applications.</Text> : null}
-
-            {applications.length > 0 ? (
-              <View style={styles.videosHeadingRow}>
-                <Text style={styles.videosHeading}>Your applications</Text>
                 {applications.length > VISIBLE_ITEMS_LIMIT ? (
-                  <Pressable onPress={() => router.push("/(tabs)/profile/all-applications")}>
+                  <Pressable
+                    style={styles.viewAllRow}
+                    onPress={() => router.push("/(tabs)/profile/all-applications")}
+                  >
                     <Text style={styles.viewAllText}>View all applications</Text>
                   </Pressable>
                 ) : null}
+
+                {applications.slice(0, VISIBLE_ITEMS_LIMIT).map((application) => (
+                  <MyApplicationCard
+                    key={application.id}
+                    application={application}
+                    onViewDetails={() =>
+                      router.push({ pathname: "/event/[id]", params: { id: application.event_id } })
+                    }
+                  />
+                ))}
               </View>
             ) : null}
-
-            {applications.slice(0, VISIBLE_ITEMS_LIMIT).map((application) => (
-              <MyApplicationCard
-                key={application.id}
-                application={application}
-                onViewDetails={() =>
-                  router.push({ pathname: "/event/[id]", params: { id: application.event_id } })
-                }
-              />
-            ))}
           </>
-        )}
+        ) : null}
       </ScrollView>
 
       {profile ? (
@@ -377,6 +435,23 @@ const styles = StyleSheet.create({
   logoutSmallText: { color: "#fff", fontWeight: "700", fontSize: 11, textAlign: "center" },
   name: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginTop: 16 },
   bio: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 6, paddingHorizontal: 16 },
+  bioPlaceholder: {
+    fontSize: 13,
+    color: "#C06BE4",
+    fontWeight: "700",
+    textAlign: "center",
+    marginTop: 6,
+    paddingHorizontal: 16,
+  },
+  aboutText: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 14, paddingHorizontal: 16 },
+  aboutPlaceholder: {
+    fontSize: 13,
+    color: "#C06BE4",
+    fontWeight: "700",
+    textAlign: "center",
+    marginTop: 14,
+    paddingHorizontal: 16,
+  },
   row: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
   rowText: { fontSize: 13, color: "#C06BE4", fontWeight: "700" },
   followStatsRow: { flexDirection: "row", gap: 28, marginTop: 16 },
@@ -394,14 +469,26 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textAlign: "center",
   },
-  videosHeadingRow: {
-    width: "100%",
+  tagRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 10,
     marginTop: 24,
+    width: "100%",
   },
-  videosHeading: { fontSize: 16, fontWeight: "700", color: "#093A7D" },
+  tag: {
+    backgroundColor: "#fff",
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 18,
+  },
+  tagSelected: { backgroundColor: "#093A7D" },
+  tagText: { fontSize: 12, fontWeight: "700", color: "#093A7D", letterSpacing: 0.5 },
+  tagTextSelected: { color: "#fff" },
+  tabContent: { width: "100%", alignItems: "center" },
+  emptyTabText: { fontSize: 13, color: "#C06BE4", fontWeight: "700", textAlign: "center", marginTop: 20 },
+  viewAllRow: { width: "100%", alignItems: "flex-end", marginTop: 16 },
   viewAllText: { fontSize: 12, color: "#C06BE4", fontWeight: "700" },
   sectionValue: { fontSize: 15, color: "#093A7D", lineHeight: 21, textAlign: "center" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
