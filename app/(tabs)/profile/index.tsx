@@ -9,12 +9,12 @@ import { Avatar } from "@/components/avatar";
 import { MyApplicationCard } from "@/components/my-application-card";
 import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
-import type { Event, Profile, Video } from "@/lib/database.types";
+import type { Event, Profile } from "@/lib/database.types";
 import { getMyApplications, type MyApplication } from "@/services/applications";
 import { signOut } from "@/services/auth";
 import { getOwnEvents } from "@/services/events";
 import { getOwnProfile } from "@/services/profiles";
-import { getOwnVideos } from "@/services/videos";
+import { getOwnVideos, type OwnVideo } from "@/services/videos";
 
 const VISIBLE_ITEMS_LIMIT = 3;
 
@@ -26,7 +26,7 @@ const EXPERIENCE_LABEL: Record<string, string> = {
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [videos, setVideos] = useState<OwnVideo[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [applications, setApplications] = useState<MyApplication[]>([]);
   const [loading, setLoading] = useState(true);

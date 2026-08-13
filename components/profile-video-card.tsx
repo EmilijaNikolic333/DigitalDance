@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { Video } from "@/lib/database.types";
 
 interface ProfileVideoCardProps {
-  video: Video;
+  video: Video & { likesCount: number };
   onPress: () => void;
   onEditPress: () => void;
 }
@@ -37,7 +37,7 @@ export function ProfileVideoCard({ video, onPress, onEditPress }: ProfileVideoCa
           <Ionicons name="eye-outline" size={13} color="#9B7FC7" />
           <Text style={styles.videoStatsText}>{video.views_count} views</Text>
           <Ionicons name="heart-outline" size={13} color="#9B7FC7" style={{ marginLeft: 10 }} />
-          <Text style={styles.videoStatsText}>0 likes</Text>
+          <Text style={styles.videoStatsText}>{video.likesCount} likes</Text>
         </View>
       </View>
 

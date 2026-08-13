@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { toggleLike } from "@/services/likes";
 import type { FeedVideo } from "@/services/videos";
 import { incrementViewCount } from "@/services/videos";
 
@@ -27,6 +28,8 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
   const [muted, setMuted] = useState(false);
   const [displayedViews, setDisplayedViews] = useState(video.views_count);
   const [expanded, setExpanded] = useState(false);
+  const [liked, setLiked] = useState(video.isLiked);
+  const [likesCount, setLikesCount] = useState(video.likesCount);
 
   const player = useVideoPlayer(video.video_url, (p) => {
     p.loop = true;
@@ -66,6 +69,21 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
     setMuted(player.muted);
   };
 
+  const handleToggleLike = async () => {
+    const nextLiked = !liked;
+    setLiked(nextLiked);
+    setLikesCount((count) => count + (nextLiked ? 1 : -1));
+
+    const { liked: confirmedLiked, error } = await toggleLike(video.id);
+    if (error) {
+      // Revert the optimistic update if the request didn't actually go through.
+      setLiked(!nextLiked);
+      setLikesCount((count) => count + (nextLiked ? -1 : 1));
+      return;
+    }
+    setLiked(confirmedLiked);
+  };
+
   const progress = player.duration > 0 ? currentTime / player.duration : 0;
 
   return (
@@ -97,10 +115,10 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
           <Ionicons name="eye" size={22} color="#fff" />
           <Text style={styles.statText}>{displayedViews}</Text>
         </View>
-        <View style={styles.statItem}>
-          <Ionicons name="heart" size={22} color="#fff" />
-          <Text style={styles.statText}>0</Text>
-        </View>
+        <Pressable style={styles.statItem} onPress={handleToggleLike} hitSlop={8}>
+          <Ionicons name={liked ? "heart" : "heart-outline"} size={22} color={liked ? "#C06BE4" : "#fff"} />
+          <Text style={styles.statText}>{likesCount}</Text>
+        </Pressable>
       </View>
 
       <View style={styles.bottomInfo}>

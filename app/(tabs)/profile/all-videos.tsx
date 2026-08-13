@@ -5,11 +5,10 @@ import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ProfileVideoCard } from "@/components/profile-video-card";
-import type { Video } from "@/lib/database.types";
-import { getOwnVideos } from "@/services/videos";
+import { getOwnVideos, type OwnVideo } from "@/services/videos";
 
 export default function AllVideosScreen() {
-  const [videos, setVideos] = useState<Video[]>([]);
+  const [videos, setVideos] = useState<OwnVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

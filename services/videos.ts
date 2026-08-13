@@ -3,9 +3,26 @@ import { supabase } from "@/lib/supabase";
 
 export type FeedVideo = Video & {
   author: Pick<Profile, "id" | "full_name" | "avatar_url"> | null;
+  likesCount: number;
+  isLiked: boolean;
 };
 
-export async function getOwnVideos(): Promise<{ data: Video[]; error?: string }> {
+export type OwnVideo = Video & { likesCount: number };
+
+/** Number of likes per video, for the given video ids. */
+async function getLikesCountByVideoId(videoIds: string[]): Promise<Map<string, number>> {
+  if (videoIds.length === 0) return new Map();
+
+  const { data: likes } = await supabase.from("likes").select("video_id").in("video_id", videoIds);
+
+  const counts = new Map<string, number>();
+  for (const like of likes ?? []) {
+    counts.set(like.video_id, (counts.get(like.video_id) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export async function getOwnVideos(): Promise<{ data: OwnVideo[]; error?: string }> {
   try {
     const {
       data: { session },
@@ -23,8 +40,16 @@ export async function getOwnVideos(): Promise<{ data: Video[]; error?: string }>
       console.error("getOwnVideos failed:", error.message, error);
       return { data: [], error: error.message };
     }
+    if (!data || data.length === 0) return { data: [] };
 
-    return { data: (data as Video[]) ?? [] };
+    const likesCountByVideo = await getLikesCountByVideoId((data as Video[]).map((v) => v.id));
+
+    return {
+      data: (data as Video[]).map((video) => ({
+        ...video,
+        likesCount: likesCountByVideo.get(video.id) ?? 0,
+      })),
+    };
   } catch (err) {
     console.error("getOwnVideos failed:", err);
     return { data: [], error: err instanceof Error ? err.message : "Network error" };
@@ -53,10 +78,28 @@ export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: stri
 
     const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
+    const videoIds = (videos as Video[]).map((v) => v.id);
+    const [{ data: likes }, {
+      data: { session },
+    }] = await Promise.all([
+      supabase.from("likes").select("video_id, user_id").in("video_id", videoIds),
+      supabase.auth.getSession(),
+    ]);
+    const currentUserId = session?.user?.id;
+
+    const likesCountByVideo = new Map<string, number>();
+    const likedByMe = new Set<string>();
+    for (const like of likes ?? []) {
+      likesCountByVideo.set(like.video_id, (likesCountByVideo.get(like.video_id) ?? 0) + 1);
+      if (like.user_id === currentUserId) likedByMe.add(like.video_id);
+    }
+
     return {
       data: (videos as Video[]).map((video) => ({
         ...video,
         author: profileById.get(video.user_id) ?? null,
+        likesCount: likesCountByVideo.get(video.id) ?? 0,
+        isLiked: likedByMe.has(video.id),
       })),
     };
   } catch (err) {
