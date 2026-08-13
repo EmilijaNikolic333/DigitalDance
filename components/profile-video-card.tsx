@@ -10,7 +10,8 @@ import type { Video } from "@/lib/database.types";
 interface ProfileVideoCardProps {
   video: Video & { likesCount: number; commentsCount: number };
   onPress: () => void;
-  onEditPress: () => void;
+  /** Omit for videos you don't own - hides the edit pencil. */
+  onEditPress?: () => void;
 }
 
 export function ProfileVideoCard({ video, onPress, onEditPress }: ProfileVideoCardProps) {
@@ -27,9 +28,11 @@ export function ProfileVideoCard({ video, onPress, onEditPress }: ProfileVideoCa
         <View style={styles.coverPlayBadge}>
           <Ionicons name="play" size={20} color="#fff" />
         </View>
-        <Pressable style={styles.editVideoButton} onPress={onEditPress} hitSlop={8}>
-          <Ionicons name="pencil" size={16} color="#093A7D" />
-        </Pressable>
+        {onEditPress ? (
+          <Pressable style={styles.editVideoButton} onPress={onEditPress} hitSlop={8}>
+            <Ionicons name="pencil" size={16} color="#093A7D" />
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={styles.videoInfo}>

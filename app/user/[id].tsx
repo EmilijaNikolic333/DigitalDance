@@ -7,10 +7,14 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { Avatar } from "@/components/avatar";
 import { FollowBadge } from "@/components/follow-badge";
 import { FollowListSheet } from "@/components/follow-list-sheet";
-import type { Profile } from "@/lib/database.types";
+import { ProfileEventCard } from "@/components/profile-event-card";
+import { ProfileVideoCard } from "@/components/profile-video-card";
+import type { Event, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { getEventsByOrganizer } from "@/services/events";
 import { getFollowCounts, isFollowing as fetchIsFollowing, toggleFollow } from "@/services/follows";
 import { getProfileById } from "@/services/profiles";
+import { getVideosByUser, type OwnVideo } from "@/services/videos";
 
 const EXPERIENCE_LABEL: Record<string, string> = {
   beginner: "Beginner",
@@ -18,9 +22,12 @@ const EXPERIENCE_LABEL: Record<string, string> = {
   professional: "Professional",
 };
 
+type ProfileTab = "videos" | "events";
+
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [activeTab, setActiveTab] = useState<ProfileTab | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -30,27 +37,37 @@ export default function UserProfileScreen() {
   const [followingCount, setFollowingCount] = useState(0);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
+  const [videos, setVideos] = useState<OwnVideo[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
 
   useEffect(() => {
-    Promise.all([getProfileById(id), supabase.auth.getUser(), fetchIsFollowing(id), getFollowCounts(id)]).then(
-      ([profileResult, { data: userData }, followingResult, counts]) => {
-        // Someone else's avatar can point at your own id (e.g. your own video in the public
-        // feed, or your own event's organizer row). dismissTo closes any modals stacked in
-        // between (event, this screen) so you land cleanly on the real "my profile" tab
-        // instead of leaving them stacked underneath.
-        if (userData.user?.id === id) {
-          router.dismissTo("/(tabs)/profile");
-          return;
-        }
-
-        setProfile(profileResult.data);
-        setLoadError(profileResult.error ?? null);
-        setFollowing(followingResult);
-        setFollowerCount(counts.followers);
-        setFollowingCount(counts.following);
-        setLoading(false);
+    Promise.all([
+      getProfileById(id),
+      supabase.auth.getUser(),
+      fetchIsFollowing(id),
+      getFollowCounts(id),
+      getVideosByUser(id),
+      getEventsByOrganizer(id),
+    ]).then(([profileResult, { data: userData }, followingResult, counts, videosResult, eventsResult]) => {
+      // Someone else's avatar can point at your own id (e.g. your own video in the public
+      // feed, or your own event's organizer row). dismissTo closes any modals stacked in
+      // between (event, this screen) so you land cleanly on the real "my profile" tab
+      // instead of leaving them stacked underneath.
+      if (userData.user?.id === id) {
+        router.dismissTo("/(tabs)/profile");
+        return;
       }
-    );
+
+      setProfile(profileResult.data);
+      setLoadError(profileResult.error ?? null);
+      setFollowing(followingResult);
+      setFollowerCount(counts.followers);
+      setFollowingCount(counts.following);
+      setVideos(videosResult.data);
+      setEvents(eventsResult.data);
+      setActiveTab((current) => current ?? (profileResult.data?.is_dancer ? "videos" : "events"));
+      setLoading(false);
+    });
   }, [id]);
 
   const handleToggleFollow = async () => {
@@ -91,6 +108,44 @@ export default function UserProfileScreen() {
 
   const isDancer = profile.is_dancer;
   const isOrganizer = profile.is_organizer;
+
+  const organizerFields = (
+    <>
+      {profile.organization_name ? <InfoBlock label="Organization" value={profile.organization_name} /> : null}
+      {profile.website ? <InfoBlock label="Website" value={profile.website} /> : null}
+      {profile.about ? <InfoBlock label="About" value={profile.about} /> : null}
+    </>
+  );
+
+  const dancerFields = (
+    <>
+      {profile.dance_styles && profile.dance_styles.length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>Dance styles</Text>
+          <View style={styles.chipRow}>
+            {profile.dance_styles.map((style) => (
+              <View key={style} style={styles.chip}>
+                <Text style={styles.chipText}>{style}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
+      {profile.experience_level ? (
+        <InfoBlock label="Experience" value={EXPERIENCE_LABEL[profile.experience_level]} />
+      ) : null}
+      {profile.availability ? <InfoBlock label="Availability" value={profile.availability} /> : null}
+    </>
+  );
+
+  const hasInfoContent =
+    (isOrganizer && !!(profile.organization_name || profile.website || profile.about)) ||
+    (isDancer && !!(profile.dance_styles?.length || profile.experience_level || profile.availability));
+
+  const profileTabs: { key: ProfileTab; label: string }[] = [
+    ...(isDancer ? [{ key: "videos" as const, label: "VIDEOS" }] : []),
+    ...(isOrganizer ? [{ key: "events" as const, label: "EVENTS" }] : []),
+  ];
 
   return (
     <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
@@ -151,34 +206,73 @@ export default function UserProfileScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.sectionDivider} />
-
-        {isOrganizer ? (
+        {hasInfoContent ? (
           <>
-            {profile.organization_name ? <InfoBlock label="Organization" value={profile.organization_name} /> : null}
-            {profile.website ? <InfoBlock label="Website" value={profile.website} /> : null}
-            {profile.about ? <InfoBlock label="About" value={profile.about} /> : null}
+            <View style={styles.sectionDivider} />
+
+            {isOrganizer && isDancer ? (
+              <View style={styles.dualRoleRow}>
+                <View style={styles.roleColumn}>{organizerFields}</View>
+                <View style={styles.roleColumn}>{dancerFields}</View>
+              </View>
+            ) : (
+              <>
+                {isOrganizer && organizerFields}
+                {isDancer && dancerFields}
+              </>
+            )}
           </>
         ) : null}
 
-        {isDancer ? (
+        {profileTabs.length > 0 ? (
           <>
-            {profile.dance_styles && profile.dance_styles.length > 0 ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Dance styles</Text>
-                <View style={styles.chipRow}>
-                  {profile.dance_styles.map((style) => (
-                    <View key={style} style={styles.chip}>
-                      <Text style={styles.chipText}>{style}</Text>
-                    </View>
-                  ))}
-                </View>
+            <View style={styles.sectionDivider} />
+
+            <View style={styles.tagRow}>
+              {profileTabs.map((tab) => (
+                <Pressable
+                  key={tab.key}
+                  style={[styles.tag, activeTab === tab.key && styles.tagSelected]}
+                  onPress={() => setActiveTab(tab.key)}
+                >
+                  <Text style={[styles.tagText, activeTab === tab.key && styles.tagTextSelected]}>
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {activeTab === "videos" && isDancer ? (
+              <View style={styles.tabContent}>
+                {videos.length === 0 ? (
+                  <Text style={styles.emptyTabText}>No videos yet.</Text>
+                ) : (
+                  videos.map((video) => (
+                    <ProfileVideoCard
+                      key={video.id}
+                      video={video}
+                      onPress={() => router.push({ pathname: "/watch", params: { url: video.video_url } })}
+                    />
+                  ))
+                )}
               </View>
             ) : null}
-            {profile.experience_level ? (
-              <InfoBlock label="Experience" value={EXPERIENCE_LABEL[profile.experience_level]} />
+
+            {activeTab === "events" && isOrganizer ? (
+              <View style={styles.tabContent}>
+                {events.length === 0 ? (
+                  <Text style={styles.emptyTabText}>No events yet.</Text>
+                ) : (
+                  events.map((event) => (
+                    <ProfileEventCard
+                      key={event.id}
+                      event={event}
+                      onPress={() => router.push({ pathname: "/event/[id]", params: { id: event.id } })}
+                    />
+                  ))
+                )}
+              </View>
             ) : null}
-            {profile.availability ? <InfoBlock label="Availability" value={profile.availability} /> : null}
           </>
         ) : null}
       </ScrollView>
@@ -262,6 +356,27 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(192, 107, 228, 0.4)",
     marginTop: 32,
   },
+  dualRoleRow: { flexDirection: "row", width: "100%", gap: 12 },
+  roleColumn: { flex: 1, alignItems: "center" },
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: 24,
+    width: "100%",
+  },
+  tag: {
+    backgroundColor: "#fff",
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 18,
+  },
+  tagSelected: { backgroundColor: "#093A7D" },
+  tagText: { fontSize: 12, fontWeight: "700", color: "#093A7D", letterSpacing: 0.5 },
+  tagTextSelected: { color: "#fff" },
+  tabContent: { width: "100%", alignItems: "center" },
+  emptyTabText: { fontSize: 13, color: "#C06BE4", fontWeight: "700", textAlign: "center", marginTop: 20 },
   section: { width: "100%", marginTop: 20, alignItems: "center" },
   sectionLabel: {
     fontSize: 12,

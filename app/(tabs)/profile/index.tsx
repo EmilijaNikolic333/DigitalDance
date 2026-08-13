@@ -122,16 +122,26 @@ export default function ProfileScreen() {
   const isDancer = profile?.is_dancer ?? false;
   const isOrganizer = profile?.is_organizer ?? false;
 
+  const bioMissing = isDancer && !profile?.bio;
+  const aboutMissing = isOrganizer && !profile?.about;
+  // When someone is both a dancer and an organizer and neither description is filled in,
+  // show the "go add one" prompt once above both columns instead of once per column.
+  const showSharedBioPrompt = bioMissing && aboutMissing;
+
+  const bioPrompt = (
+    <Pressable onPress={() => router.push("/(tabs)/profile/edit")}>
+      <Text style={styles.aboutPlaceholder}>Go edit your profile to add bio</Text>
+    </Pressable>
+  );
+
   const organizerFields = (
     <>
       {profile?.organization_name ? <InfoBlock label="Organization" value={profile.organization_name} /> : null}
       {profile?.about ? (
-        <Text style={styles.aboutText}>{profile.about}</Text>
-      ) : (
-        <Pressable onPress={() => router.push("/(tabs)/profile/edit")}>
-          <Text style={styles.aboutPlaceholder}>Go edit your profile to add bio</Text>
-        </Pressable>
-      )}
+        <InfoBlock label="About" value={profile.about} />
+      ) : aboutMissing && !showSharedBioPrompt ? (
+        bioPrompt
+      ) : null}
       {profile?.website ? <InfoBlock label="Website" value={profile.website} /> : null}
     </>
   );
@@ -144,6 +154,11 @@ export default function ProfileScreen() {
 
   const dancerFields = (
     <>
+      {profile?.bio ? (
+        <InfoBlock label="Bio" value={profile.bio} />
+      ) : bioMissing && !showSharedBioPrompt ? (
+        bioPrompt
+      ) : null}
       {profile?.dance_styles && profile.dance_styles.length > 0 ? (
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Dance styles</Text>
@@ -192,16 +207,6 @@ export default function ProfileScreen() {
 
         <Text style={styles.name}>{profile?.full_name || "Add your name"}</Text>
 
-        {isDancer ? (
-          profile?.bio ? (
-            <Text style={styles.bio}>{profile.bio}</Text>
-          ) : (
-            <Pressable onPress={() => router.push("/(tabs)/profile/edit")}>
-              <Text style={styles.bioPlaceholder}>Go edit your profile to add bio</Text>
-            </Pressable>
-          )
-        ) : null}
-
         {profile?.city ? (
           <View style={styles.row}>
             <Ionicons name="location-outline" size={14} color="#C06BE4" />
@@ -223,10 +228,13 @@ export default function ProfileScreen() {
         <View style={styles.sectionDivider} />
 
         {isOrganizer && isDancer ? (
-          <View style={styles.dualRoleRow}>
-            <View style={styles.roleColumn}>{organizerFields}</View>
-            <View style={styles.roleColumn}>{dancerFields}</View>
-          </View>
+          <>
+            {showSharedBioPrompt ? bioPrompt : null}
+            <View style={styles.dualRoleRow}>
+              <View style={styles.roleColumn}>{organizerFields}</View>
+              <View style={styles.roleColumn}>{dancerFields}</View>
+            </View>
+          </>
         ) : (
           <>
             {isOrganizer && organizerFields}
@@ -434,16 +442,6 @@ const styles = StyleSheet.create({
   },
   logoutSmallText: { color: "#fff", fontWeight: "700", fontSize: 11, textAlign: "center" },
   name: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginTop: 16 },
-  bio: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 6, paddingHorizontal: 16 },
-  bioPlaceholder: {
-    fontSize: 13,
-    color: "#C06BE4",
-    fontWeight: "700",
-    textAlign: "center",
-    marginTop: 6,
-    paddingHorizontal: 16,
-  },
-  aboutText: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 14, paddingHorizontal: 16 },
   aboutPlaceholder: {
     fontSize: 13,
     color: "#C06BE4",

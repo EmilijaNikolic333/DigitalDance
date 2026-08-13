@@ -13,13 +13,19 @@ function formatEventDate(iso: string) {
 
 interface ProfileEventCardProps {
   event: Event;
-  onEditPress: () => void;
-  onApplicationsPress: () => void;
+  /** Whole-card tap - for viewing someone else's event (and applying from there). */
+  onPress?: () => void;
+  /** Owner-only actions. Omit both to show a plain, read-only card. */
+  onEditPress?: () => void;
+  onApplicationsPress?: () => void;
 }
 
-export function ProfileEventCard({ event, onEditPress, onApplicationsPress }: ProfileEventCardProps) {
+export function ProfileEventCard({ event, onPress, onEditPress, onApplicationsPress }: ProfileEventCardProps) {
+  const CardWrapper = onPress ? Pressable : View;
+  const showViewDetails = onPress && !onEditPress && !onApplicationsPress;
+
   return (
-    <View style={styles.card}>
+    <CardWrapper style={styles.card} onPress={onPress}>
       <View style={styles.row}>
         <View style={styles.cover}>
           {event.cover_image_url ? (
@@ -47,15 +53,25 @@ export function ProfileEventCard({ event, onEditPress, onApplicationsPress }: Pr
           ) : null}
         </View>
 
-        <Pressable style={styles.editButton} onPress={onEditPress} hitSlop={8}>
-          <Ionicons name="pencil" size={16} color="#093A7D" />
-        </Pressable>
+        {onEditPress ? (
+          <Pressable style={styles.editButton} onPress={onEditPress} hitSlop={8}>
+            <Ionicons name="pencil" size={16} color="#093A7D" />
+          </Pressable>
+        ) : null}
       </View>
 
-      <Pressable style={styles.applicationsButton} onPress={onApplicationsPress}>
-        <Text style={styles.applicationsButtonText}>View applications</Text>
-      </Pressable>
-    </View>
+      {onApplicationsPress ? (
+        <Pressable style={styles.applicationsButton} onPress={onApplicationsPress}>
+          <Text style={styles.applicationsButtonText}>View applications</Text>
+        </Pressable>
+      ) : null}
+
+      {showViewDetails ? (
+        <Pressable style={styles.applicationsButton} onPress={onPress}>
+          <Text style={styles.applicationsButtonText}>View details</Text>
+        </Pressable>
+      ) : null}
+    </CardWrapper>
   );
 }
 

@@ -25,22 +25,16 @@ async function getCountByVideoId(table: "likes" | "comments", videoIds: string[]
   return counts;
 }
 
-export async function getOwnVideos(): Promise<{ data: OwnVideo[]; error?: string }> {
+async function fetchVideosWithCounts(userId: string): Promise<{ data: OwnVideo[]; error?: string }> {
   try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const user = session?.user;
-    if (!user) return { data: [] };
-
     const { data, error } = await supabase
       .from("videos")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.error("getOwnVideos failed:", error.message, error);
+      console.error("fetchVideosWithCounts failed:", error.message, error);
       return { data: [], error: error.message };
     }
     if (!data || data.length === 0) return { data: [] };
@@ -59,9 +53,24 @@ export async function getOwnVideos(): Promise<{ data: OwnVideo[]; error?: string
       })),
     };
   } catch (err) {
-    console.error("getOwnVideos failed:", err);
+    console.error("fetchVideosWithCounts failed:", err);
     return { data: [], error: err instanceof Error ? err.message : "Network error" };
   }
+}
+
+export async function getOwnVideos(): Promise<{ data: OwnVideo[]; error?: string }> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
+  if (!user) return { data: [] };
+
+  return fetchVideosWithCounts(user.id);
+}
+
+/** A specific user's videos - for viewing their public profile. */
+export async function getVideosByUser(userId: string): Promise<{ data: OwnVideo[]; error?: string }> {
+  return fetchVideosWithCounts(userId);
 }
 
 /** All videos for the swipeable feed, newest first, each with its author's name/avatar. */

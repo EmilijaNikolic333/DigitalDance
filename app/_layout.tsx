@@ -73,6 +73,7 @@ export default function RootLayout() {
           <Stack.Screen name="event" options={{ headerShown: false, presentation: 'modal' }} />
           <Stack.Screen name="user" options={{ headerShown: false, presentation: 'modal' }} />
           <Stack.Screen name="chat" options={{ headerShown: false }} />
+          <Stack.Screen name="watch" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />

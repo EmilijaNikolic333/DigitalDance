@@ -7,30 +7,39 @@ export type EventWithOrganizer = Event & {
   organizer: Pick<Profile, "id" | "full_name" | "avatar_url" | "organization_name"> | null;
 };
 
-export async function getOwnEvents(): Promise<{ data: Event[]; error?: string }> {
+async function fetchEventsByOrganizer(organizerId: string): Promise<{ data: Event[]; error?: string }> {
   try {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const user = session?.user;
-    if (!user) return { data: [] };
-
     const { data, error } = await supabase
       .from("events")
       .select("*")
-      .eq("organizer_id", user.id)
+      .eq("organizer_id", organizerId)
       .order("event_date", { ascending: true });
 
     if (error) {
-      console.error("getOwnEvents failed:", error.message, error);
+      console.error("fetchEventsByOrganizer failed:", error.message, error);
       return { data: [], error: error.message };
     }
 
     return { data: (data as Event[]) ?? [] };
   } catch (err) {
-    console.error("getOwnEvents failed:", err);
+    console.error("fetchEventsByOrganizer failed:", err);
     return { data: [], error: err instanceof Error ? err.message : "Network error" };
   }
+}
+
+export async function getOwnEvents(): Promise<{ data: Event[]; error?: string }> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
+  if (!user) return { data: [] };
+
+  return fetchEventsByOrganizer(user.id);
+}
+
+/** A specific organizer's events - for viewing their public profile. */
+export async function getEventsByOrganizer(organizerId: string): Promise<{ data: Event[]; error?: string }> {
+  return fetchEventsByOrganizer(organizerId);
 }
 
 /** All active events for the public feed, soonest first, each with its organizer's name/avatar. */
