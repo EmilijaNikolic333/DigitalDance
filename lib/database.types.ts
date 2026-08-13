@@ -121,14 +121,16 @@ export interface Message {
   sender_id: string;
   receiver_id: string;
   text: string;
-  created_at: string;
+  sent_at: string;
+  read_at: string | null;
 }
 
 export interface Notification {
   id: string;
   user_id: string;
-  type: string;
-  content: string | null;
+  type: NotificationType;
+  reference_id: string | null;
+  message: string | null;
   is_read: boolean;
   created_at: string;
 }

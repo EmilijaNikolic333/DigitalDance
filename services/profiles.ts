@@ -23,6 +23,23 @@ export async function getOwnProfile(): Promise<{ data: Profile | null; error?: s
   }
 }
 
+/** Another user's public profile, for viewing (not editing). */
+export async function getProfileById(id: string): Promise<{ data: Profile | null; error?: string }> {
+  try {
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", id).single();
+
+    if (error) {
+      console.error("getProfileById failed:", error.message, error);
+      return { data: null, error: error.message };
+    }
+
+    return { data: data as Profile | null };
+  } catch (err) {
+    console.error("getProfileById failed:", err);
+    return { data: null, error: err instanceof Error ? err.message : "Network error" };
+  }
+}
+
 interface ProfileUpdates {
   full_name?: string;
   city?: string;

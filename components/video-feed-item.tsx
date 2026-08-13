@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEvent } from "expo";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -86,7 +87,12 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
       />
 
       <View style={styles.rightRail}>
-        <Avatar url={video.author?.avatar_url} size={46} />
+        <Pressable
+          onPress={() => video.author && router.push({ pathname: "/user/[id]", params: { id: video.author.id } })}
+          hitSlop={8}
+        >
+          <Avatar url={video.author?.avatar_url} size={46} />
+        </Pressable>
         <View style={styles.statItem}>
           <Ionicons name="eye" size={22} color="#fff" />
           <Text style={styles.statText}>{displayedViews}</Text>
@@ -106,7 +112,12 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
             <Text style={styles.moreText}>more</Text>
           ) : null}
         </Pressable>
-        <Text style={styles.author}>{video.author?.full_name || "Unknown"}</Text>
+        <Pressable
+          onPress={() => video.author && router.push({ pathname: "/user/[id]", params: { id: video.author.id } })}
+          hitSlop={4}
+        >
+          <Text style={styles.author}>{video.author?.full_name || "Unknown"}</Text>
+        </Pressable>
         {video.dance_style ? (
           <View style={styles.chip}>
             <Text style={styles.chipText}>#{video.dance_style.replace(" ", "")}</Text>

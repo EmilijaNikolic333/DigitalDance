@@ -4,7 +4,7 @@ import type { Event, EventType, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
 export type EventWithOrganizer = Event & {
-  organizer: Pick<Profile, "full_name" | "avatar_url" | "organization_name"> | null;
+  organizer: Pick<Profile, "id" | "full_name" | "avatar_url" | "organization_name"> | null;
 };
 
 export async function getOwnEvents(): Promise<{ data: Event[]; error?: string }> {

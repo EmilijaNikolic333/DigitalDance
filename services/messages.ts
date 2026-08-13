@@ -1,0 +1,112 @@
+import type { Message } from "@/lib/database.types";
+import { supabase } from "@/lib/supabase";
+
+/** All messages exchanged with another user, oldest first. */
+export async function getConversation(otherUserId: string): Promise<{ data: Message[]; error?: string }> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return { data: [] };
+
+    const { data, error } = await supabase
+      .from("messages")
+      .select("*")
+      .or(
+        `and(sender_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user.id})`
+      )
+      .order("sent_at", { ascending: true });
+
+    if (error) {
+      console.error("getConversation failed:", error.message, error);
+      return { data: [], error: error.message };
+    }
+
+    return { data: (data as Message[]) ?? [] };
+  } catch (err) {
+    console.error("getConversation failed:", err);
+    return { data: [], error: err instanceof Error ? err.message : "Network error" };
+  }
+}
+
+/** Marks all unread messages from the other user in this conversation as read. */
+export async function markMessagesAsRead(otherUserId: string): Promise<{ error?: string }> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return {};
+
+    const { error } = await supabase
+      .from("messages")
+      .update({ read_at: new Date().toISOString() })
+      .eq("sender_id", otherUserId)
+      .eq("receiver_id", user.id)
+      .is("read_at", null);
+
+    if (error) {
+      console.error("markMessagesAsRead failed:", error.message, error);
+      return { error: error.message };
+    }
+
+    return {};
+  } catch (err) {
+    console.error("markMessagesAsRead failed:", err);
+    return { error: err instanceof Error ? err.message : "Network error" };
+  }
+}
+
+/** Sends a direct message to another user and creates a "new_message" notification for them. */
+export async function sendMessage(receiverId: string, text: string): Promise<{ data?: Message; error?: string }> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return { error: "Not authenticated" };
+
+    const trimmed = text.trim();
+    if (!trimmed) return { error: "Message can't be empty" };
+
+    const { data: insertedMessage, error: messageError } = await supabase
+      .from("messages")
+      .insert({
+        sender_id: user.id,
+        receiver_id: receiverId,
+        text: trimmed,
+      })
+      .select("*")
+      .single();
+
+    if (messageError) {
+      console.error("sendMessage failed:", messageError.message, messageError);
+      return { error: messageError.message };
+    }
+
+    const { data: senderProfile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single();
+
+    const { error: notificationError } = await supabase.from("notifications").insert({
+      user_id: receiverId,
+      type: "new_message",
+      reference_id: insertedMessage?.id ?? null,
+      message: `${senderProfile?.full_name || "Someone"} sent you a message`,
+      is_read: false,
+    });
+
+    if (notificationError) {
+      // The message itself was sent successfully - a failed notification isn't worth failing the whole action for.
+      console.error("sendMessage (notification) failed:", notificationError.message, notificationError);
+    }
+
+    return { data: insertedMessage as Message };
+  } catch (err) {
+    console.error("sendMessage failed:", err);
+    return { error: err instanceof Error ? err.message : "Network error" };
+  }
+}

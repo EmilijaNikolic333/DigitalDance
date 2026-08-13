@@ -2,7 +2,7 @@ import type { Profile, Video } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
 export type FeedVideo = Video & {
-  author: Pick<Profile, "full_name" | "avatar_url"> | null;
+  author: Pick<Profile, "id" | "full_name" | "avatar_url"> | null;
 };
 
 export async function getOwnVideos(): Promise<{ data: Video[]; error?: string }> {

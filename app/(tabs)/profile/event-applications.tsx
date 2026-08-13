@@ -74,7 +74,11 @@ export default function EventApplicationsScreen() {
           <View style={styles.list}>
             {applications.map((application) => (
               <View key={application.id} style={styles.card}>
-                <View style={styles.cardTop}>
+                <Pressable
+                  style={styles.cardTop}
+                  onPress={() => router.push({ pathname: "/user/[id]", params: { id: application.dancer_id } })}
+                  hitSlop={4}
+                >
                   <Avatar url={application.dancer?.avatar_url} size={44} />
                   <View style={styles.cardInfo}>
                     <Text style={styles.name} numberOfLines={1}>
@@ -90,7 +94,7 @@ export default function EventApplicationsScreen() {
                       {STATUS_LABEL[application.status]}
                     </Text>
                   </View>
-                </View>
+                </Pressable>
 
                 {application.message ? <Text style={styles.message}>{application.message}</Text> : null}
 

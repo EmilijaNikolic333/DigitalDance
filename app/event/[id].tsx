@@ -136,12 +136,16 @@ export default function EventDetailScreen() {
           <Text style={styles.title}>{event.title}</Text>
 
           {event.organizer ? (
-            <View style={styles.organizerRow}>
+            <Pressable
+              style={styles.organizerRow}
+              onPress={() => router.push({ pathname: "/user/[id]", params: { id: event.organizer!.id } })}
+              hitSlop={8}
+            >
               <Avatar url={event.organizer.avatar_url} size={28} />
               <Text style={styles.organizerText}>
                 {event.organizer.organization_name || event.organizer.full_name || "Organizer"}
               </Text>
-            </View>
+            </Pressable>
           ) : null}
 
           <Text style={styles.description}>{event.description}</Text>
