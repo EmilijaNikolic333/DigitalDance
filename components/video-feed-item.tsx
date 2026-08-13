@@ -3,8 +3,8 @@ import { useEvent } from "expo";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
 import { VideoCommentsSheet } from "@/components/video-comments-sheet";
@@ -33,6 +33,11 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
   const [likesCount, setLikesCount] = useState(video.likesCount);
   const [commentsCount, setCommentsCount] = useState(video.commentsCount);
   const [showComments, setShowComments] = useState(false);
+
+  const lastTapRef = useRef(0);
+  const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heartScale = useRef(new Animated.Value(0)).current;
+  const heartOpacity = useRef(new Animated.Value(0)).current;
 
   const player = useVideoPlayer(video.video_url, (p) => {
     p.loop = true;
@@ -87,11 +92,52 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
     setLiked(confirmedLiked);
   };
 
+  const playHeartBurst = () => {
+    heartScale.setValue(0.3);
+    heartOpacity.setValue(1);
+    Animated.spring(heartScale, { toValue: 1, friction: 3, useNativeDriver: true }).start();
+    Animated.timing(heartOpacity, {
+      toValue: 0,
+      duration: 250,
+      delay: 350,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleVideoPress = () => {
+    const now = Date.now();
+
+    if (now - lastTapRef.current < 300) {
+      // Second tap arrived in time - it's a double tap, so cancel the pending
+      // play/pause from the first tap and just like the video instead.
+      if (tapTimeoutRef.current) {
+        clearTimeout(tapTimeoutRef.current);
+        tapTimeoutRef.current = null;
+      }
+      lastTapRef.current = 0;
+      playHeartBurst();
+      if (!liked) handleToggleLike();
+      return;
+    }
+
+    lastTapRef.current = now;
+    tapTimeoutRef.current = setTimeout(() => {
+      togglePlayback();
+      tapTimeoutRef.current = null;
+    }, 300);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current);
+    };
+  }, []);
+
   const progress = player.duration > 0 ? currentTime / player.duration : 0;
 
   return (
     <View style={[styles.container, { height }]}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={togglePlayback}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={handleVideoPress}>
         <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
       </Pressable>
 
@@ -100,6 +146,16 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
           <Ionicons name="play" size={56} color="rgba(255,255,255,0.9)" />
         </View>
       ) : null}
+
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.heartBurst,
+          { opacity: heartOpacity, transform: [{ scale: heartScale }] },
+        ]}
+      >
+        <Ionicons name="heart" size={120} color="#C06BE4" />
+      </Animated.View>
 
       <LinearGradient
         colors={["transparent", "rgba(0,0,0,0.75)"]}
@@ -187,6 +243,11 @@ const TEXT_SHADOW = {
 const styles = StyleSheet.create({
   container: { width: "100%", backgroundColor: "#000" },
   playOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heartBurst: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
     justifyContent: "center",
