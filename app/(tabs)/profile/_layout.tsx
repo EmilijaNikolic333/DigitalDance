@@ -13,6 +13,7 @@ export default function ProfileStackLayout() {
       <Stack.Screen name="event-applications" options={{ presentation: "modal" }} />
       <Stack.Screen name="all-events" options={{ presentation: "modal" }} />
       <Stack.Screen name="all-applications" options={{ presentation: "modal" }} />
+      <Stack.Screen name="all-saved" options={{ presentation: "modal" }} />
       <Stack.Screen name="watch" options={{ presentation: "fullScreenModal" }} />
     </Stack>
   );

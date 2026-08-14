@@ -11,6 +11,7 @@ import { FollowBadge } from "@/components/follow-badge";
 import { VideoCommentsSheet } from "@/components/video-comments-sheet";
 import { toggleFollow } from "@/services/follows";
 import { toggleLike } from "@/services/likes";
+import { toggleSaveVideo } from "@/services/saved-videos";
 import type { FeedVideo } from "@/services/videos";
 import { incrementViewCount } from "@/services/videos";
 
@@ -36,6 +37,7 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
   const [commentsCount, setCommentsCount] = useState(video.commentsCount);
   const [showComments, setShowComments] = useState(false);
   const [followingAuthor, setFollowingAuthor] = useState(video.isFollowingAuthor);
+  const [saved, setSaved] = useState(video.isSaved);
 
   const lastTapRef = useRef(0);
   const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -93,6 +95,18 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
       return;
     }
     setLiked(confirmedLiked);
+  };
+
+  const handleToggleSave = async () => {
+    const nextSaved = !saved;
+    setSaved(nextSaved);
+
+    const { saved: confirmedSaved, error } = await toggleSaveVideo(video.id);
+    if (error) {
+      setSaved(!nextSaved);
+      return;
+    }
+    setSaved(confirmedSaved);
   };
 
   const handleToggleFollow = async () => {
@@ -203,6 +217,9 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
         <Pressable style={styles.statItem} onPress={() => setShowComments(true)} hitSlop={8}>
           <Ionicons name="chatbubble-ellipses-outline" size={22} color="#fff" />
           <Text style={styles.statText}>{commentsCount}</Text>
+        </Pressable>
+        <Pressable style={styles.statItem} onPress={handleToggleSave} hitSlop={8}>
+          <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={22} color={saved ? "#C06BE4" : "#fff"} />
         </Pressable>
       </View>
 

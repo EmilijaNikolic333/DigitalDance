@@ -8,12 +8,13 @@ export type FeedVideo = Video & {
   commentsCount: number;
   isFollowingAuthor: boolean;
   isOwnVideo: boolean;
+  isSaved: boolean;
 };
 
-export type OwnVideo = Video & { likesCount: number; commentsCount: number };
+export type OwnVideo = Video & { likesCount: number; commentsCount: number; isSaved: boolean };
 
 /** Row count per video id, for either the "likes" or "comments" table. */
-async function getCountByVideoId(table: "likes" | "comments", videoIds: string[]): Promise<Map<string, number>> {
+export async function getCountByVideoId(table: "likes" | "comments", videoIds: string[]): Promise<Map<string, number>> {
   if (videoIds.length === 0) return new Map();
 
   const { data } = await supabase.from(table).select("video_id").in("video_id", videoIds);
@@ -40,16 +41,26 @@ async function fetchVideosWithCounts(userId: string): Promise<{ data: OwnVideo[]
     if (!data || data.length === 0) return { data: [] };
 
     const videoIds = (data as Video[]).map((v) => v.id);
-    const [likesCountByVideo, commentsCountByVideo] = await Promise.all([
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const viewerId = session?.user?.id;
+
+    const [likesCountByVideo, commentsCountByVideo, savedResult] = await Promise.all([
       getCountByVideoId("likes", videoIds),
       getCountByVideoId("comments", videoIds),
+      viewerId
+        ? supabase.from("saved_videos").select("video_id").eq("user_id", viewerId).in("video_id", videoIds)
+        : Promise.resolve({ data: [] as { video_id: string }[] }),
     ]);
+    const savedSet = new Set((savedResult.data ?? []).map((r) => r.video_id));
 
     return {
       data: (data as Video[]).map((video) => ({
         ...video,
         likesCount: likesCountByVideo.get(video.id) ?? 0,
         commentsCount: commentsCountByVideo.get(video.id) ?? 0,
+        isSaved: savedSet.has(video.id),
       })),
     };
   } catch (err) {
@@ -101,12 +112,15 @@ export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: stri
     const currentUserId = session?.user?.id;
 
     const videoIds = (videos as Video[]).map((v) => v.id);
-    const [{ data: likes }, commentsCountByVideo, { data: followingRows }] = await Promise.all([
+    const [{ data: likes }, commentsCountByVideo, { data: followingRows }, { data: savedRows }] = await Promise.all([
       supabase.from("likes").select("video_id, user_id").in("video_id", videoIds),
       getCountByVideoId("comments", videoIds),
       currentUserId
         ? supabase.from("follows").select("following_id").eq("follower_id", currentUserId).in("following_id", userIds)
         : Promise.resolve({ data: [] as { following_id: string }[] }),
+      currentUserId
+        ? supabase.from("saved_videos").select("video_id").eq("user_id", currentUserId).in("video_id", videoIds)
+        : Promise.resolve({ data: [] as { video_id: string }[] }),
     ]);
 
     const likesCountByVideo = new Map<string, number>();
@@ -117,6 +131,7 @@ export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: stri
     }
 
     const followingSet = new Set((followingRows ?? []).map((f) => f.following_id));
+    const savedSet = new Set((savedRows ?? []).map((r) => r.video_id));
 
     return {
       data: (videos as Video[]).map((video) => ({
@@ -127,6 +142,7 @@ export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: stri
         commentsCount: commentsCountByVideo.get(video.id) ?? 0,
         isFollowingAuthor: followingSet.has(video.user_id),
         isOwnVideo: video.user_id === currentUserId,
+        isSaved: savedSet.has(video.id),
       })),
     };
   } catch (err) {

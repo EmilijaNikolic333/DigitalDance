@@ -6,18 +6,46 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { VideoCommentsSheet } from "@/components/video-comments-sheet";
 import { VideoLikesSheet } from "@/components/video-likes-sheet";
 import type { Video } from "@/lib/database.types";
+import { toggleSaveVideo } from "@/services/saved-videos";
 
 interface ProfileVideoCardProps {
-  video: Video & { likesCount: number; commentsCount: number };
+  video: Video & { likesCount: number; commentsCount: number; isSaved?: boolean };
   onPress: () => void;
   /** Omit for videos you don't own - hides the edit pencil. */
   onEditPress?: () => void;
+  /** Shows a bookmark toggle in the cover - for videos you don't own. */
+  showSaveButton?: boolean;
+  /** Shown as a byline - for videos that aren't necessarily yours (e.g. the Saved tab). */
+  authorName?: string;
+  /** Called right after this video is unsaved - e.g. to remove it from a Saved-videos list immediately. */
+  onUnsaved?: () => void;
 }
 
-export function ProfileVideoCard({ video, onPress, onEditPress }: ProfileVideoCardProps) {
+export function ProfileVideoCard({
+  video,
+  onPress,
+  onEditPress,
+  showSaveButton,
+  authorName,
+  onUnsaved,
+}: ProfileVideoCardProps) {
   const [commentsCount, setCommentsCount] = useState(video.commentsCount);
   const [showComments, setShowComments] = useState(false);
   const [showLikers, setShowLikers] = useState(false);
+  const [saved, setSaved] = useState(video.isSaved ?? false);
+
+  const handleToggleSave = async () => {
+    const nextSaved = !saved;
+    setSaved(nextSaved);
+
+    const { saved: confirmedSaved, error } = await toggleSaveVideo(video.id);
+    if (error) {
+      setSaved(!nextSaved);
+      return;
+    }
+    setSaved(confirmedSaved);
+    if (!confirmedSaved) onUnsaved?.();
+  };
 
   return (
     <Pressable style={styles.videoCard} onPress={onPress}>
@@ -33,12 +61,26 @@ export function ProfileVideoCard({ video, onPress, onEditPress }: ProfileVideoCa
             <Ionicons name="pencil" size={16} color="#093A7D" />
           </Pressable>
         ) : null}
+        {showSaveButton ? (
+          <Pressable style={styles.saveVideoButton} onPress={handleToggleSave} hitSlop={8}>
+            <Ionicons
+              name={saved ? "bookmark" : "bookmark-outline"}
+              size={16}
+              color={saved ? "#C06BE4" : "#093A7D"}
+            />
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={styles.videoInfo}>
         <Text style={styles.videoTitle} numberOfLines={1}>
           {video.description}
         </Text>
+        {authorName ? (
+          <Text style={styles.videoAuthor} numberOfLines={1}>
+            by {authorName}
+          </Text>
+        ) : null}
         {video.dance_style ? (
           <View style={styles.chip}>
             <Text style={styles.chipText}>#{video.dance_style.replace(" ", "")}</Text>
@@ -109,7 +151,16 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 16,
   },
+  saveVideoButton: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    padding: 8,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+  },
   videoInfo: { padding: 12, gap: 4 },
+  videoAuthor: { fontSize: 11, color: "#9B7FC7", fontWeight: "700" },
   videoSong: { fontSize: 11, color: "#9B7FC7", fontStyle: "italic" },
   videoTitle: { fontSize: 14, fontWeight: "700", color: "#093A7D" },
   chip: {

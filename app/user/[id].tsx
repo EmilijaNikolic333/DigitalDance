@@ -262,6 +262,7 @@ export default function UserProfileScreen() {
                       key={video.id}
                       video={video}
                       onPress={() => router.push({ pathname: "/watch", params: { url: video.video_url } })}
+                      showSaveButton
                     />
                   ))
                 )}

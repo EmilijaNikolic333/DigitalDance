@@ -17,6 +17,7 @@ import { signOut } from "@/services/auth";
 import { getOwnEvents } from "@/services/events";
 import { getFollowCounts } from "@/services/follows";
 import { getOwnProfile } from "@/services/profiles";
+import { getSavedVideos, type SavedVideoItem } from "@/services/saved-videos";
 import { getOwnVideos, type OwnVideo } from "@/services/videos";
 
 const VISIBLE_ITEMS_LIMIT = 3;
@@ -27,7 +28,7 @@ const EXPERIENCE_LABEL: Record<string, string> = {
   professional: "Professional",
 };
 
-type ProfileTab = "videos" | "events" | "applications";
+type ProfileTab = "videos" | "events" | "applications" | "saved";
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -35,11 +36,13 @@ export default function ProfileScreen() {
   const [videos, setVideos] = useState<OwnVideo[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [applications, setApplications] = useState<MyApplication[]>([]);
+  const [savedVideos, setSavedVideos] = useState<SavedVideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [videosError, setVideosError] = useState<string | null>(null);
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [applicationsError, setApplicationsError] = useState<string | null>(null);
+  const [savedVideosError, setSavedVideosError] = useState<string | null>(null);
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [showFollowers, setShowFollowers] = useState(false);
@@ -59,36 +62,42 @@ export default function ProfileScreen() {
         getMyApplications(VISIBLE_ITEMS_LIMIT + 1),
         userId ? getFollowCounts(userId) : Promise.resolve({ followers: 0, following: 0 }),
         getMyAppliedEventIds(),
-      ]).then(([profileResult, videosResult, eventsResult, applicationsResult, followCounts, appliedIds]) => {
-        setProfile(profileResult.data);
-        setProfileError(profileResult.error ?? null);
-        setVideos(videosResult.data);
-        setVideosError(videosResult.error ?? null);
-        setEvents(eventsResult.data);
-        setEventsError(eventsResult.error ?? null);
-        setApplications(applicationsResult.data);
-        setApplicationsError(applicationsResult.error ?? null);
-        setAppliedEventIds(appliedIds);
-        setFollowerCount(followCounts.followers);
-        setFollowingCount(followCounts.following);
-        // Keep the user's chosen tab across a plain background refocus reload, but jump back
-        // to the role default whenever the roles themselves changed (e.g. they just checked
-        // "Dancer" on Edit Profile, on top of already being an organizer) - dancer always
-        // wins the default regardless of which tab happened to be selected before.
-        const roleSignature = `${profileResult.data?.is_dancer}-${profileResult.data?.is_organizer}`;
-        const roleChanged = previousRoleRef.current !== null && previousRoleRef.current !== roleSignature;
-        previousRoleRef.current = roleSignature;
+        getSavedVideos(),
+      ]).then(
+        ([profileResult, videosResult, eventsResult, applicationsResult, followCounts, appliedIds, savedResult]) => {
+          setProfile(profileResult.data);
+          setProfileError(profileResult.error ?? null);
+          setVideos(videosResult.data);
+          setVideosError(videosResult.error ?? null);
+          setEvents(eventsResult.data);
+          setEventsError(eventsResult.error ?? null);
+          setApplications(applicationsResult.data);
+          setApplicationsError(applicationsResult.error ?? null);
+          setAppliedEventIds(appliedIds);
+          setSavedVideos(savedResult.data);
+          setSavedVideosError(savedResult.error ?? null);
+          setFollowerCount(followCounts.followers);
+          setFollowingCount(followCounts.following);
+          // Keep the user's chosen tab across a plain background refocus reload, but jump back
+          // to the role default whenever the roles themselves changed (e.g. they just checked
+          // "Dancer" on Edit Profile, on top of already being an organizer) - dancer always
+          // wins the default regardless of which tab happened to be selected before.
+          const roleSignature = `${profileResult.data?.is_dancer}-${profileResult.data?.is_organizer}`;
+          const roleChanged = previousRoleRef.current !== null && previousRoleRef.current !== roleSignature;
+          previousRoleRef.current = roleSignature;
 
-        setActiveTab((current) => {
-          const validTabs: ProfileTab[] = [
-            ...(profileResult.data?.is_dancer ? (["videos", "applications"] as const) : []),
-            ...(profileResult.data?.is_organizer ? (["events"] as const) : []),
-          ];
-          if (!roleChanged && current && validTabs.includes(current)) return current;
-          return profileResult.data?.is_dancer ? "videos" : "events";
-        });
-        setLoading(false);
-      });
+          setActiveTab((current) => {
+            const validTabs: ProfileTab[] = [
+              ...(profileResult.data?.is_dancer ? (["videos", "applications"] as const) : []),
+              ...(profileResult.data?.is_organizer ? (["events"] as const) : []),
+              "saved",
+            ];
+            if (!roleChanged && current && validTabs.includes(current)) return current;
+            return profileResult.data?.is_dancer ? "videos" : "events";
+          });
+          setLoading(false);
+        }
+      );
     });
   }, []);
 
@@ -153,6 +162,7 @@ export default function ProfileScreen() {
     ...(isDancer ? [{ key: "videos" as const, label: "VIDEOS" }] : []),
     ...(isOrganizer ? [{ key: "events" as const, label: "EVENTS" }] : []),
     ...(isDancer ? [{ key: "applications" as const, label: "APPLICATIONS" }] : []),
+    { key: "saved" as const, label: "SAVED" },
   ];
 
   const dancerFields = (
@@ -356,6 +366,35 @@ export default function ProfileScreen() {
                     onViewDetails={() =>
                       router.push({ pathname: "/event/[id]", params: { id: application.event_id } })
                     }
+                  />
+                ))}
+              </View>
+            ) : null}
+
+            {activeTab === "saved" ? (
+              <View style={styles.tabContent}>
+                {savedVideosError ? (
+                  <Text style={styles.inlineError}>Couldn&apos;t load your saved videos.</Text>
+                ) : null}
+
+                {!savedVideosError && savedVideos.length === 0 ? (
+                  <Text style={styles.emptyTabText}>You haven&apos;t saved any videos yet.</Text>
+                ) : null}
+
+                {savedVideos.length > VISIBLE_ITEMS_LIMIT ? (
+                  <Pressable style={styles.viewAllRow} onPress={() => router.push("/(tabs)/profile/all-saved")}>
+                    <Text style={styles.viewAllText}>View all saved</Text>
+                  </Pressable>
+                ) : null}
+
+                {savedVideos.slice(0, VISIBLE_ITEMS_LIMIT).map((video) => (
+                  <ProfileVideoCard
+                    key={video.id}
+                    video={video}
+                    onPress={() => router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)}
+                    authorName={video.author?.full_name ?? undefined}
+                    showSaveButton
+                    onUnsaved={() => setSavedVideos((current) => current.filter((v) => v.id !== video.id))}
                   />
                 ))}
               </View>
