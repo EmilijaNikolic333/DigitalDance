@@ -38,6 +38,17 @@ export default function TabLayout() {
         }}
       />
 
+      {/*  INBOX */}
+      <Tabs.Screen
+        name="inbox"
+        options={{
+          title: "Inbox",
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons name={focused ? "chatbubbles" : "chatbubbles-outline"} size={24} color={color} />
+          ),
+        }}
+      />
+
       {/*  PROFILE */}
       <Tabs.Screen
         name="profile"

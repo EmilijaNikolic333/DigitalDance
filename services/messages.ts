@@ -1,5 +1,68 @@
-import type { Message } from "@/lib/database.types";
+import type { Message, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+
+export interface ConversationSummary {
+  otherUserId: string;
+  otherUser: Pick<Profile, "id" | "full_name" | "avatar_url"> | null;
+  lastMessage: string;
+  lastMessageAt: string;
+  isMine: boolean;
+}
+
+/** One entry per person the current user has exchanged messages with, most recent first. */
+export async function getConversations(): Promise<{ data: ConversationSummary[]; error?: string }> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return { data: [] };
+
+    const { data: messages, error } = await supabase
+      .from("messages")
+      .select("*")
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .order("sent_at", { ascending: false });
+
+    if (error) {
+      console.error("getConversations failed:", error.message, error);
+      return { data: [], error: error.message };
+    }
+    if (!messages || messages.length === 0) return { data: [] };
+
+    // Messages are sorted newest first, so the first message seen per partner is their latest.
+    const latestByPartner = new Map<string, Message>();
+    for (const message of messages as Message[]) {
+      const partnerId = message.sender_id === user.id ? message.receiver_id : message.sender_id;
+      if (!latestByPartner.has(partnerId)) {
+        latestByPartner.set(partnerId, message);
+      }
+    }
+
+    const partnerIds = [...latestByPartner.keys()];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name, avatar_url")
+      .in("id", partnerIds);
+    const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+    return {
+      data: partnerIds.map((partnerId) => {
+        const message = latestByPartner.get(partnerId) as Message;
+        return {
+          otherUserId: partnerId,
+          otherUser: profileById.get(partnerId) ?? null,
+          lastMessage: message.text,
+          lastMessageAt: message.sent_at,
+          isMine: message.sender_id === user.id,
+        };
+      }),
+    };
+  } catch (err) {
+    console.error("getConversations failed:", err);
+    return { data: [], error: err instanceof Error ? err.message : "Network error" };
+  }
+}
 
 /** All messages exchanged with another user, oldest first. */
 export async function getConversation(otherUserId: string): Promise<{ data: Message[]; error?: string }> {
