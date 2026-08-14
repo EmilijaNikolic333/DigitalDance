@@ -5,9 +5,12 @@ import { supabase } from "@/lib/supabase";
 
 export type EventWithOrganizer = Event & {
   organizer: Pick<Profile, "id" | "full_name" | "avatar_url" | "organization_name"> | null;
+  isSaved: boolean;
 };
 
-async function fetchEventsByOrganizer(organizerId: string): Promise<{ data: Event[]; error?: string }> {
+export type OwnEvent = Event & { isSaved: boolean };
+
+async function fetchEventsByOrganizer(organizerId: string): Promise<{ data: OwnEvent[]; error?: string }> {
   try {
     const { data, error } = await supabase
       .from("events")
@@ -19,15 +22,29 @@ async function fetchEventsByOrganizer(organizerId: string): Promise<{ data: Even
       console.error("fetchEventsByOrganizer failed:", error.message, error);
       return { data: [], error: error.message };
     }
+    if (!data || data.length === 0) return { data: [] };
 
-    return { data: (data as Event[]) ?? [] };
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const viewerId = session?.user?.id;
+
+    const eventIds = (data as Event[]).map((e) => e.id);
+    const savedResult = viewerId
+      ? await supabase.from("saved_events").select("event_id").eq("user_id", viewerId).in("event_id", eventIds)
+      : { data: [] as { event_id: string }[] };
+    const savedSet = new Set((savedResult.data ?? []).map((r) => r.event_id));
+
+    return {
+      data: (data as Event[]).map((event) => ({ ...event, isSaved: savedSet.has(event.id) })),
+    };
   } catch (err) {
     console.error("fetchEventsByOrganizer failed:", err);
     return { data: [], error: err instanceof Error ? err.message : "Network error" };
   }
 }
 
-export async function getOwnEvents(): Promise<{ data: Event[]; error?: string }> {
+export async function getOwnEvents(): Promise<{ data: OwnEvent[]; error?: string }> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -38,7 +55,7 @@ export async function getOwnEvents(): Promise<{ data: Event[]; error?: string }>
 }
 
 /** A specific organizer's events - for viewing their public profile. */
-export async function getEventsByOrganizer(organizerId: string): Promise<{ data: Event[]; error?: string }> {
+export async function getEventsByOrganizer(organizerId: string): Promise<{ data: OwnEvent[]; error?: string }> {
   return fetchEventsByOrganizer(organizerId);
 }
 
@@ -58,17 +75,27 @@ export async function getActiveEvents(): Promise<{ data: EventWithOrganizer[]; e
     if (!events || events.length === 0) return { data: [] };
 
     const organizerIds = [...new Set((events as Event[]).map((e) => e.organizer_id))];
-    const { data: organizers } = await supabase
-      .from("profiles")
-      .select("id, full_name, avatar_url, organization_name")
-      .in("id", organizerIds);
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const viewerId = session?.user?.id;
+
+    const eventIds = (events as Event[]).map((e) => e.id);
+    const [{ data: organizers }, savedResult] = await Promise.all([
+      supabase.from("profiles").select("id, full_name, avatar_url, organization_name").in("id", organizerIds),
+      viewerId
+        ? supabase.from("saved_events").select("event_id").eq("user_id", viewerId).in("event_id", eventIds)
+        : Promise.resolve({ data: [] as { event_id: string }[] }),
+    ]);
 
     const organizerById = new Map((organizers ?? []).map((o) => [o.id, o]));
+    const savedSet = new Set((savedResult.data ?? []).map((r) => r.event_id));
 
     return {
       data: (events as Event[]).map((event) => ({
         ...event,
         organizer: organizerById.get(event.organizer_id) ?? null,
+        isSaved: savedSet.has(event.id),
       })),
     };
   } catch (err) {
@@ -81,13 +108,19 @@ export async function getEventById(id: string): Promise<EventWithOrganizer | nul
   const { data: event } = await supabase.from("events").select("*").eq("id", id).single();
   if (!event) return null;
 
-  const { data: organizer } = await supabase
-    .from("profiles")
-    .select("id, full_name, avatar_url, organization_name")
-    .eq("id", (event as Event).organizer_id)
-    .single();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const viewerId = session?.user?.id;
 
-  return { ...(event as Event), organizer: organizer ?? null };
+  const [{ data: organizer }, savedRow] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, avatar_url, organization_name").eq("id", (event as Event).organizer_id).single(),
+    viewerId
+      ? supabase.from("saved_events").select("id").eq("user_id", viewerId).eq("event_id", id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  return { ...(event as Event), organizer: organizer ?? null, isSaved: !!savedRow.data };
 }
 
 /** Uploads a locally picked cover image to the `events` bucket and returns its public URL. */

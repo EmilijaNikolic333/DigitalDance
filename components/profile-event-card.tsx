@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Event } from "@/lib/database.types";
+import { toggleSaveEvent } from "@/services/saved-events";
 
 function formatEventDate(iso: string) {
   const date = new Date(iso);
@@ -20,6 +22,11 @@ interface ProfileEventCardProps {
   onApplicationsPress?: () => void;
   /** Highlights the card - the current user has already applied to this event. */
   isApplied?: boolean;
+  /** Shows a bookmark toggle - for events you don't organize. */
+  showSaveButton?: boolean;
+  isSaved?: boolean;
+  /** Called right after this event is unsaved - e.g. to remove it from a Saved-events list immediately. */
+  onUnsaved?: () => void;
 }
 
 export function ProfileEventCard({
@@ -28,9 +35,26 @@ export function ProfileEventCard({
   onEditPress,
   onApplicationsPress,
   isApplied,
+  showSaveButton,
+  isSaved,
+  onUnsaved,
 }: ProfileEventCardProps) {
   const CardWrapper = onPress ? Pressable : View;
   const showViewDetails = onPress && !onEditPress && !onApplicationsPress;
+  const [saved, setSaved] = useState(isSaved ?? false);
+
+  const handleToggleSave = async () => {
+    const nextSaved = !saved;
+    setSaved(nextSaved);
+
+    const { saved: confirmedSaved, error } = await toggleSaveEvent(event.id);
+    if (error) {
+      setSaved(!nextSaved);
+      return;
+    }
+    setSaved(confirmedSaved);
+    if (!confirmedSaved) onUnsaved?.();
+  };
 
   return (
     <CardWrapper style={[styles.card, isApplied && styles.cardApplied]} onPress={onPress}>
@@ -64,6 +88,14 @@ export function ProfileEventCard({
         {onEditPress ? (
           <Pressable style={styles.editButton} onPress={onEditPress} hitSlop={8}>
             <Ionicons name="pencil" size={16} color="#093A7D" />
+          </Pressable>
+        ) : showSaveButton ? (
+          <Pressable style={styles.editButton} onPress={handleToggleSave} hitSlop={8}>
+            <Ionicons
+              name={saved ? "bookmark" : "bookmark-outline"}
+              size={16}
+              color={saved ? "#C06BE4" : "#093A7D"}
+            />
           </Pressable>
         ) : null}
       </View>

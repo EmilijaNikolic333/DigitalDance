@@ -115,6 +115,7 @@ export default function EventsListScreen() {
               event={event}
               onPress={() => goToEvent(event.id)}
               isApplied={appliedEventIds.has(event.id)}
+              isSaved={event.isSaved}
             />
           ))
         )}

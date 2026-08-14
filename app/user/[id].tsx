@@ -9,10 +9,10 @@ import { FollowBadge } from "@/components/follow-badge";
 import { FollowListSheet } from "@/components/follow-list-sheet";
 import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
-import type { Event, Profile } from "@/lib/database.types";
+import type { Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { getMyAppliedEventIds } from "@/services/applications";
-import { getEventsByOrganizer } from "@/services/events";
+import { getEventsByOrganizer, type OwnEvent } from "@/services/events";
 import { getFollowCounts, isFollowing as fetchIsFollowing, toggleFollow } from "@/services/follows";
 import { getProfileById } from "@/services/profiles";
 import { getVideosByUser, type OwnVideo } from "@/services/videos";
@@ -39,7 +39,7 @@ export default function UserProfileScreen() {
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
   const [videos, setVideos] = useState<OwnVideo[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<OwnEvent[]>([]);
   const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
 
   useFocusEffect(
@@ -280,6 +280,8 @@ export default function UserProfileScreen() {
                       event={event}
                       onPress={() => router.push({ pathname: "/event/[id]", params: { id: event.id } })}
                       isApplied={appliedEventIds.has(event.id)}
+                      showSaveButton
+                      isSaved={event.isSaved}
                     />
                   ))
                 )}

@@ -10,13 +10,14 @@ import { FollowListSheet } from "@/components/follow-list-sheet";
 import { MyApplicationCard } from "@/components/my-application-card";
 import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
-import type { Event, Profile } from "@/lib/database.types";
+import type { Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { getMyApplications, getMyAppliedEventIds, type MyApplication } from "@/services/applications";
 import { signOut } from "@/services/auth";
-import { getOwnEvents } from "@/services/events";
+import { getOwnEvents, type OwnEvent } from "@/services/events";
 import { getFollowCounts } from "@/services/follows";
 import { getOwnProfile } from "@/services/profiles";
+import { getSavedEvents, type SavedEventItem } from "@/services/saved-events";
 import { getSavedVideos, type SavedVideoItem } from "@/services/saved-videos";
 import { getOwnVideos, type OwnVideo } from "@/services/videos";
 
@@ -34,15 +35,18 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab | null>(null);
   const [videos, setVideos] = useState<OwnVideo[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<OwnEvent[]>([]);
   const [applications, setApplications] = useState<MyApplication[]>([]);
   const [savedVideos, setSavedVideos] = useState<SavedVideoItem[]>([]);
+  const [savedEvents, setSavedEvents] = useState<SavedEventItem[]>([]);
+  const [savedSubTab, setSavedSubTab] = useState<"videos" | "events">("videos");
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [videosError, setVideosError] = useState<string | null>(null);
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [applicationsError, setApplicationsError] = useState<string | null>(null);
   const [savedVideosError, setSavedVideosError] = useState<string | null>(null);
+  const [savedEventsError, setSavedEventsError] = useState<string | null>(null);
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [showFollowers, setShowFollowers] = useState(false);
@@ -63,8 +67,18 @@ export default function ProfileScreen() {
         userId ? getFollowCounts(userId) : Promise.resolve({ followers: 0, following: 0 }),
         getMyAppliedEventIds(),
         getSavedVideos(),
+        getSavedEvents(),
       ]).then(
-        ([profileResult, videosResult, eventsResult, applicationsResult, followCounts, appliedIds, savedResult]) => {
+        ([
+          profileResult,
+          videosResult,
+          eventsResult,
+          applicationsResult,
+          followCounts,
+          appliedIds,
+          savedVideosResult,
+          savedEventsResult,
+        ]) => {
           setProfile(profileResult.data);
           setProfileError(profileResult.error ?? null);
           setVideos(videosResult.data);
@@ -74,8 +88,10 @@ export default function ProfileScreen() {
           setApplications(applicationsResult.data);
           setApplicationsError(applicationsResult.error ?? null);
           setAppliedEventIds(appliedIds);
-          setSavedVideos(savedResult.data);
-          setSavedVideosError(savedResult.error ?? null);
+          setSavedVideos(savedVideosResult.data);
+          setSavedVideosError(savedVideosResult.error ?? null);
+          setSavedEvents(savedEventsResult.data);
+          setSavedEventsError(savedEventsResult.error ?? null);
           setFollowerCount(followCounts.followers);
           setFollowingCount(followCounts.following);
           // Keep the user's chosen tab across a plain background refocus reload, but jump back
@@ -373,30 +389,86 @@ export default function ProfileScreen() {
 
             {activeTab === "saved" ? (
               <View style={styles.tabContent}>
-                {savedVideosError ? (
-                  <Text style={styles.inlineError}>Couldn&apos;t load your saved videos.</Text>
-                ) : null}
-
-                {!savedVideosError && savedVideos.length === 0 ? (
-                  <Text style={styles.emptyTabText}>You haven&apos;t saved any videos yet.</Text>
-                ) : null}
-
-                {savedVideos.length > VISIBLE_ITEMS_LIMIT ? (
-                  <Pressable style={styles.viewAllRow} onPress={() => router.push("/(tabs)/profile/all-saved")}>
-                    <Text style={styles.viewAllText}>View all saved</Text>
+                <View style={styles.subTagRow}>
+                  <Pressable
+                    style={[styles.subTag, savedSubTab === "videos" && styles.subTagSelected]}
+                    onPress={() => setSavedSubTab("videos")}
+                  >
+                    <Text style={[styles.subTagText, savedSubTab === "videos" && styles.subTagTextSelected]}>
+                      Videos
+                    </Text>
                   </Pressable>
-                ) : null}
+                  <Pressable
+                    style={[styles.subTag, savedSubTab === "events" && styles.subTagSelected]}
+                    onPress={() => setSavedSubTab("events")}
+                  >
+                    <Text style={[styles.subTagText, savedSubTab === "events" && styles.subTagTextSelected]}>
+                      Events
+                    </Text>
+                  </Pressable>
+                </View>
 
-                {savedVideos.slice(0, VISIBLE_ITEMS_LIMIT).map((video) => (
-                  <ProfileVideoCard
-                    key={video.id}
-                    video={video}
-                    onPress={() => router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)}
-                    authorName={video.author?.full_name ?? undefined}
-                    showSaveButton
-                    onUnsaved={() => setSavedVideos((current) => current.filter((v) => v.id !== video.id))}
-                  />
-                ))}
+                {savedSubTab === "videos" ? (
+                  <>
+                    {savedVideosError ? (
+                      <Text style={styles.inlineError}>Couldn&apos;t load your saved videos.</Text>
+                    ) : null}
+
+                    {!savedVideosError && savedVideos.length === 0 ? (
+                      <Text style={styles.emptyTabText}>You haven&apos;t saved any videos yet.</Text>
+                    ) : null}
+
+                    {savedVideos.length > VISIBLE_ITEMS_LIMIT ? (
+                      <Pressable style={styles.viewAllRow} onPress={() => router.push("/(tabs)/profile/all-saved")}>
+                        <Text style={styles.viewAllText}>View all saved videos</Text>
+                      </Pressable>
+                    ) : null}
+
+                    {savedVideos.slice(0, VISIBLE_ITEMS_LIMIT).map((video) => (
+                      <ProfileVideoCard
+                        key={video.id}
+                        video={video}
+                        onPress={() =>
+                          router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)
+                        }
+                        authorName={video.author?.full_name ?? undefined}
+                        showSaveButton
+                        onUnsaved={() => setSavedVideos((current) => current.filter((v) => v.id !== video.id))}
+                      />
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    {savedEventsError ? (
+                      <Text style={styles.inlineError}>Couldn&apos;t load your saved events.</Text>
+                    ) : null}
+
+                    {!savedEventsError && savedEvents.length === 0 ? (
+                      <Text style={styles.emptyTabText}>You haven&apos;t saved any events yet.</Text>
+                    ) : null}
+
+                    {savedEvents.length > VISIBLE_ITEMS_LIMIT ? (
+                      <Pressable
+                        style={styles.viewAllRow}
+                        onPress={() => router.push("/(tabs)/profile/all-saved-events")}
+                      >
+                        <Text style={styles.viewAllText}>View all saved events</Text>
+                      </Pressable>
+                    ) : null}
+
+                    {savedEvents.slice(0, VISIBLE_ITEMS_LIMIT).map((event) => (
+                      <ProfileEventCard
+                        key={event.id}
+                        event={event}
+                        onPress={() => router.push({ pathname: "/event/[id]", params: { id: event.id } })}
+                        isApplied={appliedEventIds.has(event.id)}
+                        showSaveButton
+                        isSaved
+                        onUnsaved={() => setSavedEvents((current) => current.filter((e) => e.id !== event.id))}
+                      />
+                    ))}
+                  </>
+                )}
               </View>
             ) : null}
           </>
@@ -527,6 +599,17 @@ const styles = StyleSheet.create({
   tagSelected: { backgroundColor: "#093A7D" },
   tagText: { fontSize: 12, fontWeight: "700", color: "#093A7D", letterSpacing: 0.5 },
   tagTextSelected: { color: "#fff" },
+  subTagRow: { flexDirection: "row", gap: 8, marginTop: 14, marginBottom: 4 },
+  subTag: {
+    borderWidth: 1.5,
+    borderColor: "#C06BE4",
+    paddingVertical: 5,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+  },
+  subTagSelected: { backgroundColor: "#C06BE4" },
+  subTagText: { fontSize: 11, fontWeight: "700", color: "#C06BE4" },
+  subTagTextSelected: { color: "#fff" },
   tabContent: { width: "100%", alignItems: "center" },
   emptyTabText: { fontSize: 13, color: "#C06BE4", fontWeight: "700", textAlign: "center", marginTop: 20 },
   viewAllRow: { width: "100%", alignItems: "flex-end", marginTop: 16 },

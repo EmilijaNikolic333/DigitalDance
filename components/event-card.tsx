@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { EventWithOrganizer } from "@/services/events";
+import { toggleSaveEvent } from "@/services/saved-events";
 
 function formatEventDate(iso: string) {
   const date = new Date(iso);
@@ -17,9 +19,24 @@ interface EventCardProps {
   event: EventWithOrganizer;
   onPress: () => void;
   isApplied?: boolean;
+  isSaved?: boolean;
 }
 
-export function EventCard({ event, onPress, isApplied }: EventCardProps) {
+export function EventCard({ event, onPress, isApplied, isSaved }: EventCardProps) {
+  const [saved, setSaved] = useState(isSaved ?? false);
+
+  const handleToggleSave = async () => {
+    const nextSaved = !saved;
+    setSaved(nextSaved);
+
+    const { saved: confirmedSaved, error } = await toggleSaveEvent(event.id);
+    if (error) {
+      setSaved(!nextSaved);
+      return;
+    }
+    setSaved(confirmedSaved);
+  };
+
   return (
     <Pressable style={[styles.card, isApplied && styles.cardApplied]} onPress={onPress}>
       <View style={styles.cover}>
@@ -55,6 +72,10 @@ export function EventCard({ event, onPress, isApplied }: EventCardProps) {
           <Text style={styles.detailsButtonText}>View details</Text>
         </View>
       </View>
+
+      <Pressable style={styles.saveButton} onPress={handleToggleSave} hitSlop={8}>
+        <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={16} color={saved ? "#C06BE4" : "#093A7D"} />
+      </Pressable>
     </Pressable>
   );
 }
@@ -80,6 +101,12 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   coverImage: { width: "100%", height: "100%" },
+  saveButton: {
+    alignSelf: "flex-start",
+    padding: 6,
+    backgroundColor: "#F8ECFF",
+    borderRadius: 14,
+  },
   info: { flex: 1, gap: 3 },
   title: { fontSize: 15, fontWeight: "700", color: "#093A7D" },
   description: { fontSize: 12, color: "#093A7D", opacity: 0.8, marginTop: 2 },

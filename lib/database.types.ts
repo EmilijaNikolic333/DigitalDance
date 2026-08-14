@@ -117,6 +117,13 @@ export interface SavedVideo {
   created_at: string;
 }
 
+export interface SavedEvent {
+  id: string;
+  user_id: string;
+  event_id: string;
+  created_at: string;
+}
+
 export interface Message {
   id: string;
   sender_id: string;
