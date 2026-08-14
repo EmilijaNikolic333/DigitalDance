@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
@@ -11,6 +11,7 @@ import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
 import type { Event, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { getMyAppliedEventIds } from "@/services/applications";
 import { getEventsByOrganizer } from "@/services/events";
 import { getFollowCounts, isFollowing as fetchIsFollowing, toggleFollow } from "@/services/follows";
 import { getProfileById } from "@/services/profiles";
@@ -39,36 +40,45 @@ export default function UserProfileScreen() {
   const [showFollowing, setShowFollowing] = useState(false);
   const [videos, setVideos] = useState<OwnVideo[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    Promise.all([
-      getProfileById(id),
-      supabase.auth.getUser(),
-      fetchIsFollowing(id),
-      getFollowCounts(id),
-      getVideosByUser(id),
-      getEventsByOrganizer(id),
-    ]).then(([profileResult, { data: userData }, followingResult, counts, videosResult, eventsResult]) => {
-      // Someone else's avatar can point at your own id (e.g. your own video in the public
-      // feed, or your own event's organizer row). dismissTo closes any modals stacked in
-      // between (event, this screen) so you land cleanly on the real "my profile" tab
-      // instead of leaving them stacked underneath.
-      if (userData.user?.id === id) {
-        router.dismissTo("/(tabs)/profile");
-        return;
-      }
+  useFocusEffect(
+    useCallback(() => {
+      Promise.all([
+        getProfileById(id),
+        supabase.auth.getUser(),
+        fetchIsFollowing(id),
+        getFollowCounts(id),
+        getVideosByUser(id),
+        getEventsByOrganizer(id),
+        getMyAppliedEventIds(),
+      ]).then(
+        ([profileResult, { data: userData }, followingResult, counts, videosResult, eventsResult, appliedIds]) => {
+          // Someone else's avatar can point at your own id (e.g. your own video in the public
+          // feed, or your own event's organizer row). dismissTo closes any modals stacked in
+          // between (event, this screen) so you land cleanly on the real "my profile" tab
+          // instead of leaving them stacked underneath.
+          if (userData.user?.id === id) {
+            router.dismissTo("/(tabs)/profile");
+            return;
+          }
 
-      setProfile(profileResult.data);
-      setLoadError(profileResult.error ?? null);
-      setFollowing(followingResult);
-      setFollowerCount(counts.followers);
-      setFollowingCount(counts.following);
-      setVideos(videosResult.data);
-      setEvents(eventsResult.data);
-      setActiveTab((current) => current ?? (profileResult.data?.is_dancer ? "videos" : "events"));
-      setLoading(false);
-    });
-  }, [id]);
+          setProfile(profileResult.data);
+          setLoadError(profileResult.error ?? null);
+          setFollowing(followingResult);
+          setFollowerCount(counts.followers);
+          setFollowingCount(counts.following);
+          setVideos(videosResult.data);
+          setEvents(eventsResult.data);
+          // Applying/cancelling on the event detail screen and coming back here should
+          // refresh which event cards are highlighted - re-fetched on every focus, not just once.
+          setAppliedEventIds(appliedIds);
+          setActiveTab((current) => current ?? (profileResult.data?.is_dancer ? "videos" : "events"));
+          setLoading(false);
+        }
+      );
+    }, [id])
+  );
 
   const handleToggleFollow = async () => {
     const nextFollowing = !following;
@@ -268,6 +278,7 @@ export default function UserProfileScreen() {
                       key={event.id}
                       event={event}
                       onPress={() => router.push({ pathname: "/event/[id]", params: { id: event.id } })}
+                      isApplied={appliedEventIds.has(event.id)}
                     />
                   ))
                 )}

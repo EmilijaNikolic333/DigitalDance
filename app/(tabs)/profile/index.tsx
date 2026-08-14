@@ -12,7 +12,7 @@ import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
 import type { Event, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
-import { getMyApplications, type MyApplication } from "@/services/applications";
+import { getMyApplications, getMyAppliedEventIds, type MyApplication } from "@/services/applications";
 import { signOut } from "@/services/auth";
 import { getOwnEvents } from "@/services/events";
 import { getFollowCounts } from "@/services/follows";
@@ -44,6 +44,7 @@ export default function ProfileScreen() {
   const [followingCount, setFollowingCount] = useState(0);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
+  const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
   const previousRoleRef = useRef<string | null>(null);
 
   const load = useCallback(() => {
@@ -57,7 +58,8 @@ export default function ProfileScreen() {
         getOwnEvents(),
         getMyApplications(VISIBLE_ITEMS_LIMIT + 1),
         userId ? getFollowCounts(userId) : Promise.resolve({ followers: 0, following: 0 }),
-      ]).then(([profileResult, videosResult, eventsResult, applicationsResult, followCounts]) => {
+        getMyAppliedEventIds(),
+      ]).then(([profileResult, videosResult, eventsResult, applicationsResult, followCounts, appliedIds]) => {
         setProfile(profileResult.data);
         setProfileError(profileResult.error ?? null);
         setVideos(videosResult.data);
@@ -66,6 +68,7 @@ export default function ProfileScreen() {
         setEventsError(eventsResult.error ?? null);
         setApplications(applicationsResult.data);
         setApplicationsError(applicationsResult.error ?? null);
+        setAppliedEventIds(appliedIds);
         setFollowerCount(followCounts.followers);
         setFollowingCount(followCounts.following);
         // Keep the user's chosen tab across a plain background refocus reload, but jump back
@@ -289,6 +292,7 @@ export default function ProfileScreen() {
                     event={event}
                     onEditPress={() => router.push(`/(tabs)/profile/edit-event?id=${event.id}`)}
                     onApplicationsPress={() => router.push(`/(tabs)/profile/event-applications?id=${event.id}`)}
+                    isApplied={appliedEventIds.has(event.id)}
                   />
                 ))}
               </View>

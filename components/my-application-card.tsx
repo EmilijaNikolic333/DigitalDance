@@ -70,7 +70,7 @@ export function MyApplicationCard({ application, onViewDetails }: MyApplicationC
 const styles = StyleSheet.create({
   card: {
     width: "100%",
-    backgroundColor: "#fff",
+    backgroundColor: "#EAD9FF",
     borderRadius: 16,
     padding: 10,
     marginTop: 14,

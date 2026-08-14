@@ -13,9 +13,15 @@ function formatEventDate(iso: string) {
   );
 }
 
-export function EventCard({ event, onPress }: { event: EventWithOrganizer; onPress: () => void }) {
+interface EventCardProps {
+  event: EventWithOrganizer;
+  onPress: () => void;
+  isApplied?: boolean;
+}
+
+export function EventCard({ event, onPress, isApplied }: EventCardProps) {
   return (
-    <Pressable style={styles.card} onPress={onPress}>
+    <Pressable style={[styles.card, isApplied && styles.cardApplied]} onPress={onPress}>
       <View style={styles.cover}>
         {event.cover_image_url ? (
           <Image source={{ uri: event.cover_image_url }} style={styles.coverImage} contentFit="cover" />
@@ -63,6 +69,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     gap: 12,
   },
+  cardApplied: { backgroundColor: "#EAD9FF" },
   cover: {
     width: 80,
     height: 100,

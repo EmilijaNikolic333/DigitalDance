@@ -27,6 +27,19 @@ export async function getMyApplication(eventId: string): Promise<Applicant | nul
   return (data as Applicant) ?? null;
 }
 
+/** Ids of every event the current dancer has already applied to - for highlighting event cards. */
+export async function getMyAppliedEventIds(): Promise<Set<string>> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
+  if (!user) return new Set();
+
+  const { data } = await supabase.from("applicants").select("event_id").eq("dancer_id", user.id);
+
+  return new Set((data ?? []).map((a) => a.event_id));
+}
+
 export async function applyToEvent(eventId: string, message: string) {
   const {
     data: { session },

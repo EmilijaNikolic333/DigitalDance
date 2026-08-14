@@ -18,14 +18,22 @@ interface ProfileEventCardProps {
   /** Owner-only actions. Omit both to show a plain, read-only card. */
   onEditPress?: () => void;
   onApplicationsPress?: () => void;
+  /** Highlights the card - the current user has already applied to this event. */
+  isApplied?: boolean;
 }
 
-export function ProfileEventCard({ event, onPress, onEditPress, onApplicationsPress }: ProfileEventCardProps) {
+export function ProfileEventCard({
+  event,
+  onPress,
+  onEditPress,
+  onApplicationsPress,
+  isApplied,
+}: ProfileEventCardProps) {
   const CardWrapper = onPress ? Pressable : View;
   const showViewDetails = onPress && !onEditPress && !onApplicationsPress;
 
   return (
-    <CardWrapper style={styles.card} onPress={onPress}>
+    <CardWrapper style={[styles.card, isApplied && styles.cardApplied]} onPress={onPress}>
       <View style={styles.row}>
         <View style={styles.cover}>
           {event.cover_image_url ? (
@@ -83,6 +91,7 @@ const styles = StyleSheet.create({
     padding: 10,
     marginTop: 14,
   },
+  cardApplied: { backgroundColor: "#EAD9FF" },
   row: {
     flexDirection: "row",
     gap: 12,

@@ -8,6 +8,7 @@ import MapView, { Marker, type Region } from "react-native-maps";
 
 import { EventCard } from "@/components/event-card";
 import { isExpoGo } from "@/lib/is-expo-go";
+import { getMyAppliedEventIds } from "@/services/applications";
 import { type EventWithOrganizer, getActiveEvents } from "@/services/events";
 
 const DEFAULT_REGION: Region = {
@@ -19,13 +20,15 @@ const DEFAULT_REGION: Region = {
 
 export default function EventsListScreen() {
   const [events, setEvents] = useState<EventWithOrganizer[]>([]);
+  const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
-    getActiveEvents().then(({ data, error: loadError }) => {
+    Promise.all([getActiveEvents(), getMyAppliedEventIds()]).then(([{ data, error: loadError }, appliedIds]) => {
       setEvents(data);
+      setAppliedEventIds(appliedIds);
       setError(loadError ?? null);
       setLoading(false);
     });
@@ -107,7 +110,12 @@ export default function EventsListScreen() {
           <Text style={styles.emptyText}>No events yet. Check back soon!</Text>
         ) : (
           events.map((event) => (
-            <EventCard key={event.id} event={event} onPress={() => goToEvent(event.id)} />
+            <EventCard
+              key={event.id}
+              event={event}
+              onPress={() => goToEvent(event.id)}
+              isApplied={appliedEventIds.has(event.id)}
+            />
           ))
         )}
       </ScrollView>
