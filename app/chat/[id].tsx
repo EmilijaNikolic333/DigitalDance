@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
 import type { Message, Profile } from "@/lib/database.types";
+import { goToUserProfile } from "@/lib/profile-navigation";
 import { supabase } from "@/lib/supabase";
 import { getConversation, markMessagesAsRead, sendMessage } from "@/services/messages";
 import { getProfileById } from "@/services/profiles";
@@ -104,10 +105,12 @@ export default function ChatScreen() {
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Ionicons name="chevron-back" size={26} color="#093A7D" />
         </Pressable>
-        <Avatar url={otherUser?.avatar_url} size={36} />
-        <Text style={styles.headerName} numberOfLines={1}>
-          {otherUser?.full_name || "User"}
-        </Text>
+        <Pressable style={styles.headerProfile} onPress={() => goToUserProfile(id, currentUserId)}>
+          <Avatar url={otherUser?.avatar_url} size={36} />
+          <Text style={styles.headerName} numberOfLines={1}>
+            {otherUser?.full_name || "User"}
+          </Text>
+        </Pressable>
       </View>
 
       {loadError ? <Text style={styles.error}>{loadError}</Text> : null}
@@ -187,6 +190,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
+  headerProfile: { flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1 },
   headerName: { fontSize: 16, fontWeight: "700", color: "#093A7D", flexShrink: 1 },
   body: { flex: 1 },
   list: { flexGrow: 1, padding: 16, gap: 8 },
