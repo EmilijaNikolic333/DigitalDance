@@ -1,13 +1,20 @@
 import type { Profile, Video } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { notifyUser } from "@/services/notifications";
 import { getCountByVideoId, type OwnVideo } from "@/services/videos";
 
 export type SavedVideoItem = OwnVideo & {
   author: Pick<Profile, "id" | "full_name" | "avatar_url"> | null;
 };
 
-/** Toggles whether the current user has this video saved. */
-export async function toggleSaveVideo(videoId: string): Promise<{ saved: boolean; error?: string }> {
+/**
+ * Toggles whether the current user has this video saved.
+ * Pass the video's owner id to notify them when it's newly saved.
+ */
+export async function toggleSaveVideo(
+  videoId: string,
+  videoOwnerId?: string
+): Promise<{ saved: boolean; error?: string }> {
   try {
     const {
       data: { session },
@@ -41,6 +48,12 @@ export async function toggleSaveVideo(videoId: string): Promise<{ saved: boolean
       console.error("toggleSaveVideo (insert) failed:", error.message, error);
       return { saved: false, error: error.message };
     }
+
+    if (videoOwnerId) {
+      const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
+      notifyUser(videoOwnerId, "new_save", `${profile?.full_name || "Someone"} saved your video`, videoId, user.id);
+    }
+
     return { saved: true };
   } catch (err) {
     console.error("toggleSaveVideo failed:", err);

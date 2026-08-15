@@ -1,5 +1,6 @@
 import type { Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { notifyUser } from "@/services/notifications";
 
 export type FollowUser = Pick<Profile, "id" | "full_name" | "avatar_url">;
 
@@ -116,6 +117,10 @@ export async function toggleFollow(userId: string): Promise<{ following: boolean
       console.error("toggleFollow (insert) failed:", error.message, error);
       return { following: false, error: error.message };
     }
+
+    const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", me.id).single();
+    notifyUser(userId, "new_follower", `${profile?.full_name || "Someone"} started following you`, me.id, me.id);
+
     return { following: true };
   } catch (err) {
     console.error("toggleFollow failed:", err);

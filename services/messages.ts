@@ -93,6 +93,12 @@ export async function getConversation(otherUserId: string): Promise<{ data: Mess
   }
 }
 
+/** A single message by id - used to resolve who a "new_message" notification is from. */
+export async function getMessageById(id: string): Promise<Message | null> {
+  const { data } = await supabase.from("messages").select("*").eq("id", id).maybeSingle();
+  return (data as Message) ?? null;
+}
+
 /** Marks all unread messages from the other user in this conversation as read. */
 export async function markMessagesAsRead(otherUserId: string): Promise<{ error?: string }> {
   try {

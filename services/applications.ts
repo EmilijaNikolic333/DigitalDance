@@ -1,5 +1,6 @@
 import type { Applicant, ApplicantStatus, Event, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { notifyUser } from "@/services/notifications";
 
 export type ApplicantWithDancer = Applicant & {
   dancer: Pick<Profile, "full_name" | "avatar_url"> | null;
@@ -40,19 +41,38 @@ export async function getMyAppliedEventIds(): Promise<Set<string>> {
   return new Set((data ?? []).map((a) => a.event_id));
 }
 
-export async function applyToEvent(eventId: string, message: string) {
+export async function applyToEvent(eventId: string, message: string, organizerId?: string) {
   const {
     data: { session },
   } = await supabase.auth.getSession();
   const user = session?.user;
   if (!user) return { error: new Error("Not authenticated") };
 
-  return supabase.from("applicants").insert({
+  const result = await supabase.from("applicants").insert({
     event_id: eventId,
     dancer_id: user.id,
     message: message.trim() || null,
     status: "pending",
   });
+
+  if (!result.error && organizerId) {
+    const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
+    notifyUser(
+      organizerId,
+      "new_applicant",
+      `${profile?.full_name || "Someone"} applied to your event`,
+      eventId,
+      user.id
+    );
+  }
+
+  return result;
+}
+
+/** A single application by id, with the event it belongs to - used to resolve an "application_status" notification. */
+export async function getApplicantById(id: string): Promise<Applicant | null> {
+  const { data } = await supabase.from("applicants").select("*").eq("id", id).maybeSingle();
+  return (data as Applicant) ?? null;
 }
 
 /** All applications for an event (organizer view), newest first, each with the dancer's name/avatar. */

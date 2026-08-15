@@ -1,11 +1,15 @@
 import type { Event } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import type { EventWithOrganizer } from "@/services/events";
+import { notifyUser } from "@/services/notifications";
 
 export type SavedEventItem = EventWithOrganizer;
 
-/** Toggles whether the current user has this event saved. */
-export async function toggleSaveEvent(eventId: string): Promise<{ saved: boolean; error?: string }> {
+/** Toggles whether the current user has this event saved. Pass `organizerId` to notify the organizer on save. */
+export async function toggleSaveEvent(
+  eventId: string,
+  organizerId?: string
+): Promise<{ saved: boolean; error?: string }> {
   try {
     const {
       data: { session },
@@ -39,6 +43,12 @@ export async function toggleSaveEvent(eventId: string): Promise<{ saved: boolean
       console.error("toggleSaveEvent (insert) failed:", error.message, error);
       return { saved: false, error: error.message };
     }
+
+    if (organizerId) {
+      const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
+      notifyUser(organizerId, "new_save", `${profile?.full_name || "Someone"} saved your event`, eventId, user.id);
+    }
+
     return { saved: true };
   } catch (err) {
     console.error("toggleSaveEvent failed:", err);

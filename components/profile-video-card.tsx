@@ -38,7 +38,7 @@ export function ProfileVideoCard({
     const nextSaved = !saved;
     setSaved(nextSaved);
 
-    const { saved: confirmedSaved, error } = await toggleSaveVideo(video.id);
+    const { saved: confirmedSaved, error } = await toggleSaveVideo(video.id, video.user_id);
     if (error) {
       setSaved(!nextSaved);
       return;
@@ -113,6 +113,7 @@ export function ProfileVideoCard({
         visible={showComments}
         onClose={() => setShowComments(false)}
         onCommentAdded={() => setCommentsCount((count) => count + 1)}
+        videoOwnerId={video.user_id}
       />
       <VideoLikesSheet videoId={video.id} visible={showLikers} onClose={() => setShowLikers(false)} />
     </Pressable>

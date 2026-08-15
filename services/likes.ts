@@ -1,5 +1,6 @@
 import type { Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { notifyUser } from "@/services/notifications";
 
 export type Liker = Pick<Profile, "id" | "full_name" | "avatar_url">;
 
@@ -33,8 +34,11 @@ export async function getLikers(videoId: string): Promise<{ data: Liker[]; error
   }
 }
 
-/** Toggles the current user's like on a video: removes it if already liked, adds it otherwise. */
-export async function toggleLike(videoId: string): Promise<{ liked: boolean; error?: string }> {
+/**
+ * Toggles the current user's like on a video: removes it if already liked, adds it otherwise.
+ * Pass the video's owner id to notify them when a like is newly added.
+ */
+export async function toggleLike(videoId: string, videoOwnerId?: string): Promise<{ liked: boolean; error?: string }> {
   try {
     const {
       data: { session },
@@ -68,6 +72,12 @@ export async function toggleLike(videoId: string): Promise<{ liked: boolean; err
       console.error("toggleLike (insert) failed:", error.message, error);
       return { liked: false, error: error.message };
     }
+
+    if (videoOwnerId) {
+      const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
+      notifyUser(videoOwnerId, "new_like", `${profile?.full_name || "Someone"} liked your video`, videoId, user.id);
+    }
+
     return { liked: true };
   } catch (err) {
     console.error("toggleLike failed:", err);

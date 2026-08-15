@@ -87,7 +87,7 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
     setLiked(nextLiked);
     setLikesCount((count) => count + (nextLiked ? 1 : -1));
 
-    const { liked: confirmedLiked, error } = await toggleLike(video.id);
+    const { liked: confirmedLiked, error } = await toggleLike(video.id, video.user_id);
     if (error) {
       // Revert the optimistic update if the request didn't actually go through.
       setLiked(!nextLiked);
@@ -101,7 +101,7 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
     const nextSaved = !saved;
     setSaved(nextSaved);
 
-    const { saved: confirmedSaved, error } = await toggleSaveVideo(video.id);
+    const { saved: confirmedSaved, error } = await toggleSaveVideo(video.id, video.user_id);
     if (error) {
       setSaved(!nextSaved);
       return;
@@ -268,6 +268,7 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
         visible={showComments}
         onClose={() => setShowComments(false)}
         onCommentAdded={() => setCommentsCount((count) => count + 1)}
+        videoOwnerId={video.user_id}
       />
     </View>
   );

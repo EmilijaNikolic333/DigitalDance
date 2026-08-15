@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
+import { goToUserProfile } from "@/lib/profile-navigation";
 import { addComment, getComments, type CommentWithAuthor, type ThreadedComment } from "@/services/comments";
 
 interface VideoCommentsSheetProps {
@@ -23,6 +25,7 @@ interface VideoCommentsSheetProps {
   visible: boolean;
   onClose: () => void;
   onCommentAdded: () => void;
+  videoOwnerId?: string;
 }
 
 interface ReplyTarget {
@@ -40,10 +43,19 @@ function formatCommentTime(iso: string) {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function VideoCommentsSheet({ videoId, visible, onClose, onCommentAdded }: VideoCommentsSheetProps) {
+export function VideoCommentsSheet({
+  videoId,
+  visible,
+  onClose,
+  onCommentAdded,
+  videoOwnerId,
+}: VideoCommentsSheetProps) {
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<ThreadedComment>>(null);
   const inputRef = useRef<TextInput>(null);
+  // Only set when this sheet is opened from a /user/[id] profile screen - lets us avoid
+  // re-navigating to the profile you're already looking at.
+  const { id: viewingProfileId } = useLocalSearchParams<{ id?: string }>();
 
   const [comments, setComments] = useState<ThreadedComment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +100,7 @@ export function VideoCommentsSheet({ videoId, visible, onClose, onCommentAdded }
 
     setSendError(null);
     setSending(true);
-    const { data, error } = await addComment(videoId, trimmed, replyTarget?.parentCommentId ?? null);
+    const { data, error } = await addComment(videoId, trimmed, replyTarget?.parentCommentId ?? null, videoOwnerId);
     setSending(false);
 
     if (error || !data) {
@@ -116,12 +128,21 @@ export function VideoCommentsSheet({ videoId, visible, onClose, onCommentAdded }
 
   const totalCount = comments.reduce((sum, c) => sum + 1 + c.replies.length, 0);
 
+  const openAuthorProfile = (userId: string) => {
+    onClose();
+    goToUserProfile(userId, viewingProfileId);
+  };
+
   const renderComment = (item: CommentWithAuthor, topLevelId: string, isReply: boolean) => (
     <View style={[styles.commentRow, isReply && styles.replyRow]}>
-      <Avatar url={item.author?.avatar_url} size={isReply ? 28 : 34} />
+      <Pressable onPress={() => openAuthorProfile(item.user_id)} hitSlop={4}>
+        <Avatar url={item.author?.avatar_url} size={isReply ? 28 : 34} />
+      </Pressable>
       <View style={styles.commentBody}>
         <View style={styles.commentHeaderRow}>
-          <Text style={styles.commentName}>{item.author?.full_name || "Unknown"}</Text>
+          <Pressable onPress={() => openAuthorProfile(item.user_id)} hitSlop={4}>
+            <Text style={styles.commentName}>{item.author?.full_name || "Unknown"}</Text>
+          </Pressable>
           <Text style={styles.commentTime}>{formatCommentTime(item.created_at)}</Text>
         </View>
         <Text style={styles.commentText}>{item.text}</Text>

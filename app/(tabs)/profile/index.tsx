@@ -17,6 +17,7 @@ import { signOut } from "@/services/auth";
 import { getOwnEvents, type OwnEvent } from "@/services/events";
 import { getFollowCounts } from "@/services/follows";
 import { getOwnProfile } from "@/services/profiles";
+import { getUnreadNotificationsCount } from "@/services/notifications";
 import { getSavedEvents, type SavedEventItem } from "@/services/saved-events";
 import { getSavedVideos, type SavedVideoItem } from "@/services/saved-videos";
 import { getOwnVideos, type OwnVideo } from "@/services/videos";
@@ -52,6 +53,7 @@ export default function ProfileScreen() {
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
   const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const previousRoleRef = useRef<string | null>(null);
 
   const load = useCallback(() => {
@@ -68,6 +70,7 @@ export default function ProfileScreen() {
         getMyAppliedEventIds(),
         getSavedVideos(),
         getSavedEvents(),
+        getUnreadNotificationsCount(),
       ]).then(
         ([
           profileResult,
@@ -78,6 +81,7 @@ export default function ProfileScreen() {
           appliedIds,
           savedVideosResult,
           savedEventsResult,
+          unreadCount,
         ]) => {
           setProfile(profileResult.data);
           setProfileError(profileResult.error ?? null);
@@ -92,6 +96,7 @@ export default function ProfileScreen() {
           setSavedVideosError(savedVideosResult.error ?? null);
           setSavedEvents(savedEventsResult.data);
           setSavedEventsError(savedEventsResult.error ?? null);
+          setUnreadNotifications(unreadCount);
           setFollowerCount(followCounts.followers);
           setFollowingCount(followCounts.following);
           // Keep the user's chosen tab across a plain background refocus reload, but jump back
@@ -213,6 +218,15 @@ export default function ProfileScreen() {
         {profileError && profile ? (
           <Text style={styles.inlineError}>Couldn&apos;t refresh your profile. Check your connection.</Text>
         ) : null}
+
+        <Pressable
+          style={styles.notificationsButton}
+          onPress={() => router.push("/(tabs)/profile/notifications")}
+          hitSlop={12}
+        >
+          <Ionicons name="notifications-outline" size={24} color="#093A7D" />
+          {unreadNotifications > 0 ? <View style={styles.notificationsBadge} /> : null}
+        </Pressable>
 
         <View style={styles.headerRow}>
           <LinearGradient colors={["#093A7D", "#C06BE4"]} style={styles.avatarRing}>
@@ -508,6 +522,26 @@ const styles = StyleSheet.create({
   background: { flex: 1 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
   container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 40, paddingBottom: 40 },
+  notificationsButton: {
+    position: "absolute",
+    top: 44,
+    right: 16,
+    zIndex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 8,
+  },
+  notificationsBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: "#C06BE4",
+    borderWidth: 1.5,
+    borderColor: "#fff",
+  },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,5 +1,6 @@
 import type { Comment, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { notifyUser } from "@/services/notifications";
 
 export type CommentWithAuthor = Comment & {
   author: Pick<Profile, "full_name" | "avatar_url"> | null;
@@ -56,12 +57,14 @@ export async function getComments(videoId: string): Promise<{ data: ThreadedComm
 /**
  * Posts a comment (or a reply, when `parentCommentId` is given) and returns it with the
  * current user's name/avatar attached. Replies always attach to the top-level comment id,
- * even when replying to another reply, so threads stay a single level deep.
+ * even when replying to another reply, so threads stay a single level deep. Pass the
+ * video's owner id to notify them about the new comment.
  */
 export async function addComment(
   videoId: string,
   text: string,
-  parentCommentId?: string | null
+  parentCommentId?: string | null,
+  videoOwnerId?: string
 ): Promise<{ data?: CommentWithAuthor; error?: string }> {
   try {
     const {
@@ -94,6 +97,16 @@ export async function addComment(
       .select("full_name, avatar_url")
       .eq("id", user.id)
       .single();
+
+    if (videoOwnerId) {
+      notifyUser(
+        videoOwnerId,
+        "new_comment",
+        `${profile?.full_name || "Someone"} commented on your video`,
+        videoId,
+        user.id
+      );
+    }
 
     return { data: { ...(inserted as Comment), author: profile ?? null } };
   } catch (err) {

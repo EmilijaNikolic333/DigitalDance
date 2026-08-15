@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
+import { goToUserProfile } from "@/lib/profile-navigation";
 import { getLikers, type Liker } from "@/services/likes";
 
 interface VideoLikesSheetProps {
@@ -15,6 +16,9 @@ interface VideoLikesSheetProps {
 
 export function VideoLikesSheet({ videoId, visible, onClose }: VideoLikesSheetProps) {
   const insets = useSafeAreaInsets();
+  // Only set when this sheet is opened from a /user/[id] profile screen - lets us avoid
+  // re-navigating to the profile you're already looking at.
+  const { id: viewingProfileId } = useLocalSearchParams<{ id?: string }>();
 
   const [likers, setLikers] = useState<Liker[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +37,7 @@ export function VideoLikesSheet({ videoId, visible, onClose }: VideoLikesSheetPr
 
   const openProfile = (userId: string) => {
     onClose();
-    router.push({ pathname: "/user/[id]", params: { id: userId } });
+    goToUserProfile(userId, viewingProfileId);
   };
 
   return (

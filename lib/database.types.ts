@@ -22,7 +22,9 @@ export type NotificationType =
   | "application_status"
   | "new_follower"
   | "new_comment"
-  | "new_like";
+  | "new_like"
+  | "new_save"
+  | "new_applicant";
 
 export interface Profile {
   id: string;
@@ -138,6 +140,7 @@ export interface Notification {
   user_id: string;
   type: NotificationType;
   reference_id: string | null;
+  actor_id: string | null;
   message: string | null;
   is_read: boolean;
   created_at: string;

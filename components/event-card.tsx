@@ -29,7 +29,7 @@ export function EventCard({ event, onPress, isApplied, isSaved }: EventCardProps
     const nextSaved = !saved;
     setSaved(nextSaved);
 
-    const { saved: confirmedSaved, error } = await toggleSaveEvent(event.id);
+    const { saved: confirmedSaved, error } = await toggleSaveEvent(event.id, event.organizer_id);
     if (error) {
       setSaved(!nextSaved);
       return;

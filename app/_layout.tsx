@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 
 import { BiometricLock } from '@/components/biometric-lock';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useNotificationListener } from '@/hooks/use-notification-listener';
 import { supabase } from '@/lib/supabase';
 import { signOut, syncProfileFromMetadata } from '@/services/auth';
 import { isBiometricAvailable } from '@/services/biometrics';
@@ -44,6 +45,8 @@ export default function RootLayout() {
 
     return () => subscription.subscription.unsubscribe();
   }, []);
+
+  useNotificationListener(session?.user?.id ?? null);
 
   if (!isSessionLoaded) {
     return (

@@ -188,20 +188,45 @@ export async function createEvent(input: {
   const user = session?.user;
   if (!user) return { error: new Error("Not authenticated") };
 
-  return supabase.from("events").insert({
-    organizer_id: user.id,
-    title: input.title,
-    description: input.description,
-    event_type: input.event_type,
-    city: input.city,
-    location_lat: input.location_lat,
-    location_lng: input.location_lng,
-    event_date: input.event_date,
-    requirements: input.requirements,
-    cover_image_url: input.cover_image_url,
-    price: input.price,
-    status: "active",
-  });
+  const { data: inserted, error } = await supabase
+    .from("events")
+    .insert({
+      organizer_id: user.id,
+      title: input.title,
+      description: input.description,
+      event_type: input.event_type,
+      city: input.city,
+      location_lat: input.location_lat,
+      location_lng: input.location_lng,
+      event_date: input.event_date,
+      requirements: input.requirements,
+      cover_image_url: input.cover_image_url,
+      price: input.price,
+      status: "active",
+    })
+    .select("id")
+    .single();
+
+  if (error) return { error };
+
+  // Notify every dancer about the new event - best-effort, doesn't block event creation.
+  const { data: dancers } = await supabase.from("profiles").select("id").eq("is_dancer", true).neq("id", user.id);
+  if (dancers && dancers.length > 0 && inserted) {
+    const { error: notifyError } = await supabase.from("notifications").insert(
+      dancers.map((dancer) => ({
+        user_id: dancer.id,
+        type: "new_event" as const,
+        message: `New event posted: ${input.title}`,
+        reference_id: inserted.id,
+        is_read: false,
+      }))
+    );
+    if (notifyError) {
+      console.error("createEvent (notify dancers) failed:", notifyError.message, notifyError);
+    }
+  }
+
+  return { data: inserted };
 }
 
 export async function updateEvent(

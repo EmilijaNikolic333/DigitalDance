@@ -89,7 +89,7 @@ export default function EventDetailScreen() {
   const handleApply = async () => {
     setApplyError(null);
     setSubmitting(true);
-    const { error } = await applyToEvent(id, message);
+    const { error } = await applyToEvent(id, message, event?.organizer_id);
     setSubmitting(false);
 
     if (error) {
