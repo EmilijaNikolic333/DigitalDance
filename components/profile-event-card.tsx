@@ -1,9 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useRepostContext } from "@/contexts/repost-context";
+import { useSavedContext } from "@/contexts/saved-context";
 import type { Event } from "@/lib/database.types";
+import { toggleRepostEvent } from "@/services/reposted-events";
 import { toggleSaveEvent } from "@/services/saved-events";
 
 function formatEventDate(iso: string) {
@@ -25,8 +27,9 @@ interface ProfileEventCardProps {
   /** Shows a bookmark toggle - for events you don't organize. */
   showSaveButton?: boolean;
   isSaved?: boolean;
-  /** Called right after this event is unsaved - e.g. to remove it from a Saved-events list immediately. */
-  onUnsaved?: () => void;
+  /** Shows a repost toggle, below the save button - for events you don't organize. */
+  showRepostButton?: boolean;
+  isReposted?: boolean;
 }
 
 export function ProfileEventCard({
@@ -37,23 +40,38 @@ export function ProfileEventCard({
   isApplied,
   showSaveButton,
   isSaved,
-  onUnsaved,
+  showRepostButton,
+  isReposted,
 }: ProfileEventCardProps) {
   const CardWrapper = onPress ? Pressable : View;
   const showViewDetails = onPress && !onEditPress && !onApplicationsPress;
-  const [saved, setSaved] = useState(isSaved ?? false);
+  const { isEventReposted, setEventReposted } = useRepostContext();
+  const reposted = isEventReposted(event.id, isReposted ?? false);
+  const { isEventSaved, setEventSaved } = useSavedContext();
+  const saved = isEventSaved(event.id, isSaved ?? false);
 
   const handleToggleSave = async () => {
     const nextSaved = !saved;
-    setSaved(nextSaved);
+    setEventSaved(event.id, nextSaved);
 
     const { saved: confirmedSaved, error } = await toggleSaveEvent(event.id, event.organizer_id);
     if (error) {
-      setSaved(!nextSaved);
+      setEventSaved(event.id, !nextSaved);
       return;
     }
-    setSaved(confirmedSaved);
-    if (!confirmedSaved) onUnsaved?.();
+    setEventSaved(event.id, confirmedSaved);
+  };
+
+  const handleToggleRepost = async () => {
+    const nextReposted = !reposted;
+    setEventReposted(event.id, nextReposted);
+
+    const { reposted: confirmedReposted, error } = await toggleRepostEvent(event.id, event.organizer_id);
+    if (error) {
+      setEventReposted(event.id, !nextReposted);
+      return;
+    }
+    setEventReposted(event.id, confirmedReposted);
   };
 
   return (
@@ -90,13 +108,20 @@ export function ProfileEventCard({
             <Ionicons name="pencil" size={16} color="#093A7D" />
           </Pressable>
         ) : showSaveButton ? (
-          <Pressable style={styles.editButton} onPress={handleToggleSave} hitSlop={8}>
-            <Ionicons
-              name={saved ? "bookmark" : "bookmark-outline"}
-              size={16}
-              color={saved ? "#C06BE4" : "#093A7D"}
-            />
-          </Pressable>
+          <View style={styles.actionColumn}>
+            <Pressable style={styles.editButton} onPress={handleToggleSave} hitSlop={8}>
+              <Ionicons
+                name={saved ? "bookmark" : "bookmark-outline"}
+                size={16}
+                color={saved ? "#C06BE4" : "#093A7D"}
+              />
+            </Pressable>
+            {showRepostButton ? (
+              <Pressable style={styles.editButton} onPress={handleToggleRepost} hitSlop={8}>
+                <Ionicons name="repeat" size={16} color={reposted ? "#C06BE4" : "#093A7D"} />
+              </Pressable>
+            ) : null}
+          </View>
         ) : null}
       </View>
 
@@ -149,6 +174,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8ECFF",
     borderRadius: 14,
   },
+  actionColumn: { gap: 8 },
   applicationsButton: {
     alignSelf: "flex-end",
     backgroundColor: "#093A7D",

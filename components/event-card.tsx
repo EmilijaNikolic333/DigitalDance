@@ -1,9 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useRepostContext } from "@/contexts/repost-context";
+import { useSavedContext } from "@/contexts/saved-context";
 import type { EventWithOrganizer } from "@/services/events";
+import { toggleRepostEvent } from "@/services/reposted-events";
 import { toggleSaveEvent } from "@/services/saved-events";
 
 function formatEventDate(iso: string) {
@@ -20,21 +22,37 @@ interface EventCardProps {
   onPress: () => void;
   isApplied?: boolean;
   isSaved?: boolean;
+  isReposted?: boolean;
 }
 
-export function EventCard({ event, onPress, isApplied, isSaved }: EventCardProps) {
-  const [saved, setSaved] = useState(isSaved ?? false);
+export function EventCard({ event, onPress, isApplied, isSaved, isReposted }: EventCardProps) {
+  const { isEventReposted, setEventReposted } = useRepostContext();
+  const reposted = isEventReposted(event.id, isReposted ?? false);
+  const { isEventSaved, setEventSaved } = useSavedContext();
+  const saved = isEventSaved(event.id, isSaved ?? false);
 
   const handleToggleSave = async () => {
     const nextSaved = !saved;
-    setSaved(nextSaved);
+    setEventSaved(event.id, nextSaved);
 
     const { saved: confirmedSaved, error } = await toggleSaveEvent(event.id, event.organizer_id);
     if (error) {
-      setSaved(!nextSaved);
+      setEventSaved(event.id, !nextSaved);
       return;
     }
-    setSaved(confirmedSaved);
+    setEventSaved(event.id, confirmedSaved);
+  };
+
+  const handleToggleRepost = async () => {
+    const nextReposted = !reposted;
+    setEventReposted(event.id, nextReposted);
+
+    const { reposted: confirmedReposted, error } = await toggleRepostEvent(event.id, event.organizer_id);
+    if (error) {
+      setEventReposted(event.id, !nextReposted);
+      return;
+    }
+    setEventReposted(event.id, confirmedReposted);
   };
 
   return (
@@ -73,9 +91,14 @@ export function EventCard({ event, onPress, isApplied, isSaved }: EventCardProps
         </View>
       </View>
 
-      <Pressable style={styles.saveButton} onPress={handleToggleSave} hitSlop={8}>
-        <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={16} color={saved ? "#C06BE4" : "#093A7D"} />
-      </Pressable>
+      <View style={styles.actionColumn}>
+        <Pressable style={styles.saveButton} onPress={handleToggleSave} hitSlop={8}>
+          <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={16} color={saved ? "#C06BE4" : "#093A7D"} />
+        </Pressable>
+        <Pressable style={styles.saveButton} onPress={handleToggleRepost} hitSlop={8}>
+          <Ionicons name="repeat" size={16} color={reposted ? "#C06BE4" : "#093A7D"} />
+        </Pressable>
+      </View>
     </Pressable>
   );
 }
@@ -107,6 +130,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8ECFF",
     borderRadius: 14,
   },
+  actionColumn: { alignSelf: "flex-start", gap: 8 },
   info: { flex: 1, gap: 3 },
   title: { fontSize: 15, fontWeight: "700", color: "#093A7D" },
   description: { fontSize: 12, color: "#093A7D", opacity: 0.8, marginTop: 2 },

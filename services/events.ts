@@ -6,9 +6,10 @@ import { supabase } from "@/lib/supabase";
 export type EventWithOrganizer = Event & {
   organizer: Pick<Profile, "id" | "full_name" | "avatar_url" | "organization_name"> | null;
   isSaved: boolean;
+  isReposted: boolean;
 };
 
-export type OwnEvent = Event & { isSaved: boolean };
+export type OwnEvent = Event & { isSaved: boolean; isReposted: boolean };
 
 async function fetchEventsByOrganizer(organizerId: string): Promise<{ data: OwnEvent[]; error?: string }> {
   try {
@@ -30,13 +31,23 @@ async function fetchEventsByOrganizer(organizerId: string): Promise<{ data: OwnE
     const viewerId = session?.user?.id;
 
     const eventIds = (data as Event[]).map((e) => e.id);
-    const savedResult = viewerId
-      ? await supabase.from("saved_events").select("event_id").eq("user_id", viewerId).in("event_id", eventIds)
-      : { data: [] as { event_id: string }[] };
+    const [savedResult, repostedResult] = await Promise.all([
+      viewerId
+        ? supabase.from("saved_events").select("event_id").eq("user_id", viewerId).in("event_id", eventIds)
+        : Promise.resolve({ data: [] as { event_id: string }[] }),
+      viewerId
+        ? supabase.from("reposted_events").select("event_id").eq("user_id", viewerId).in("event_id", eventIds)
+        : Promise.resolve({ data: [] as { event_id: string }[] }),
+    ]);
     const savedSet = new Set((savedResult.data ?? []).map((r) => r.event_id));
+    const repostedSet = new Set((repostedResult.data ?? []).map((r) => r.event_id));
 
     return {
-      data: (data as Event[]).map((event) => ({ ...event, isSaved: savedSet.has(event.id) })),
+      data: (data as Event[]).map((event) => ({
+        ...event,
+        isSaved: savedSet.has(event.id),
+        isReposted: repostedSet.has(event.id),
+      })),
     };
   } catch (err) {
     console.error("fetchEventsByOrganizer failed:", err);
@@ -81,21 +92,26 @@ export async function getActiveEvents(): Promise<{ data: EventWithOrganizer[]; e
     const viewerId = session?.user?.id;
 
     const eventIds = (events as Event[]).map((e) => e.id);
-    const [{ data: organizers }, savedResult] = await Promise.all([
+    const [{ data: organizers }, savedResult, repostedResult] = await Promise.all([
       supabase.from("profiles").select("id, full_name, avatar_url, organization_name").in("id", organizerIds),
       viewerId
         ? supabase.from("saved_events").select("event_id").eq("user_id", viewerId).in("event_id", eventIds)
+        : Promise.resolve({ data: [] as { event_id: string }[] }),
+      viewerId
+        ? supabase.from("reposted_events").select("event_id").eq("user_id", viewerId).in("event_id", eventIds)
         : Promise.resolve({ data: [] as { event_id: string }[] }),
     ]);
 
     const organizerById = new Map((organizers ?? []).map((o) => [o.id, o]));
     const savedSet = new Set((savedResult.data ?? []).map((r) => r.event_id));
+    const repostedSet = new Set((repostedResult.data ?? []).map((r) => r.event_id));
 
     return {
       data: (events as Event[]).map((event) => ({
         ...event,
         organizer: organizerById.get(event.organizer_id) ?? null,
         isSaved: savedSet.has(event.id),
+        isReposted: repostedSet.has(event.id),
       })),
     };
   } catch (err) {
@@ -113,14 +129,22 @@ export async function getEventById(id: string): Promise<EventWithOrganizer | nul
   } = await supabase.auth.getSession();
   const viewerId = session?.user?.id;
 
-  const [{ data: organizer }, savedRow] = await Promise.all([
+  const [{ data: organizer }, savedRow, repostedRow] = await Promise.all([
     supabase.from("profiles").select("id, full_name, avatar_url, organization_name").eq("id", (event as Event).organizer_id).single(),
     viewerId
       ? supabase.from("saved_events").select("id").eq("user_id", viewerId).eq("event_id", id).maybeSingle()
       : Promise.resolve({ data: null }),
+    viewerId
+      ? supabase.from("reposted_events").select("id").eq("user_id", viewerId).eq("event_id", id).maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
-  return { ...(event as Event), organizer: organizer ?? null, isSaved: !!savedRow.data };
+  return {
+    ...(event as Event),
+    organizer: organizer ?? null,
+    isSaved: !!savedRow.data,
+    isReposted: !!repostedRow.data,
+  };
 }
 
 /** Uploads a locally picked cover image to the `events` bucket and returns its public URL. */

@@ -7,6 +7,8 @@ import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
 
 import { BiometricLock } from '@/components/biometric-lock';
+import { RepostProvider } from '@/contexts/repost-context';
+import { SavedProvider } from '@/contexts/saved-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useNotificationListener } from '@/hooks/use-notification-listener';
 import { supabase } from '@/lib/supabase';
@@ -70,20 +72,24 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Protected guard={!!session}>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="event" options={{ headerShown: false, presentation: 'modal' }} />
-          <Stack.Screen name="user" options={{ headerShown: false, presentation: 'modal' }} />
-          <Stack.Screen name="chat" options={{ headerShown: false }} />
-          <Stack.Screen name="watch" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
-        </Stack.Protected>
-        <Stack.Protected guard={!session}>
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        </Stack.Protected>
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
+      <SavedProvider>
+        <RepostProvider>
+          <Stack>
+            <Stack.Protected guard={!!session}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="event" options={{ headerShown: false, presentation: 'modal' }} />
+              <Stack.Screen name="user" options={{ headerShown: false, presentation: 'modal' }} />
+              <Stack.Screen name="chat" options={{ headerShown: false }} />
+              <Stack.Screen name="watch" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+            </Stack.Protected>
+            <Stack.Protected guard={!session}>
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+            </Stack.Protected>
+            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          </Stack>
+          <StatusBar style="auto" />
+        </RepostProvider>
+      </SavedProvider>
     </ThemeProvider>
   );
 }

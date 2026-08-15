@@ -6,25 +6,28 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/components/avatar";
 import { VideoCommentsSheet } from "@/components/video-comments-sheet";
 import { VideoLikesSheet } from "@/components/video-likes-sheet";
+import { useRepostContext } from "@/contexts/repost-context";
+import { useSavedContext } from "@/contexts/saved-context";
 import type { Video } from "@/lib/database.types";
 import { goToUserProfile } from "@/lib/profile-navigation";
 import { supabase } from "@/lib/supabase";
+import { toggleRepostVideo } from "@/services/reposted-videos";
 import { toggleSaveVideo } from "@/services/saved-videos";
 
 interface ProfileVideoCardProps {
-  video: Video & { likesCount: number; commentsCount: number; isSaved?: boolean };
+  video: Video & { likesCount: number; commentsCount: number; isSaved?: boolean; isReposted?: boolean };
   onPress: () => void;
   /** Omit for videos you don't own - hides the edit pencil. */
   onEditPress?: () => void;
   /** Shows a bookmark toggle in the cover - for videos you don't own. */
   showSaveButton?: boolean;
+  /** Shows a repost toggle in the cover, below the save button - for videos you don't own. */
+  showRepostButton?: boolean;
   /** Shown as a byline - for videos that aren't necessarily yours (e.g. the Saved tab). */
   authorName?: string;
   /** Author's id/avatar - shown next to authorName, tappable to open their profile. */
   authorId?: string;
   authorAvatar?: string | null;
-  /** Called right after this video is unsaved - e.g. to remove it from a Saved-videos list immediately. */
-  onUnsaved?: () => void;
 }
 
 export function ProfileVideoCard({
@@ -32,16 +35,19 @@ export function ProfileVideoCard({
   onPress,
   onEditPress,
   showSaveButton,
+  showRepostButton,
   authorName,
   authorId,
   authorAvatar,
-  onUnsaved,
 }: ProfileVideoCardProps) {
   const [commentsCount, setCommentsCount] = useState(video.commentsCount);
   const [showComments, setShowComments] = useState(false);
   const [showLikers, setShowLikers] = useState(false);
-  const [saved, setSaved] = useState(video.isSaved ?? false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const { isVideoReposted, setVideoReposted } = useRepostContext();
+  const reposted = isVideoReposted(video.id, video.isReposted ?? false);
+  const { isVideoSaved, setVideoSaved } = useSavedContext();
+  const saved = isVideoSaved(video.id, video.isSaved ?? false);
 
   useEffect(() => {
     if (!authorId) return;
@@ -50,15 +56,26 @@ export function ProfileVideoCard({
 
   const handleToggleSave = async () => {
     const nextSaved = !saved;
-    setSaved(nextSaved);
+    setVideoSaved(video.id, nextSaved);
 
     const { saved: confirmedSaved, error } = await toggleSaveVideo(video.id, video.user_id);
     if (error) {
-      setSaved(!nextSaved);
+      setVideoSaved(video.id, !nextSaved);
       return;
     }
-    setSaved(confirmedSaved);
-    if (!confirmedSaved) onUnsaved?.();
+    setVideoSaved(video.id, confirmedSaved);
+  };
+
+  const handleToggleRepost = async () => {
+    const nextReposted = !reposted;
+    setVideoReposted(video.id, nextReposted);
+
+    const { reposted: confirmedReposted, error } = await toggleRepostVideo(video.id, video.user_id);
+    if (error) {
+      setVideoReposted(video.id, !nextReposted);
+      return;
+    }
+    setVideoReposted(video.id, confirmedReposted);
   };
 
   return (
@@ -82,6 +99,11 @@ export function ProfileVideoCard({
               size={16}
               color={saved ? "#C06BE4" : "#093A7D"}
             />
+          </Pressable>
+        ) : null}
+        {showRepostButton ? (
+          <Pressable style={styles.repostVideoButton} onPress={handleToggleRepost} hitSlop={8}>
+            <Ionicons name="repeat" size={16} color={reposted ? "#C06BE4" : "#093A7D"} />
           </Pressable>
         ) : null}
       </View>
@@ -182,6 +204,14 @@ const styles = StyleSheet.create({
   saveVideoButton: {
     position: "absolute",
     top: 10,
+    left: 10,
+    padding: 8,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+  },
+  repostVideoButton: {
+    position: "absolute",
+    top: 54,
     left: 10,
     padding: 8,
     backgroundColor: "#fff",

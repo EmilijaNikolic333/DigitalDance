@@ -118,6 +118,7 @@ export default function EventsListScreen() {
               onPress={() => goToEvent(event.id)}
               isApplied={appliedEventIds.has(event.id)}
               isSaved={event.isSaved}
+              isReposted={event.isReposted}
             />
           ))
         )}

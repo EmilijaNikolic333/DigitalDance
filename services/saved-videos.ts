@@ -96,10 +96,12 @@ export async function getSavedVideos(): Promise<{ data: SavedVideoItem[]; error?
       .in("id", userIds);
     const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 
-    const [likesCountByVideo, commentsCountByVideo] = await Promise.all([
+    const [likesCountByVideo, commentsCountByVideo, repostedResult] = await Promise.all([
       getCountByVideoId("likes", videoIds),
       getCountByVideoId("comments", videoIds),
+      supabase.from("reposted_videos").select("video_id").eq("user_id", user.id).in("video_id", videoIds),
     ]);
+    const repostedSet = new Set((repostedResult.data ?? []).map((r) => r.video_id));
 
     return {
       data: orderedVideos.map((video) => ({
@@ -108,6 +110,7 @@ export async function getSavedVideos(): Promise<{ data: SavedVideoItem[]; error?
         likesCount: likesCountByVideo.get(video.id) ?? 0,
         commentsCount: commentsCountByVideo.get(video.id) ?? 0,
         isSaved: true,
+        isReposted: repostedSet.has(video.id),
       })),
     };
   } catch (err) {

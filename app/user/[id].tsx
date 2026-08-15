@@ -15,6 +15,8 @@ import { getMyAppliedEventIds } from "@/services/applications";
 import { getEventsByOrganizer, type OwnEvent } from "@/services/events";
 import { getFollowCounts, isFollowing as fetchIsFollowing, toggleFollow } from "@/services/follows";
 import { getProfileById } from "@/services/profiles";
+import { getRepostedEventsByUser, type RepostedEventItem } from "@/services/reposted-events";
+import { getRepostedVideosByUser, type RepostedVideoItem } from "@/services/reposted-videos";
 import { getVideosByUser, type OwnVideo } from "@/services/videos";
 
 const EXPERIENCE_LABEL: Record<string, string> = {
@@ -23,7 +25,7 @@ const EXPERIENCE_LABEL: Record<string, string> = {
   professional: "Professional",
 };
 
-type ProfileTab = "videos" | "events";
+type ProfileTab = "videos" | "events" | "reposted";
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -40,6 +42,9 @@ export default function UserProfileScreen() {
   const [showFollowing, setShowFollowing] = useState(false);
   const [videos, setVideos] = useState<OwnVideo[]>([]);
   const [events, setEvents] = useState<OwnEvent[]>([]);
+  const [repostedVideos, setRepostedVideos] = useState<RepostedVideoItem[]>([]);
+  const [repostedEvents, setRepostedEvents] = useState<RepostedEventItem[]>([]);
+  const [repostedSubTab, setRepostedSubTab] = useState<"videos" | "events">("videos");
   const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
 
   useFocusEffect(
@@ -52,8 +57,20 @@ export default function UserProfileScreen() {
         getVideosByUser(id),
         getEventsByOrganizer(id),
         getMyAppliedEventIds(),
+        getRepostedVideosByUser(id),
+        getRepostedEventsByUser(id),
       ]).then(
-        ([profileResult, { data: userData }, followingResult, counts, videosResult, eventsResult, appliedIds]) => {
+        ([
+          profileResult,
+          { data: userData },
+          followingResult,
+          counts,
+          videosResult,
+          eventsResult,
+          appliedIds,
+          repostedVideosResult,
+          repostedEventsResult,
+        ]) => {
           // Someone else's avatar can point at your own id (e.g. your own video in the public
           // feed, or your own event's organizer row). Clear away any modals stacked in between
           // (event, this screen) first, then switch to the real "my profile" tab, so nothing is
@@ -77,6 +94,8 @@ export default function UserProfileScreen() {
           setFollowingCount(counts.following);
           setVideos(videosResult.data);
           setEvents(eventsResult.data);
+          setRepostedVideos(repostedVideosResult.data);
+          setRepostedEvents(repostedEventsResult.data);
           // Applying/cancelling on the event detail screen and coming back here should
           // refresh which event cards are highlighted - re-fetched on every focus, not just once.
           setAppliedEventIds(appliedIds);
@@ -162,6 +181,7 @@ export default function UserProfileScreen() {
   const profileTabs: { key: ProfileTab; label: string }[] = [
     ...(isDancer ? [{ key: "videos" as const, label: "VIDEOS" }] : []),
     ...(isOrganizer ? [{ key: "events" as const, label: "EVENTS" }] : []),
+    { key: "reposted" as const, label: "REPOSTED" },
   ];
 
   return (
@@ -270,6 +290,7 @@ export default function UserProfileScreen() {
                       video={video}
                       onPress={() => router.push({ pathname: "/watch", params: { url: video.video_url } })}
                       showSaveButton
+                      showRepostButton
                     />
                   ))
                 )}
@@ -289,6 +310,65 @@ export default function UserProfileScreen() {
                       isApplied={appliedEventIds.has(event.id)}
                       showSaveButton
                       isSaved={event.isSaved}
+                      showRepostButton
+                      isReposted={event.isReposted}
+                    />
+                  ))
+                )}
+              </View>
+            ) : null}
+
+            {activeTab === "reposted" ? (
+              <View style={styles.tabContent}>
+                <View style={styles.subTagRow}>
+                  <Pressable
+                    style={[styles.subTag, repostedSubTab === "videos" && styles.subTagSelected]}
+                    onPress={() => setRepostedSubTab("videos")}
+                  >
+                    <Text style={[styles.subTagText, repostedSubTab === "videos" && styles.subTagTextSelected]}>
+                      Videos
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.subTag, repostedSubTab === "events" && styles.subTagSelected]}
+                    onPress={() => setRepostedSubTab("events")}
+                  >
+                    <Text style={[styles.subTagText, repostedSubTab === "events" && styles.subTagTextSelected]}>
+                      Events
+                    </Text>
+                  </Pressable>
+                </View>
+
+                {repostedSubTab === "videos" ? (
+                  repostedVideos.length === 0 ? (
+                    <Text style={styles.emptyTabText}>Hasn&apos;t reposted any videos yet.</Text>
+                  ) : (
+                    repostedVideos.map((video) => (
+                      <ProfileVideoCard
+                        key={video.id}
+                        video={video}
+                        onPress={() => router.push({ pathname: "/watch", params: { url: video.video_url } })}
+                        authorName={video.author?.full_name ?? undefined}
+                        authorId={video.author?.id}
+                        authorAvatar={video.author?.avatar_url}
+                        showSaveButton
+                        showRepostButton
+                      />
+                    ))
+                  )
+                ) : repostedEvents.length === 0 ? (
+                  <Text style={styles.emptyTabText}>Hasn&apos;t reposted any events yet.</Text>
+                ) : (
+                  repostedEvents.map((event) => (
+                    <ProfileEventCard
+                      key={event.id}
+                      event={event}
+                      onPress={() => router.push({ pathname: "/event/[id]", params: { id: event.id } })}
+                      isApplied={appliedEventIds.has(event.id)}
+                      showSaveButton
+                      isSaved={event.isSaved}
+                      showRepostButton
+                      isReposted={event.isReposted}
                     />
                   ))
                 )}
@@ -396,6 +476,17 @@ const styles = StyleSheet.create({
   tagSelected: { backgroundColor: "#093A7D" },
   tagText: { fontSize: 12, fontWeight: "700", color: "#093A7D", letterSpacing: 0.5 },
   tagTextSelected: { color: "#fff" },
+  subTagRow: { flexDirection: "row", gap: 8, marginTop: 14, marginBottom: 4 },
+  subTag: {
+    borderWidth: 1.5,
+    borderColor: "#C06BE4",
+    paddingVertical: 5,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+  },
+  subTagSelected: { backgroundColor: "#C06BE4" },
+  subTagText: { fontSize: 11, fontWeight: "700", color: "#C06BE4" },
+  subTagTextSelected: { color: "#fff" },
   tabContent: { width: "100%", alignItems: "center" },
   emptyTabText: { fontSize: 13, color: "#C06BE4", fontWeight: "700", textAlign: "center", marginTop: 20 },
   section: { width: "100%", marginTop: 20, alignItems: "center" },

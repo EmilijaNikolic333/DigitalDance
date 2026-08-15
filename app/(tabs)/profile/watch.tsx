@@ -17,7 +17,7 @@ export default function WatchVideoScreen() {
     actorId?: string;
     actorName?: string;
     actorAvatar?: string;
-    actorIcon?: "heart" | "bookmark";
+    actorIcon?: "heart" | "bookmark" | "repeat";
   }>();
   const player = useVideoPlayer(url, (p) => {
     p.play();

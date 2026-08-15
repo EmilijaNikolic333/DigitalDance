@@ -4,24 +4,23 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { ProfileEventCard } from "@/components/profile-event-card";
-import { useSavedContext } from "@/contexts/saved-context";
-import { getMyAppliedEventIds } from "@/services/applications";
-import { getSavedEvents, type SavedEventItem } from "@/services/saved-events";
+import { ProfileVideoCard } from "@/components/profile-video-card";
+import { useRepostContext } from "@/contexts/repost-context";
+import { getRepostedVideos, type RepostedVideoItem } from "@/services/reposted-videos";
 
-export default function AllSavedEventsScreen() {
-  const [events, setEvents] = useState<SavedEventItem[]>([]);
-  const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
+export default function AllRepostedVideosScreen() {
+  const [videos, setVideos] = useState<RepostedVideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Only show the full spinner on the very first load - refocus refreshes shouldn't blank out
+  // the list (and reset its scroll position) while already-loaded content is on screen.
   const hasLoadedRef = useRef(false);
-  const { isEventSaved } = useSavedContext();
+  const { isVideoReposted } = useRepostContext();
 
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
-    Promise.all([getSavedEvents(), getMyAppliedEventIds()]).then(([{ data, error: loadError }, appliedIds]) => {
-      setEvents(data);
-      setAppliedEventIds(appliedIds);
+    getRepostedVideos().then(({ data, error: loadError }) => {
+      setVideos(data);
       setError(loadError ?? null);
       setLoading(false);
       hasLoadedRef.current = true;
@@ -41,33 +40,33 @@ export default function AllSavedEventsScreen() {
           <Ionicons name="close" size={26} color="#093A7D" />
         </Pressable>
 
-        <Text style={styles.title}>Saved events</Text>
+        <Text style={styles.title}>Reposted videos</Text>
 
         {loading ? (
           <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
         ) : error ? (
           <View style={styles.errorBox}>
-            <Text style={styles.emptyText}>Couldn&apos;t load your saved events. Check your connection.</Text>
+            <Text style={styles.emptyText}>Couldn&apos;t load your reposted videos. Check your connection.</Text>
             <Pressable style={styles.retryButton} onPress={load}>
               <Text style={styles.retryButtonText}>Try again</Text>
             </Pressable>
           </View>
-        ) : events.filter((e) => isEventSaved(e.id, true)).length === 0 ? (
-          <Text style={styles.emptyText}>You haven&apos;t saved any events yet.</Text>
+        ) : videos.filter((v) => isVideoReposted(v.id, true)).length === 0 ? (
+          <Text style={styles.emptyText}>You haven&apos;t reposted any videos yet.</Text>
         ) : (
           <View style={styles.list}>
-            {events
-              .filter((event) => isEventSaved(event.id, true))
-              .map((event) => (
-                <ProfileEventCard
-                  key={event.id}
-                  event={event}
-                  onPress={() => router.push({ pathname: "/event/[id]", params: { id: event.id } })}
-                  isApplied={appliedEventIds.has(event.id)}
+            {videos
+              .filter((video) => isVideoReposted(video.id, true))
+              .map((video) => (
+                <ProfileVideoCard
+                  key={video.id}
+                  video={video}
+                  onPress={() => router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)}
+                  authorName={video.author?.full_name ?? undefined}
+                  authorId={video.author?.id}
+                  authorAvatar={video.author?.avatar_url}
                   showSaveButton
-                  isSaved
                   showRepostButton
-                  isReposted={event.isReposted}
                 />
               ))}
           </View>

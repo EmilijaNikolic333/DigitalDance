@@ -24,7 +24,8 @@ export type NotificationType =
   | "new_comment"
   | "new_like"
   | "new_save"
-  | "new_applicant";
+  | "new_applicant"
+  | "new_repost";
 
 export interface Profile {
   id: string;
@@ -120,6 +121,20 @@ export interface SavedVideo {
 }
 
 export interface SavedEvent {
+  id: string;
+  user_id: string;
+  event_id: string;
+  created_at: string;
+}
+
+export interface RepostedVideo {
+  id: string;
+  user_id: string;
+  video_id: string;
+  created_at: string;
+}
+
+export interface RepostedEvent {
   id: string;
   user_id: string;
   event_id: string;

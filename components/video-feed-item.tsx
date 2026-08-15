@@ -9,8 +9,11 @@ import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/components/avatar";
 import { FollowBadge } from "@/components/follow-badge";
 import { VideoCommentsSheet } from "@/components/video-comments-sheet";
+import { useRepostContext } from "@/contexts/repost-context";
+import { useSavedContext } from "@/contexts/saved-context";
 import { toggleFollow } from "@/services/follows";
 import { toggleLike } from "@/services/likes";
+import { toggleRepostVideo } from "@/services/reposted-videos";
 import { toggleSaveVideo } from "@/services/saved-videos";
 import type { FeedVideo } from "@/services/videos";
 import { incrementViewCount } from "@/services/videos";
@@ -37,7 +40,10 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
   const [commentsCount, setCommentsCount] = useState(video.commentsCount);
   const [showComments, setShowComments] = useState(false);
   const [followingAuthor, setFollowingAuthor] = useState(video.isFollowingAuthor);
-  const [saved, setSaved] = useState(video.isSaved);
+  const { isVideoReposted, setVideoReposted } = useRepostContext();
+  const reposted = isVideoReposted(video.id, video.isReposted);
+  const { isVideoSaved, setVideoSaved } = useSavedContext();
+  const saved = isVideoSaved(video.id, video.isSaved);
 
   const lastTapRef = useRef(0);
   const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -99,14 +105,26 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
 
   const handleToggleSave = async () => {
     const nextSaved = !saved;
-    setSaved(nextSaved);
+    setVideoSaved(video.id, nextSaved);
 
     const { saved: confirmedSaved, error } = await toggleSaveVideo(video.id, video.user_id);
     if (error) {
-      setSaved(!nextSaved);
+      setVideoSaved(video.id, !nextSaved);
       return;
     }
-    setSaved(confirmedSaved);
+    setVideoSaved(video.id, confirmedSaved);
+  };
+
+  const handleToggleRepost = async () => {
+    const nextReposted = !reposted;
+    setVideoReposted(video.id, nextReposted);
+
+    const { reposted: confirmedReposted, error } = await toggleRepostVideo(video.id, video.user_id);
+    if (error) {
+      setVideoReposted(video.id, !nextReposted);
+      return;
+    }
+    setVideoReposted(video.id, confirmedReposted);
   };
 
   const handleToggleFollow = async () => {
@@ -220,6 +238,9 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
         </Pressable>
         <Pressable style={styles.statItem} onPress={handleToggleSave} hitSlop={8}>
           <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={22} color={saved ? "#C06BE4" : "#fff"} />
+        </Pressable>
+        <Pressable style={styles.statItem} onPress={handleToggleRepost} hitSlop={8}>
+          <Ionicons name="repeat" size={22} color={reposted ? "#C06BE4" : "#fff"} />
         </Pressable>
       </View>
 

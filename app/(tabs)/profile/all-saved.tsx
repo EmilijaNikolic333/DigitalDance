@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ProfileVideoCard } from "@/components/profile-video-card";
+import { useSavedContext } from "@/contexts/saved-context";
 import { getSavedVideos, type SavedVideoItem } from "@/services/saved-videos";
 
 export default function AllSavedVideosScreen() {
@@ -14,6 +15,7 @@ export default function AllSavedVideosScreen() {
   // Only show the full spinner on the very first load - refocus refreshes shouldn't blank out
   // the list (and reset its scroll position) while already-loaded content is on screen.
   const hasLoadedRef = useRef(false);
+  const { isVideoSaved } = useSavedContext();
 
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
@@ -49,22 +51,24 @@ export default function AllSavedVideosScreen() {
               <Text style={styles.retryButtonText}>Try again</Text>
             </Pressable>
           </View>
-        ) : videos.length === 0 ? (
+        ) : videos.filter((v) => isVideoSaved(v.id, true)).length === 0 ? (
           <Text style={styles.emptyText}>You haven&apos;t saved any videos yet.</Text>
         ) : (
           <View style={styles.list}>
-            {videos.map((video) => (
-              <ProfileVideoCard
-                key={video.id}
-                video={video}
-                onPress={() => router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)}
-                authorName={video.author?.full_name ?? undefined}
-                authorId={video.author?.id}
-                authorAvatar={video.author?.avatar_url}
-                showSaveButton
-                onUnsaved={() => setVideos((current) => current.filter((v) => v.id !== video.id))}
-              />
-            ))}
+            {videos
+              .filter((video) => isVideoSaved(video.id, true))
+              .map((video) => (
+                <ProfileVideoCard
+                  key={video.id}
+                  video={video}
+                  onPress={() => router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)}
+                  authorName={video.author?.full_name ?? undefined}
+                  authorId={video.author?.id}
+                  authorAvatar={video.author?.avatar_url}
+                  showSaveButton
+                  showRepostButton
+                />
+              ))}
           </View>
         )}
       </ScrollView>

@@ -10,6 +10,8 @@ import { FollowListSheet } from "@/components/follow-list-sheet";
 import { MyApplicationCard } from "@/components/my-application-card";
 import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
+import { useRepostContext } from "@/contexts/repost-context";
+import { useSavedContext } from "@/contexts/saved-context";
 import type { Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { getMyApplications, getMyAppliedEventIds, type MyApplication } from "@/services/applications";
@@ -18,6 +20,8 @@ import { getOwnEvents, type OwnEvent } from "@/services/events";
 import { getFollowCounts } from "@/services/follows";
 import { getOwnProfile } from "@/services/profiles";
 import { getUnreadNotificationsCount } from "@/services/notifications";
+import { getRepostedEvents, type RepostedEventItem } from "@/services/reposted-events";
+import { getRepostedVideos, type RepostedVideoItem } from "@/services/reposted-videos";
 import { getSavedEvents, type SavedEventItem } from "@/services/saved-events";
 import { getSavedVideos, type SavedVideoItem } from "@/services/saved-videos";
 import { getOwnVideos, type OwnVideo } from "@/services/videos";
@@ -30,7 +34,7 @@ const EXPERIENCE_LABEL: Record<string, string> = {
   professional: "Professional",
 };
 
-type ProfileTab = "videos" | "events" | "applications" | "saved";
+type ProfileTab = "videos" | "events" | "applications" | "saved" | "reposted";
 
 export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -41,6 +45,9 @@ export default function ProfileScreen() {
   const [savedVideos, setSavedVideos] = useState<SavedVideoItem[]>([]);
   const [savedEvents, setSavedEvents] = useState<SavedEventItem[]>([]);
   const [savedSubTab, setSavedSubTab] = useState<"videos" | "events">("videos");
+  const [repostedVideos, setRepostedVideos] = useState<RepostedVideoItem[]>([]);
+  const [repostedEvents, setRepostedEvents] = useState<RepostedEventItem[]>([]);
+  const [repostedSubTab, setRepostedSubTab] = useState<"videos" | "events">("videos");
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [videosError, setVideosError] = useState<string | null>(null);
@@ -48,6 +55,8 @@ export default function ProfileScreen() {
   const [applicationsError, setApplicationsError] = useState<string | null>(null);
   const [savedVideosError, setSavedVideosError] = useState<string | null>(null);
   const [savedEventsError, setSavedEventsError] = useState<string | null>(null);
+  const [repostedVideosError, setRepostedVideosError] = useState<string | null>(null);
+  const [repostedEventsError, setRepostedEventsError] = useState<string | null>(null);
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [showFollowers, setShowFollowers] = useState(false);
@@ -56,6 +65,8 @@ export default function ProfileScreen() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const previousRoleRef = useRef<string | null>(null);
   const hasLoadedRef = useRef(false);
+  const { isVideoReposted, isEventReposted } = useRepostContext();
+  const { isVideoSaved, isEventSaved } = useSavedContext();
 
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
@@ -71,6 +82,8 @@ export default function ProfileScreen() {
         getMyAppliedEventIds(),
         getSavedVideos(),
         getSavedEvents(),
+        getRepostedVideos(),
+        getRepostedEvents(),
         getUnreadNotificationsCount(),
       ]).then(
         ([
@@ -82,6 +95,8 @@ export default function ProfileScreen() {
           appliedIds,
           savedVideosResult,
           savedEventsResult,
+          repostedVideosResult,
+          repostedEventsResult,
           unreadCount,
         ]) => {
           setProfile(profileResult.data);
@@ -97,6 +112,10 @@ export default function ProfileScreen() {
           setSavedVideosError(savedVideosResult.error ?? null);
           setSavedEvents(savedEventsResult.data);
           setSavedEventsError(savedEventsResult.error ?? null);
+          setRepostedVideos(repostedVideosResult.data);
+          setRepostedVideosError(repostedVideosResult.error ?? null);
+          setRepostedEvents(repostedEventsResult.data);
+          setRepostedEventsError(repostedEventsResult.error ?? null);
           setUnreadNotifications(unreadCount);
           setFollowerCount(followCounts.followers);
           setFollowingCount(followCounts.following);
@@ -113,6 +132,7 @@ export default function ProfileScreen() {
               ...(profileResult.data?.is_dancer ? (["videos", "applications"] as const) : []),
               ...(profileResult.data?.is_organizer ? (["events"] as const) : []),
               "saved",
+              "reposted",
             ];
             if (!roleChanged && current && validTabs.includes(current)) return current;
             return profileResult.data?.is_dancer ? "videos" : "events";
@@ -157,6 +177,13 @@ export default function ProfileScreen() {
   const isDancer = profile?.is_dancer ?? false;
   const isOrganizer = profile?.is_organizer ?? false;
 
+  // Filtered through the repost/saved contexts so toggling anywhere (this screen's other
+  // tabs, Feed, Events...) removes an item from view immediately, without a fresh fetch.
+  const visibleRepostedVideos = repostedVideos.filter((v) => isVideoReposted(v.id, true));
+  const visibleRepostedEvents = repostedEvents.filter((e) => isEventReposted(e.id, true));
+  const visibleSavedVideos = savedVideos.filter((v) => isVideoSaved(v.id, true));
+  const visibleSavedEvents = savedEvents.filter((e) => isEventSaved(e.id, true));
+
   const bioMissing = isDancer && !profile?.bio;
   const aboutMissing = isOrganizer && !profile?.about;
   // When someone is both a dancer and an organizer and neither description is filled in,
@@ -186,6 +213,7 @@ export default function ProfileScreen() {
     ...(isOrganizer ? [{ key: "events" as const, label: "EVENTS" }] : []),
     ...(isDancer ? [{ key: "applications" as const, label: "APPLICATIONS" }] : []),
     { key: "saved" as const, label: "SAVED" },
+    { key: "reposted" as const, label: "REPOSTED" },
   ];
 
   const dancerFields = (
@@ -430,17 +458,17 @@ export default function ProfileScreen() {
                       <Text style={styles.inlineError}>Couldn&apos;t load your saved videos.</Text>
                     ) : null}
 
-                    {!savedVideosError && savedVideos.length === 0 ? (
+                    {!savedVideosError && visibleSavedVideos.length === 0 ? (
                       <Text style={styles.emptyTabText}>You haven&apos;t saved any videos yet.</Text>
                     ) : null}
 
-                    {savedVideos.length > VISIBLE_ITEMS_LIMIT ? (
+                    {visibleSavedVideos.length > VISIBLE_ITEMS_LIMIT ? (
                       <Pressable style={styles.viewAllRow} onPress={() => router.push("/(tabs)/profile/all-saved")}>
                         <Text style={styles.viewAllText}>View all saved videos</Text>
                       </Pressable>
                     ) : null}
 
-                    {savedVideos.slice(0, VISIBLE_ITEMS_LIMIT).map((video) => (
+                    {visibleSavedVideos.slice(0, VISIBLE_ITEMS_LIMIT).map((video) => (
                       <ProfileVideoCard
                         key={video.id}
                         video={video}
@@ -451,7 +479,7 @@ export default function ProfileScreen() {
                         authorId={video.author?.id}
                         authorAvatar={video.author?.avatar_url}
                         showSaveButton
-                        onUnsaved={() => setSavedVideos((current) => current.filter((v) => v.id !== video.id))}
+                        showRepostButton
                       />
                     ))}
                   </>
@@ -461,11 +489,11 @@ export default function ProfileScreen() {
                       <Text style={styles.inlineError}>Couldn&apos;t load your saved events.</Text>
                     ) : null}
 
-                    {!savedEventsError && savedEvents.length === 0 ? (
+                    {!savedEventsError && visibleSavedEvents.length === 0 ? (
                       <Text style={styles.emptyTabText}>You haven&apos;t saved any events yet.</Text>
                     ) : null}
 
-                    {savedEvents.length > VISIBLE_ITEMS_LIMIT ? (
+                    {visibleSavedEvents.length > VISIBLE_ITEMS_LIMIT ? (
                       <Pressable
                         style={styles.viewAllRow}
                         onPress={() => router.push("/(tabs)/profile/all-saved-events")}
@@ -474,7 +502,7 @@ export default function ProfileScreen() {
                       </Pressable>
                     ) : null}
 
-                    {savedEvents.slice(0, VISIBLE_ITEMS_LIMIT).map((event) => (
+                    {visibleSavedEvents.slice(0, VISIBLE_ITEMS_LIMIT).map((event) => (
                       <ProfileEventCard
                         key={event.id}
                         event={event}
@@ -482,7 +510,99 @@ export default function ProfileScreen() {
                         isApplied={appliedEventIds.has(event.id)}
                         showSaveButton
                         isSaved
-                        onUnsaved={() => setSavedEvents((current) => current.filter((e) => e.id !== event.id))}
+                        showRepostButton
+                        isReposted={event.isReposted}
+                      />
+                    ))}
+                  </>
+                )}
+              </View>
+            ) : null}
+
+            {activeTab === "reposted" ? (
+              <View style={styles.tabContent}>
+                <View style={styles.subTagRow}>
+                  <Pressable
+                    style={[styles.subTag, repostedSubTab === "videos" && styles.subTagSelected]}
+                    onPress={() => setRepostedSubTab("videos")}
+                  >
+                    <Text style={[styles.subTagText, repostedSubTab === "videos" && styles.subTagTextSelected]}>
+                      Videos
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.subTag, repostedSubTab === "events" && styles.subTagSelected]}
+                    onPress={() => setRepostedSubTab("events")}
+                  >
+                    <Text style={[styles.subTagText, repostedSubTab === "events" && styles.subTagTextSelected]}>
+                      Events
+                    </Text>
+                  </Pressable>
+                </View>
+
+                {repostedSubTab === "videos" ? (
+                  <>
+                    {repostedVideosError ? (
+                      <Text style={styles.inlineError}>Couldn&apos;t load your reposted videos.</Text>
+                    ) : null}
+
+                    {!repostedVideosError && visibleRepostedVideos.length === 0 ? (
+                      <Text style={styles.emptyTabText}>You haven&apos;t reposted any videos yet.</Text>
+                    ) : null}
+
+                    {visibleRepostedVideos.length > VISIBLE_ITEMS_LIMIT ? (
+                      <Pressable
+                        style={styles.viewAllRow}
+                        onPress={() => router.push("/(tabs)/profile/all-reposted")}
+                      >
+                        <Text style={styles.viewAllText}>View all reposted videos</Text>
+                      </Pressable>
+                    ) : null}
+
+                    {visibleRepostedVideos.slice(0, VISIBLE_ITEMS_LIMIT).map((video) => (
+                      <ProfileVideoCard
+                        key={video.id}
+                        video={video}
+                        onPress={() =>
+                          router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)
+                        }
+                        authorName={video.author?.full_name ?? undefined}
+                        authorId={video.author?.id}
+                        authorAvatar={video.author?.avatar_url}
+                        showSaveButton
+                        showRepostButton
+                      />
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    {repostedEventsError ? (
+                      <Text style={styles.inlineError}>Couldn&apos;t load your reposted events.</Text>
+                    ) : null}
+
+                    {!repostedEventsError && visibleRepostedEvents.length === 0 ? (
+                      <Text style={styles.emptyTabText}>You haven&apos;t reposted any events yet.</Text>
+                    ) : null}
+
+                    {visibleRepostedEvents.length > VISIBLE_ITEMS_LIMIT ? (
+                      <Pressable
+                        style={styles.viewAllRow}
+                        onPress={() => router.push("/(tabs)/profile/all-reposted-events")}
+                      >
+                        <Text style={styles.viewAllText}>View all reposted events</Text>
+                      </Pressable>
+                    ) : null}
+
+                    {visibleRepostedEvents.slice(0, VISIBLE_ITEMS_LIMIT).map((event) => (
+                      <ProfileEventCard
+                        key={event.id}
+                        event={event}
+                        onPress={() => router.push({ pathname: "/event/[id]", params: { id: event.id } })}
+                        isApplied={appliedEventIds.has(event.id)}
+                        showSaveButton
+                        isSaved={event.isSaved}
+                        showRepostButton
+                        isReposted
                       />
                     ))}
                   </>

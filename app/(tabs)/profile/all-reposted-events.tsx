@@ -5,21 +5,21 @@ import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ProfileEventCard } from "@/components/profile-event-card";
-import { useSavedContext } from "@/contexts/saved-context";
+import { useRepostContext } from "@/contexts/repost-context";
 import { getMyAppliedEventIds } from "@/services/applications";
-import { getSavedEvents, type SavedEventItem } from "@/services/saved-events";
+import { getRepostedEvents, type RepostedEventItem } from "@/services/reposted-events";
 
-export default function AllSavedEventsScreen() {
-  const [events, setEvents] = useState<SavedEventItem[]>([]);
+export default function AllRepostedEventsScreen() {
+  const [events, setEvents] = useState<RepostedEventItem[]>([]);
   const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasLoadedRef = useRef(false);
-  const { isEventSaved } = useSavedContext();
+  const { isEventReposted } = useRepostContext();
 
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
-    Promise.all([getSavedEvents(), getMyAppliedEventIds()]).then(([{ data, error: loadError }, appliedIds]) => {
+    Promise.all([getRepostedEvents(), getMyAppliedEventIds()]).then(([{ data, error: loadError }, appliedIds]) => {
       setEvents(data);
       setAppliedEventIds(appliedIds);
       setError(loadError ?? null);
@@ -41,23 +41,23 @@ export default function AllSavedEventsScreen() {
           <Ionicons name="close" size={26} color="#093A7D" />
         </Pressable>
 
-        <Text style={styles.title}>Saved events</Text>
+        <Text style={styles.title}>Reposted events</Text>
 
         {loading ? (
           <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
         ) : error ? (
           <View style={styles.errorBox}>
-            <Text style={styles.emptyText}>Couldn&apos;t load your saved events. Check your connection.</Text>
+            <Text style={styles.emptyText}>Couldn&apos;t load your reposted events. Check your connection.</Text>
             <Pressable style={styles.retryButton} onPress={load}>
               <Text style={styles.retryButtonText}>Try again</Text>
             </Pressable>
           </View>
-        ) : events.filter((e) => isEventSaved(e.id, true)).length === 0 ? (
-          <Text style={styles.emptyText}>You haven&apos;t saved any events yet.</Text>
+        ) : events.filter((e) => isEventReposted(e.id, true)).length === 0 ? (
+          <Text style={styles.emptyText}>You haven&apos;t reposted any events yet.</Text>
         ) : (
           <View style={styles.list}>
             {events
-              .filter((event) => isEventSaved(event.id, true))
+              .filter((event) => isEventReposted(event.id, true))
               .map((event) => (
                 <ProfileEventCard
                   key={event.id}
@@ -65,9 +65,9 @@ export default function AllSavedEventsScreen() {
                   onPress={() => router.push({ pathname: "/event/[id]", params: { id: event.id } })}
                   isApplied={appliedEventIds.has(event.id)}
                   showSaveButton
-                  isSaved
+                  isSaved={event.isSaved}
                   showRepostButton
-                  isReposted={event.isReposted}
+                  isReposted
                 />
               ))}
           </View>

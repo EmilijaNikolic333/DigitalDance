@@ -85,17 +85,19 @@ export async function getSavedEvents(): Promise<{ data: SavedEventItem[]; error?
     const orderedEvents = eventIds.map((id) => eventById.get(id)).filter((e): e is Event => !!e);
 
     const organizerIds = [...new Set(orderedEvents.map((e) => e.organizer_id))];
-    const { data: organizers } = await supabase
-      .from("profiles")
-      .select("id, full_name, avatar_url, organization_name")
-      .in("id", organizerIds);
+    const [{ data: organizers }, repostedResult] = await Promise.all([
+      supabase.from("profiles").select("id, full_name, avatar_url, organization_name").in("id", organizerIds),
+      supabase.from("reposted_events").select("event_id").eq("user_id", user.id).in("event_id", eventIds),
+    ]);
     const organizerById = new Map((organizers ?? []).map((o) => [o.id, o]));
+    const repostedSet = new Set((repostedResult.data ?? []).map((r) => r.event_id));
 
     return {
       data: orderedEvents.map((event) => ({
         ...event,
         organizer: organizerById.get(event.organizer_id) ?? null,
         isSaved: true,
+        isReposted: repostedSet.has(event.id),
       })),
     };
   } catch (err) {

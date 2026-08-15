@@ -18,6 +18,7 @@ import { Avatar } from "@/components/avatar";
 import { FollowBadge } from "@/components/follow-badge";
 import { APPLICATION_STATUS_LABEL, APPLICATION_STATUS_STYLE } from "@/lib/application-status";
 import type { Applicant } from "@/lib/database.types";
+import { goToUserProfile } from "@/lib/profile-navigation";
 import { supabase } from "@/lib/supabase";
 import { applyToEvent, cancelApplication, getMyApplication } from "@/services/applications";
 import { type EventWithOrganizer, getEventById } from "@/services/events";
@@ -45,7 +46,13 @@ function formatEventDate(iso: string) {
 }
 
 export default function EventDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, actorId, actorName, actorAvatar, actorIcon } = useLocalSearchParams<{
+    id: string;
+    actorId?: string;
+    actorName?: string;
+    actorAvatar?: string;
+    actorIcon?: "heart" | "bookmark" | "repeat";
+  }>();
   const [event, setEvent] = useState<EventWithOrganizer | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -154,6 +161,15 @@ export default function EventDetailScreen() {
           <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
             <Ionicons name="close" size={22} color="#093A7D" />
           </Pressable>
+          {actorId ? (
+            <Pressable style={styles.actorPill} onPress={() => goToUserProfile(actorId, currentUserId)}>
+              <Ionicons name={actorIcon ?? "bookmark"} size={16} color="#C06BE4" />
+              <Avatar url={actorAvatar} size={26} />
+              <Text style={styles.actorName} numberOfLines={1}>
+                {actorName || "Unknown"}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
 
         <View style={styles.content}>
@@ -291,6 +307,20 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 6,
   },
+  actorPill: {
+    position: "absolute",
+    top: 50,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(9, 58, 125, 0.7)",
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    maxWidth: 200,
+  },
+  actorName: { color: "#fff", fontWeight: "700", fontSize: 13, flexShrink: 1 },
   content: { padding: 24 },
   title: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginBottom: 8 },
   organizerRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },

@@ -22,6 +22,7 @@ const ICON_BY_TYPE: Record<NotificationType, keyof typeof Ionicons.glyphMap> = {
   new_follower: "person-add",
   application_status: "checkmark-circle",
   new_applicant: "person",
+  new_repost: "repeat",
 };
 
 function formatNotificationTime(iso: string) {
@@ -122,26 +123,40 @@ export default function NotificationsScreen() {
         }
         break;
       }
-      case "new_save": {
+      case "new_save":
+      case "new_repost": {
+        // Show who did it, so it's clear whose profile a tap on the icon leads to.
+        const actor = notification.actor_id ? (await getProfileById(notification.actor_id)).data : null;
+        const actorIcon = notification.type === "new_save" ? "bookmark" : "repeat";
+
         // reference_id can be a video or an event - try video first, then fall back to event.
         const video = await getVideoById(notification.reference_id);
         if (video) {
-          // Show who saved it, so it's clear whose profile a tap on the bookmark leads to.
-          const saver = notification.actor_id ? (await getProfileById(notification.actor_id)).data : null;
           router.push({
             pathname: "/(tabs)/profile/watch",
             params: {
               url: video.video_url,
-              actorId: saver?.id,
-              actorName: saver?.full_name ?? undefined,
-              actorAvatar: saver?.avatar_url ?? undefined,
-              actorIcon: "bookmark",
+              actorId: actor?.id,
+              actorName: actor?.full_name ?? undefined,
+              actorAvatar: actor?.avatar_url ?? undefined,
+              actorIcon,
             },
           });
           break;
         }
         const event = await getEventById(notification.reference_id);
-        if (event) router.push({ pathname: "/event/[id]", params: { id: event.id } });
+        if (event) {
+          router.push({
+            pathname: "/event/[id]",
+            params: {
+              id: event.id,
+              actorId: actor?.id,
+              actorName: actor?.full_name ?? undefined,
+              actorAvatar: actor?.avatar_url ?? undefined,
+              actorIcon,
+            },
+          });
+        }
         break;
       }
       case "new_applicant":
