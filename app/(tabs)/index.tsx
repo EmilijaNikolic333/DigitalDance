@@ -22,13 +22,15 @@ export default function FeedScreen() {
   const [error, setError] = useState<string | null>(null);
   const [containerHeight, setContainerHeight] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const hasLoadedRef = useRef(false);
 
   const load = useCallback(() => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     getFeedVideos().then(({ data, error: loadError }) => {
       setVideos(data);
       setError(loadError ?? null);
       setLoading(false);
+      hasLoadedRef.current = true;
     });
   }, []);
 

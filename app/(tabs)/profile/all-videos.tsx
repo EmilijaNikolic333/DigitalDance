@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ProfileVideoCard } from "@/components/profile-video-card";
@@ -11,13 +11,15 @@ export default function AllVideosScreen() {
   const [videos, setVideos] = useState<OwnVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedRef = useRef(false);
 
   const load = useCallback(() => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     getOwnVideos().then(({ data, error: loadError }) => {
       setVideos(data);
       setError(loadError ?? null);
       setLoading(false);
+      hasLoadedRef.current = true;
     });
   }, []);
 

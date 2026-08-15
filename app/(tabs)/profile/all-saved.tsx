@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ProfileVideoCard } from "@/components/profile-video-card";
@@ -11,13 +11,17 @@ export default function AllSavedVideosScreen() {
   const [videos, setVideos] = useState<SavedVideoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Only show the full spinner on the very first load - refocus refreshes shouldn't blank out
+  // the list (and reset its scroll position) while already-loaded content is on screen.
+  const hasLoadedRef = useRef(false);
 
   const load = useCallback(() => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     getSavedVideos().then(({ data, error: loadError }) => {
       setVideos(data);
       setError(loadError ?? null);
       setLoading(false);
+      hasLoadedRef.current = true;
     });
   }, []);
 
@@ -55,6 +59,8 @@ export default function AllSavedVideosScreen() {
                 video={video}
                 onPress={() => router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)}
                 authorName={video.author?.full_name ?? undefined}
+                authorId={video.author?.id}
+                authorAvatar={video.author?.avatar_url}
                 showSaveButton
                 onUnsaved={() => setVideos((current) => current.filter((v) => v.id !== video.id))}
               />

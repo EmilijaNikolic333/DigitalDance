@@ -57,13 +57,14 @@ export default function UserProfileScreen() {
           // Someone else's avatar can point at your own id (e.g. your own video in the public
           // feed, or your own event's organizer row). Clear away any modals stacked in between
           // (event, this screen) first, then switch to the real "my profile" tab, so nothing is
-          // left behind underneath it. dismissAll is wrapped defensively - canDismiss() has been
-          // unreliable here, and a throw must not block the tab switch that follows.
+          // left behind underneath it. dismissAll throws if there's nothing to dismiss.
           if (userData.user?.id === id) {
-            try {
-              router.dismissAll();
-            } catch (dismissErr) {
-              console.error("user/[id] self-redirect dismissAll failed:", dismissErr);
+            if (router.canDismiss()) {
+              try {
+                router.dismissAll();
+              } catch (dismissErr) {
+                console.error("user/[id] self-redirect dismissAll failed:", dismissErr);
+              }
             }
             router.navigate("/(tabs)/profile");
             return;

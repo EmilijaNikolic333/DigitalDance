@@ -10,10 +10,14 @@ import { router } from "expo-router";
  */
 export function goToUserProfile(userId: string, currentUserId: string | null, viewingProfileId?: string) {
   if (userId === currentUserId) {
-    try {
-      router.dismissAll();
-    } catch (err) {
-      console.error("goToUserProfile dismissAll failed:", err);
+    // dismissAll throws (a POP_TO_TOP with nothing to pop) when you're already on the Profile
+    // tab with nothing stacked on top of it - e.g. tapping your own avatar from right there.
+    if (router.canDismiss()) {
+      try {
+        router.dismissAll();
+      } catch (err) {
+        console.error("goToUserProfile dismissAll failed:", err);
+      }
     }
     router.navigate("/(tabs)/profile");
     return;

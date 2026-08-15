@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, type Region } from "react-native-maps";
 
@@ -23,14 +23,16 @@ export default function EventsListScreen() {
   const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedRef = useRef(false);
 
   const load = useCallback(() => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     Promise.all([getActiveEvents(), getMyAppliedEventIds()]).then(([{ data, error: loadError }, appliedIds]) => {
       setEvents(data);
       setAppliedEventIds(appliedIds);
       setError(loadError ?? null);
       setLoading(false);
+      hasLoadedRef.current = true;
     });
   }, []);
 

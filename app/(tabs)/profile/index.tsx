@@ -55,9 +55,10 @@ export default function ProfileScreen() {
   const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const previousRoleRef = useRef<string | null>(null);
+  const hasLoadedRef = useRef(false);
 
   const load = useCallback(() => {
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
     supabase.auth.getSession().then(({ data: { session } }) => {
       const userId = session?.user?.id;
 
@@ -117,6 +118,7 @@ export default function ProfileScreen() {
             return profileResult.data?.is_dancer ? "videos" : "events";
           });
           setLoading(false);
+          hasLoadedRef.current = true;
         }
       );
     });
@@ -446,6 +448,8 @@ export default function ProfileScreen() {
                           router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)
                         }
                         authorName={video.author?.full_name ?? undefined}
+                        authorId={video.author?.id}
+                        authorAvatar={video.author?.avatar_url}
                         showSaveButton
                         onUnsaved={() => setSavedVideos((current) => current.filter((v) => v.id !== video.id))}
                       />

@@ -1,11 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { Avatar } from "@/components/avatar";
 import { VideoCommentsSheet } from "@/components/video-comments-sheet";
 import { VideoLikesSheet } from "@/components/video-likes-sheet";
 import type { Video } from "@/lib/database.types";
+import { goToUserProfile } from "@/lib/profile-navigation";
+import { supabase } from "@/lib/supabase";
 import { toggleSaveVideo } from "@/services/saved-videos";
 
 interface ProfileVideoCardProps {
@@ -17,6 +20,9 @@ interface ProfileVideoCardProps {
   showSaveButton?: boolean;
   /** Shown as a byline - for videos that aren't necessarily yours (e.g. the Saved tab). */
   authorName?: string;
+  /** Author's id/avatar - shown next to authorName, tappable to open their profile. */
+  authorId?: string;
+  authorAvatar?: string | null;
   /** Called right after this video is unsaved - e.g. to remove it from a Saved-videos list immediately. */
   onUnsaved?: () => void;
 }
@@ -27,12 +33,20 @@ export function ProfileVideoCard({
   onEditPress,
   showSaveButton,
   authorName,
+  authorId,
+  authorAvatar,
   onUnsaved,
 }: ProfileVideoCardProps) {
   const [commentsCount, setCommentsCount] = useState(video.commentsCount);
   const [showComments, setShowComments] = useState(false);
   const [showLikers, setShowLikers] = useState(false);
   const [saved, setSaved] = useState(video.isSaved ?? false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!authorId) return;
+    supabase.auth.getSession().then(({ data }) => setCurrentUserId(data.session?.user?.id ?? null));
+  }, [authorId]);
 
   const handleToggleSave = async () => {
     const nextSaved = !saved;
@@ -77,9 +91,22 @@ export function ProfileVideoCard({
           {video.description}
         </Text>
         {authorName ? (
-          <Text style={styles.videoAuthor} numberOfLines={1}>
-            by {authorName}
-          </Text>
+          authorId ? (
+            <Pressable
+              style={styles.authorRow}
+              onPress={() => goToUserProfile(authorId, currentUserId)}
+              hitSlop={4}
+            >
+              <Avatar url={authorAvatar} size={18} />
+              <Text style={styles.videoAuthor} numberOfLines={1}>
+                by {authorName}
+              </Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.videoAuthor} numberOfLines={1}>
+              by {authorName}
+            </Text>
+          )
         ) : null}
         {video.dance_style ? (
           <View style={styles.chip}>
@@ -161,6 +188,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   videoInfo: { padding: 12, gap: 4 },
+  authorRow: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start" },
   videoAuthor: { fontSize: 11, color: "#9B7FC7", fontWeight: "700" },
   videoSong: { fontSize: 11, color: "#9B7FC7", fontStyle: "italic" },
   videoTitle: { fontSize: 14, fontWeight: "700", color: "#093A7D" },
