@@ -114,7 +114,10 @@ export default function EventDetailScreen() {
         style: "destructive",
         onPress: async () => {
           const { error } = await cancelApplication(myApplication.id);
-          if (error) return;
+          if (error) {
+            Alert.alert("Couldn't cancel", error.message);
+            return;
+          }
 
           setMyApplication(null);
           Alert.alert("Successfully canceled your application");
@@ -221,9 +224,11 @@ export default function EventDetailScreen() {
                   </Text>
                 </View>
 
-                <Pressable style={styles.cancelButton} onPress={handleCancelApplication}>
-                  <Text style={styles.cancelButtonText}>Cancel application</Text>
-                </Pressable>
+                {myApplication.status === "rejected" ? null : (
+                  <Pressable style={styles.cancelButton} onPress={handleCancelApplication}>
+                    <Text style={styles.cancelButtonText}>Cancel application</Text>
+                  </Pressable>
+                )}
               </>
             ) : (
               <Pressable style={styles.signUpButton} onPress={() => setShowApplyModal(true)}>
