@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
 import { goToUserProfile } from "@/lib/profile-navigation";
+import { supabase } from "@/lib/supabase";
 import { getLikers, type Liker } from "@/services/likes";
 
 interface VideoLikesSheetProps {
@@ -23,6 +24,11 @@ export function VideoLikesSheet({ videoId, visible, onClose }: VideoLikesSheetPr
   const [likers, setLikers] = useState<Liker[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setCurrentUserId(data.session?.user?.id ?? null));
+  }, []);
 
   useEffect(() => {
     if (!visible) return;
@@ -37,7 +43,7 @@ export function VideoLikesSheet({ videoId, visible, onClose }: VideoLikesSheetPr
 
   const openProfile = (userId: string) => {
     onClose();
-    goToUserProfile(userId, viewingProfileId);
+    goToUserProfile(userId, currentUserId, viewingProfileId);
   };
 
   return (

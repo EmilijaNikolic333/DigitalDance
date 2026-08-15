@@ -45,7 +45,8 @@ export default function WatchVideoScreen() {
             // Pushing the profile leaves this screen mounted underneath, so its audio
             // would otherwise keep playing behind the profile view.
             player.pause();
-            goToUserProfile(actorId);
+            // actorId is always someone else - self-notifications are never created.
+            goToUserProfile(actorId, null);
           }}
         >
           <Ionicons name={actorIcon ?? "heart"} size={16} color="#C06BE4" />

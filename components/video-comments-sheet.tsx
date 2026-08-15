@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
 import { goToUserProfile } from "@/lib/profile-navigation";
+import { supabase } from "@/lib/supabase";
 import { addComment, getComments, type CommentWithAuthor, type ThreadedComment } from "@/services/comments";
 
 interface VideoCommentsSheetProps {
@@ -61,11 +62,16 @@ export function VideoCommentsSheet({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setCurrentUserId(data.session?.user?.id ?? null));
+  }, []);
 
   useEffect(() => {
     if (!visible) return;
@@ -130,7 +136,7 @@ export function VideoCommentsSheet({
 
   const openAuthorProfile = (userId: string) => {
     onClose();
-    goToUserProfile(userId, viewingProfileId);
+    goToUserProfile(userId, currentUserId, viewingProfileId);
   };
 
   const renderComment = (item: CommentWithAuthor, topLevelId: string, isReply: boolean) => (

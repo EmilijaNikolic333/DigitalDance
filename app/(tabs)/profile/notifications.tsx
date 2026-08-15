@@ -146,8 +146,8 @@ export default function NotificationsScreen() {
         router.push({ pathname: "/(tabs)/profile/event-applications", params: { id: notification.reference_id } });
         break;
       case "new_follower":
-        // reference_id is the new follower's id.
-        goToUserProfile(notification.reference_id);
+        // reference_id is the new follower's id - always someone else.
+        goToUserProfile(notification.reference_id, null);
         break;
       default:
         break;
