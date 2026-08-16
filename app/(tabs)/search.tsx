@@ -6,8 +6,10 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import type { ExperienceLevel } from "@/lib/database.types";
+import { DANCE_STYLES, EXPERIENCE_LEVELS } from "@/lib/profile-options";
 import { addSearchHistoryEntry, clearSearchHistory, getSearchHistory } from "@/lib/search-history";
-import { search, type SearchResults } from "@/services/search";
+import { search, type SearchFilters, type SearchResults } from "@/services/search";
 
 function formatEventDate(iso: string) {
   const date = new Date(iso);
@@ -21,7 +23,19 @@ export default function SearchScreen() {
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const [focused, setFocused] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [danceStyle, setDanceStyle] = useState<string | null>(null);
+  const [city, setCity] = useState("");
+  const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const activeFilterCount = [danceStyle, city.trim() || null, experienceLevel].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setDanceStyle(null);
+    setCity("");
+    setExperienceLevel(null);
+  };
 
   useEffect(() => {
     getSearchHistory().then(setHistory);
@@ -42,9 +56,11 @@ export default function SearchScreen() {
 
   useEffect(() => {
     const trimmed = query.trim();
+    const trimmedCity = city.trim();
+    const filters: SearchFilters = { danceStyle, city: trimmedCity || null, experienceLevel };
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
-    if (!trimmed) {
+    if (!trimmed && !trimmedCity && !danceStyle && !experienceLevel) {
       setResults(null);
       setLoading(false);
       return;
@@ -52,7 +68,7 @@ export default function SearchScreen() {
 
     setLoading(true);
     debounceRef.current = setTimeout(() => {
-      search(trimmed).then(({ data, error: searchError }) => {
+      search(trimmed, filters).then(({ data, error: searchError }) => {
         setResults(data);
         setError(searchError ?? null);
         setLoading(false);
@@ -62,34 +78,97 @@ export default function SearchScreen() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query]);
+  }, [query, danceStyle, city, experienceLevel]);
 
   const hasResults = !!results && (results.dancers.length > 0 || results.organizers.length > 0 || results.events.length > 0);
+  const hasActiveSearch = !!query.trim() || activeFilterCount > 0;
 
   return (
     <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
       <View style={styles.header}>
         <Text style={styles.title}>Search</Text>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color="#9B7FC7" />
-          <TextInput
-            style={styles.searchInput}
-            value={query}
-            onChangeText={setQuery}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            onSubmitEditing={() => saveToHistory(query)}
-            placeholder="Search dancers, organizers, auditions..."
-            placeholderTextColor="#9B7FC7"
-            autoCapitalize="none"
-            returnKeyType="search"
-          />
-          {query.length > 0 ? (
-            <Pressable onPress={() => setQuery("")} hitSlop={8}>
-              <Ionicons name="close-circle" size={18} color="#9B7FC7" />
-            </Pressable>
-          ) : null}
+        <View style={styles.searchRow}>
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={18} color="#9B7FC7" />
+            <TextInput
+              style={styles.searchInput}
+              value={query}
+              onChangeText={setQuery}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              onSubmitEditing={() => saveToHistory(query)}
+              placeholder="Search dancers, organizers, auditions..."
+              placeholderTextColor="#9B7FC7"
+              autoCapitalize="none"
+              returnKeyType="search"
+            />
+            {query.length > 0 ? (
+              <Pressable onPress={() => setQuery("")} hitSlop={8}>
+                <Ionicons name="close-circle" size={18} color="#9B7FC7" />
+              </Pressable>
+            ) : null}
+          </View>
+          <Pressable
+            style={[styles.filterToggle, activeFilterCount > 0 && styles.filterToggleActive]}
+            onPress={() => setShowFilters((prev) => !prev)}
+            hitSlop={8}
+          >
+            <Ionicons name="options-outline" size={20} color={activeFilterCount > 0 ? "#fff" : "#093A7D"} />
+            {activeFilterCount > 0 ? (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
+              </View>
+            ) : null}
+          </Pressable>
         </View>
+
+        {showFilters ? (
+          <View style={styles.filtersPanel}>
+            <Text style={styles.filterLabel}>Dance style</Text>
+            <View style={styles.chipRow}>
+              {DANCE_STYLES.map((style) => (
+                <Pressable
+                  key={style}
+                  style={[styles.chip, danceStyle === style && styles.chipActive]}
+                  onPress={() => setDanceStyle((prev) => (prev === style ? null : style))}
+                >
+                  <Text style={[styles.chipText, danceStyle === style && styles.chipTextActive]}>{style}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={styles.filterLabel}>Experience level</Text>
+            <View style={styles.chipRow}>
+              {EXPERIENCE_LEVELS.map((level) => (
+                <Pressable
+                  key={level.value}
+                  style={[styles.chip, experienceLevel === level.value && styles.chipActive]}
+                  onPress={() => setExperienceLevel((prev) => (prev === level.value ? null : level.value))}
+                >
+                  <Text style={[styles.chipText, experienceLevel === level.value && styles.chipTextActive]}>
+                    {level.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={styles.filterLabel}>Location</Text>
+            <TextInput
+              style={styles.cityInput}
+              value={city}
+              onChangeText={setCity}
+              placeholder="City"
+              placeholderTextColor="#9B7FC7"
+              autoCapitalize="words"
+            />
+
+            {activeFilterCount > 0 ? (
+              <Pressable onPress={clearFilters} hitSlop={8} style={styles.clearFiltersButton}>
+                <Text style={styles.clearHistoryText}>Clear filters</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
       </View>
 
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
@@ -97,7 +176,7 @@ export default function SearchScreen() {
           <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
         ) : error ? (
           <Text style={styles.emptyText}>Couldn&apos;t search. Check your connection.</Text>
-        ) : !query.trim() ? (
+        ) : !hasActiveSearch ? (
           focused && history.length > 0 ? (
             <View style={styles.section}>
               <View style={styles.historyHeader}>
@@ -119,7 +198,9 @@ export default function SearchScreen() {
             <Text style={styles.emptyText}>Search for dancers, organizers, or auditions by name or description.</Text>
           )
         ) : !hasResults ? (
-          <Text style={styles.emptyText}>No results for &quot;{query.trim()}&quot;.</Text>
+          <Text style={styles.emptyText}>
+            {query.trim() ? `No results for "${query.trim()}".` : "No results for the selected filters."}
+          </Text>
         ) : (
           <>
             {results!.dancers.length > 0 ? (
@@ -208,7 +289,9 @@ const styles = StyleSheet.create({
   background: { flex: 1 },
   header: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 16, gap: 12 },
   title: { fontSize: 24, fontWeight: "700", color: "#093A7D" },
+  searchRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   searchBar: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -218,6 +301,54 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   searchInput: { flex: 1, fontSize: 14, color: "#093A7D" },
+  filterToggle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterToggleActive: { backgroundColor: "#C06BE4" },
+  filterBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#093A7D",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterBadgeText: { fontSize: 10, fontWeight: "700", color: "#fff" },
+  filtersPanel: {
+    marginTop: 12,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 14,
+    gap: 8,
+  },
+  filterLabel: { fontSize: 12, fontWeight: "700", color: "#093A7D", marginTop: 4 },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: "#F8ECFF",
+  },
+  chipActive: { backgroundColor: "#C06BE4" },
+  chipText: { fontSize: 12, fontWeight: "600", color: "#093A7D", textTransform: "capitalize" },
+  chipTextActive: { color: "#fff" },
+  cityInput: {
+    backgroundColor: "#F8ECFF",
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: "#093A7D",
+  },
+  clearFiltersButton: { alignSelf: "flex-start", marginTop: 4 },
   container: { paddingHorizontal: 20, paddingBottom: 40 },
   emptyText: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 40, paddingHorizontal: 16 },
   section: { marginBottom: 20 },

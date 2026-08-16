@@ -19,18 +19,12 @@ import {
 
 import { Avatar } from "@/components/avatar";
 import type { ExperienceLevel } from "@/lib/database.types";
+import { DANCE_STYLES, EXPERIENCE_LEVELS } from "@/lib/profile-options";
 import { changePassword } from "@/services/auth";
 import { getOwnProfile, updateOwnProfile, uploadAvatar } from "@/services/profiles";
 
 const NAME_MAX = 50;
 const TEXT_MAX = 150;
-
-const DANCE_STYLES = ["hip hop", "contemporary", "ballet", "breakdance", "jazz", "latin"];
-const EXPERIENCE_LEVELS: { value: ExperienceLevel; label: string }[] = [
-  { value: "beginner", label: "Beginner" },
-  { value: "intermediate", label: "Intermediate" },
-  { value: "professional", label: "Professional" },
-];
 
 export default function EditProfileScreen() {
   const [userId, setUserId] = useState<string | null>(null);
