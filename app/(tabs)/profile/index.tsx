@@ -5,6 +5,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { ActionSheet } from "@/components/action-sheet";
 import { Avatar } from "@/components/avatar";
 import { FollowListSheet } from "@/components/follow-list-sheet";
 import { MyApplicationCard } from "@/components/my-application-card";
@@ -61,6 +62,7 @@ export default function ProfileScreen() {
   const [followingCount, setFollowingCount] = useState(0);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
   const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const previousRoleRef = useRef<string | null>(null);
@@ -248,6 +250,10 @@ export default function ProfileScreen() {
         {profileError && profile ? (
           <Text style={styles.inlineError}>Couldn&apos;t refresh your profile. Check your connection.</Text>
         ) : null}
+
+        <Pressable style={styles.optionsButton} onPress={() => setShowOptions(true)} hitSlop={12}>
+          <Ionicons name="ellipsis-horizontal" size={22} color="#093A7D" />
+        </Pressable>
 
         <Pressable
           style={styles.notificationsButton}
@@ -629,6 +635,29 @@ export default function ProfileScreen() {
           />
         </>
       ) : null}
+
+      <ActionSheet
+        visible={showOptions}
+        onClose={() => setShowOptions(false)}
+        items={[
+          {
+            key: "blocked",
+            label: "Blocked users",
+            icon: "ban-outline",
+            onPress: () => router.push("/(tabs)/profile/blocked-users"),
+          },
+          ...(profile?.role === "admin"
+            ? [
+                {
+                  key: "reports",
+                  label: "Reported content",
+                  icon: "flag-outline" as const,
+                  onPress: () => router.push("/(tabs)/profile/reports"),
+                },
+              ]
+            : []),
+        ]}
+      />
     </LinearGradient>
   );
 }
@@ -645,7 +674,19 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   background: { flex: 1 },
   centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 40, paddingBottom: 40 },
+  container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 70, paddingBottom: 40 },
+  optionsButton: {
+    position: "absolute",
+    top: 44,
+    left: 16,
+    zIndex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   notificationsButton: {
     position: "absolute",
     top: 44,

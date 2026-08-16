@@ -62,6 +62,7 @@ export interface Video {
   song_title: string | null;
   song_artist: string | null;
   song_preview_url: string | null;
+  is_hidden: boolean;
   created_at: string;
 }
 
@@ -79,6 +80,7 @@ export interface Event {
   status: EventStatus;
   cover_image_url: string | null;
   price: number | null;
+  is_hidden: boolean;
   created_at: string;
 }
 

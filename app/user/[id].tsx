@@ -4,15 +4,18 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { ActionSheet } from "@/components/action-sheet";
 import { Avatar } from "@/components/avatar";
 import { FollowBadge } from "@/components/follow-badge";
 import { FollowListSheet } from "@/components/follow-list-sheet";
 import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
+import { ReportContentSheet } from "@/components/report-content-sheet";
 import { useFollowContext } from "@/contexts/follow-context";
 import type { Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { getMyAppliedEventIds } from "@/services/applications";
+import { amIBlocking, blockUser, isBlockedEitherWay, unblockUser } from "@/services/blocks";
 import { getEventsByOrganizer, type OwnEvent } from "@/services/events";
 import { getFollowCounts, isFollowing as fetchIsFollowing, toggleFollow } from "@/services/follows";
 import { getProfileById } from "@/services/profiles";
@@ -49,6 +52,10 @@ export default function UserProfileScreen() {
   const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
   const { isFollowingUser, setFollowingUser } = useFollowContext();
   const following = isFollowingUser(id, serverFollowing);
+  const [blockedByMe, setBlockedByMe] = useState(false);
+  const [blockedEitherWay, setBlockedEitherWay] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -62,6 +69,8 @@ export default function UserProfileScreen() {
         getMyAppliedEventIds(),
         getRepostedVideosByUser(id),
         getRepostedEventsByUser(id),
+        amIBlocking(id),
+        isBlockedEitherWay(id),
       ]).then(
         ([
           profileResult,
@@ -73,6 +82,8 @@ export default function UserProfileScreen() {
           appliedIds,
           repostedVideosResult,
           repostedEventsResult,
+          blockedByMeResult,
+          blockedEitherWayResult,
         ]) => {
           // Someone else's avatar can point at your own id (e.g. your own video in the public
           // feed, or your own event's organizer row). Clear away any modals stacked in between
@@ -99,6 +110,8 @@ export default function UserProfileScreen() {
           setEvents(eventsResult.data);
           setRepostedVideos(repostedVideosResult.data);
           setRepostedEvents(repostedEventsResult.data);
+          setBlockedByMe(blockedByMeResult);
+          setBlockedEitherWay(blockedEitherWayResult);
           // Applying/cancelling on the event detail screen and coming back here should
           // refresh which event cards are highlighted - re-fetched on every focus, not just once.
           setAppliedEventIds(appliedIds);
@@ -126,6 +139,30 @@ export default function UserProfileScreen() {
     setFollowingUser(id, confirmedFollowing);
   };
 
+  const handleToggleBlock = async () => {
+    if (blockedByMe) {
+      setBlockedByMe(false);
+      setBlockedEitherWay(false);
+      const { error } = await unblockUser(id);
+      if (error) {
+        setBlockedByMe(true);
+        setBlockedEitherWay(true);
+      }
+      return;
+    }
+
+    setBlockedByMe(true);
+    setBlockedEitherWay(true);
+    const { error } = await blockUser(id);
+    if (error) {
+      setBlockedByMe(false);
+      setBlockedEitherWay(false);
+      return;
+    }
+    // Blocking unfollows both directions server-side - reflect that immediately everywhere.
+    setFollowingUser(id, false);
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -142,6 +179,27 @@ export default function UserProfileScreen() {
           <Text style={styles.closeButtonInlineText}>Go back</Text>
         </Pressable>
       </View>
+    );
+  }
+
+  if (blockedEitherWay) {
+    return (
+      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+        <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
+          <Ionicons name="close" size={26} color="#093A7D" />
+        </Pressable>
+        <View style={styles.centered}>
+          <Ionicons name="ban-outline" size={40} color="#093A7D" />
+          <Text style={styles.notFoundText}>
+            {blockedByMe ? "You blocked this account." : "This profile isn't available."}
+          </Text>
+          {blockedByMe ? (
+            <Pressable onPress={handleToggleBlock} style={styles.closeButtonInline}>
+              <Text style={styles.closeButtonInlineText}>Unblock</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </LinearGradient>
     );
   }
 
@@ -192,6 +250,10 @@ export default function UserProfileScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
           <Ionicons name="close" size={26} color="#093A7D" />
+        </Pressable>
+
+        <Pressable onPress={() => setShowOptions(true)} style={styles.optionsButton} hitSlop={12}>
+          <Ionicons name="ellipsis-horizontal" size={22} color="#093A7D" />
         </Pressable>
 
         <View style={styles.avatarWrap}>
@@ -383,6 +445,33 @@ export default function UserProfileScreen() {
 
       <FollowListSheet userId={id} mode="followers" visible={showFollowers} onClose={() => setShowFollowers(false)} />
       <FollowListSheet userId={id} mode="following" visible={showFollowing} onClose={() => setShowFollowing(false)} />
+
+      <ActionSheet
+        visible={showOptions}
+        onClose={() => setShowOptions(false)}
+        items={[
+          {
+            key: "block",
+            label: "Block user",
+            icon: "ban-outline",
+            destructive: true,
+            onPress: handleToggleBlock,
+          },
+          {
+            key: "report",
+            label: "Report content",
+            icon: "flag-outline",
+            onPress: () => setShowReport(true),
+          },
+        ]}
+      />
+
+      <ReportContentSheet
+        visible={showReport}
+        onClose={() => setShowReport(false)}
+        videos={videos.map((v) => ({ type: "video" as const, id: v.id, title: v.title, thumbnail: v.thumbnail_url }))}
+        events={events.map((e) => ({ type: "event" as const, id: e.id, title: e.title, thumbnail: e.cover_image_url }))}
+      />
     </LinearGradient>
   );
 }
@@ -404,6 +493,7 @@ const styles = StyleSheet.create({
   closeButtonInlineText: { color: "#C06BE4", fontWeight: "700", fontSize: 14 },
   container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
   closeButton: { position: "absolute", top: 16, left: 16, zIndex: 1 },
+  optionsButton: { position: "absolute", top: 16, right: 16, zIndex: 1 },
   avatarWrap: { width: 112, height: 112 },
   avatarRing: {
     width: 112,

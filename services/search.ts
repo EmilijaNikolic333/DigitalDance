@@ -1,5 +1,6 @@
 import type { Event, ExperienceLevel, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { getBlockedUserIds } from "@/services/blocks";
 
 export type DancerResult = Pick<Profile, "id" | "full_name" | "avatar_url" | "city" | "dance_styles">;
 export type OrganizerResult = Pick<Profile, "id" | "full_name" | "avatar_url" | "organization_name" | "city">;
@@ -33,6 +34,9 @@ export async function search(
   if (!hasAnyFilter) return { data: EMPTY_RESULTS };
 
   try {
+    const blockedIds = await getBlockedUserIds();
+    const blockedList = blockedIds.length > 0 ? `(${blockedIds.join(",")})` : null;
+
     // Escape PostgREST's or()-filter special characters so a query containing them doesn't
     // break the pattern into unrelated conditions.
     const pattern = trimmed ? `%${trimmed.replace(/[,()%]/g, "")}%` : null;
@@ -46,6 +50,7 @@ export async function search(
     if (cityPattern) dancersQuery = dancersQuery.ilike("city", cityPattern);
     if (filters.danceStyle) dancersQuery = dancersQuery.contains("dance_styles", [filters.danceStyle]);
     if (filters.experienceLevel) dancersQuery = dancersQuery.eq("experience_level", filters.experienceLevel);
+    if (blockedList) dancersQuery = dancersQuery.not("id", "in", blockedList);
 
     let organizersQuery = supabase
       .from("profiles")
@@ -57,13 +62,16 @@ export async function search(
       );
     }
     if (cityPattern) organizersQuery = organizersQuery.ilike("city", cityPattern);
+    if (blockedList) organizersQuery = organizersQuery.not("id", "in", blockedList);
 
     let eventsQuery = supabase
       .from("events")
-      .select("id, title, description, cover_image_url, event_date, city")
-      .eq("status", "active");
+      .select("id, title, description, cover_image_url, event_date, city, organizer_id")
+      .eq("status", "active")
+      .eq("is_hidden", false);
     if (pattern) eventsQuery = eventsQuery.or(`title.ilike.${pattern},description.ilike.${pattern}`);
     if (cityPattern) eventsQuery = eventsQuery.ilike("city", cityPattern);
+    if (blockedList) eventsQuery = eventsQuery.not("organizer_id", "in", blockedList);
 
     // A dancer-only filter (style/experience) narrows just the dancers section - organizers and
     // events aren't dropped, since they don't carry those attributes to filter by.

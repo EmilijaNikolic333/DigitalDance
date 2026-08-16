@@ -1,5 +1,6 @@
 import type { Event, Message, Profile, Video } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { getBlockedUserIds, isBlockedEitherWay } from "@/services/blocks";
 
 export interface ConversationSummary {
   otherUserId: string;
@@ -64,7 +65,8 @@ export async function getConversations(): Promise<{ data: ConversationSummary[];
       }
     }
 
-    const partnerIds = [...latestByPartner.keys()];
+    const blockedIds = new Set(await getBlockedUserIds());
+    const partnerIds = [...latestByPartner.keys()].filter((id) => !blockedIds.has(id));
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, full_name, avatar_url")
@@ -189,6 +191,8 @@ export async function sendMessage(receiverId: string, text: string): Promise<{ d
 
     const trimmed = text.trim();
     if (!trimmed) return { error: "Message can't be empty" };
+
+    if (await isBlockedEitherWay(receiverId)) return { error: "You can't message this user" };
 
     const { data: insertedMessage, error: messageError } = await supabase
       .from("messages")

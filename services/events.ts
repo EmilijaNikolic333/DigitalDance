@@ -2,6 +2,7 @@ import * as Location from "expo-location";
 
 import type { Event, EventType, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { getBlockedUserIds } from "@/services/blocks";
 
 export type EventWithOrganizer = Event & {
   organizer: Pick<Profile, "id" | "full_name" | "avatar_url" | "organization_name"> | null;
@@ -17,6 +18,7 @@ async function fetchEventsByOrganizer(organizerId: string): Promise<{ data: OwnE
       .from("events")
       .select("*")
       .eq("organizer_id", organizerId)
+      .eq("is_hidden", false)
       .order("event_date", { ascending: true });
 
     if (error) {
@@ -73,11 +75,16 @@ export async function getEventsByOrganizer(organizerId: string): Promise<{ data:
 /** All active events for the public feed, soonest first, each with its organizer's name/avatar. */
 export async function getActiveEvents(): Promise<{ data: EventWithOrganizer[]; error?: string }> {
   try {
-    const { data: events, error } = await supabase
+    const blockedIds = await getBlockedUserIds();
+
+    let query = supabase
       .from("events")
       .select("*")
       .eq("status", "active")
+      .eq("is_hidden", false)
       .order("event_date", { ascending: true });
+    if (blockedIds.length > 0) query = query.not("organizer_id", "in", `(${blockedIds.join(",")})`);
+    const { data: events, error } = await query;
 
     if (error) {
       console.error("getActiveEvents failed:", error.message, error);
@@ -122,7 +129,7 @@ export async function getActiveEvents(): Promise<{ data: EventWithOrganizer[]; e
 
 export async function getEventById(id: string): Promise<EventWithOrganizer | null> {
   const { data: event } = await supabase.from("events").select("*").eq("id", id).single();
-  if (!event) return null;
+  if (!event || (event as Event).is_hidden) return null;
 
   const {
     data: { session },

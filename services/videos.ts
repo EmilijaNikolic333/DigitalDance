@@ -1,5 +1,6 @@
 import type { Profile, Video } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import { getBlockedUserIds } from "@/services/blocks";
 
 export type FeedVideo = Video & {
   author: Pick<Profile, "id" | "full_name" | "avatar_url"> | null;
@@ -38,6 +39,7 @@ async function fetchVideosWithCounts(userId: string): Promise<{ data: OwnVideo[]
       .from("videos")
       .select("*")
       .eq("user_id", userId)
+      .eq("is_hidden", false)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -98,10 +100,11 @@ export async function getVideosByUser(userId: string): Promise<{ data: OwnVideo[
 /** All videos for the swipeable feed, newest first, each with its author's name/avatar. */
 export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: string }> {
   try {
-    const { data: videos, error } = await supabase
-      .from("videos")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const blockedIds = await getBlockedUserIds();
+
+    let query = supabase.from("videos").select("*").eq("is_hidden", false).order("created_at", { ascending: false });
+    if (blockedIds.length > 0) query = query.not("user_id", "in", `(${blockedIds.join(",")})`);
+    const { data: videos, error } = await query;
 
     if (error) {
       console.error("getFeedVideos failed:", error.message, error);
@@ -172,7 +175,7 @@ export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: stri
 export async function getFeedVideoById(videoId: string): Promise<FeedVideo | null> {
   try {
     const { data: video, error } = await supabase.from("videos").select("*").eq("id", videoId).single();
-    if (error || !video) return null;
+    if (error || !video || (video as Video).is_hidden) return null;
 
     const {
       data: { session },

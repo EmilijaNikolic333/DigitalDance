@@ -21,6 +21,7 @@ import { Avatar } from "@/components/avatar";
 import type { Profile } from "@/lib/database.types";
 import { goToUserProfile } from "@/lib/profile-navigation";
 import { supabase } from "@/lib/supabase";
+import { isBlockedEitherWay } from "@/services/blocks";
 import { type ConversationMessage, getConversation, markMessagesAsRead, sendMessage } from "@/services/messages";
 import { getProfileById } from "@/services/profiles";
 
@@ -44,6 +45,7 @@ export default function ChatScreen() {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState(false);
 
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -57,12 +59,13 @@ export default function ChatScreen() {
   }, []);
 
   useEffect(() => {
-    Promise.all([getProfileById(id), getConversation(id), supabase.auth.getUser()]).then(
-      ([profileResult, conversationResult, { data: userData }]) => {
+    Promise.all([getProfileById(id), getConversation(id), supabase.auth.getUser(), isBlockedEitherWay(id)]).then(
+      ([profileResult, conversationResult, { data: userData }, blockedResult]) => {
         setOtherUser(profileResult.data);
         setMessages(conversationResult.data);
         setLoadError(conversationResult.error ?? profileResult.error ?? null);
         setCurrentUserId(userData.user?.id ?? null);
+        setBlocked(blockedResult);
         setLoading(false);
         markMessagesAsRead(id);
       }
@@ -209,27 +212,33 @@ export default function ChatScreen() {
 
         {sendError ? <Text style={styles.error}>{sendError}</Text> : null}
 
-        <View style={[styles.inputRow, { paddingBottom: keyboardVisible ? 0 : insets.bottom + 10 }]}>
-          <TextInput
-            style={styles.input}
-            value={text}
-            onChangeText={setText}
-            placeholder="Message..."
-            placeholderTextColor="#9AA5B8"
-            multiline
-          />
-          <Pressable
-            style={[styles.sendButton, !text.trim() && styles.sendButtonDisabled]}
-            onPress={handleSend}
-            disabled={sending || !text.trim()}
-          >
-            {sending ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Ionicons name="send" size={18} color="#fff" />
-            )}
-          </Pressable>
-        </View>
+        {blocked ? (
+          <View style={[styles.blockedBanner, { paddingBottom: insets.bottom + 14 }]}>
+            <Text style={styles.blockedBannerText}>You can&apos;t message this user.</Text>
+          </View>
+        ) : (
+          <View style={[styles.inputRow, { paddingBottom: keyboardVisible ? 0 : insets.bottom + 10 }]}>
+            <TextInput
+              style={styles.input}
+              value={text}
+              onChangeText={setText}
+              placeholder="Message..."
+              placeholderTextColor="#9AA5B8"
+              multiline
+            />
+            <Pressable
+              style={[styles.sendButton, !text.trim() && styles.sendButtonDisabled]}
+              onPress={handleSend}
+              disabled={sending || !text.trim()}
+            >
+              {sending ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Ionicons name="send" size={18} color="#fff" />
+              )}
+            </Pressable>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </View>
   );
@@ -314,4 +323,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   sendButtonDisabled: { opacity: 0.5 },
+  blockedBanner: { paddingHorizontal: 16, paddingTop: 10, alignItems: "center" },
+  blockedBannerText: { fontSize: 13, color: "#9B7FC7", fontWeight: "600" },
 });
