@@ -65,6 +65,10 @@ export default function LoginScreen() {
             placeholder="Password"
           />
 
+          <Link href="/(auth)/forgot-password" style={styles.forgotLink}>
+            <Text style={styles.linkText}>Forgot password?</Text>
+          </Link>
+
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <Pressable style={styles.button} onPress={handleLogin} disabled={loading}>
@@ -94,6 +98,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: "700", color: "#093A7D", marginBottom: 4 },
   subtitle: { fontSize: 14, color: "#C06BE4", marginBottom: 24 },
   error: { color: "#D0342C", fontSize: 13, marginBottom: 10 },
+  forgotLink: { alignSelf: "flex-end", marginBottom: 14, marginTop: -6 },
   button: {
     backgroundColor: "#093A7D",
     paddingVertical: 15,

@@ -33,6 +33,16 @@ export function changePassword(newPassword: string) {
   return supabase.auth.updateUser({ password: newPassword });
 }
 
+/** Sends an 8-digit recovery code to the given email. */
+export function requestPasswordReset(email: string) {
+  return supabase.auth.resetPasswordForEmail(email);
+}
+
+/** Verifies the recovery code and establishes a session, so the new password can then be set via changePassword(). */
+export function verifyPasswordResetCode(email: string, code: string) {
+  return supabase.auth.verifyOtp({ email, token: code, type: "recovery" });
+}
+
 /**
  * signUp() stores full_name/roles in the auth user's metadata (works even before
  * the user has a session, e.g. while email confirmation is pending). The first
