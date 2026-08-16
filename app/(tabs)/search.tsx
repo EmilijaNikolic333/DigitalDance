@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { addSearchHistoryEntry, clearSearchHistory, getSearchHistory } from "@/lib/search-history";
 import { search, type SearchResults } from "@/services/search";
 
 function formatEventDate(iso: string) {
@@ -18,7 +19,26 @@ export default function SearchScreen() {
   const [results, setResults] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
+  const [focused, setFocused] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    getSearchHistory().then(setHistory);
+  }, []);
+
+  const saveToHistory = (value: string) => {
+    addSearchHistoryEntry(value).then(setHistory);
+  };
+
+  const handleSelectHistory = (value: string) => {
+    setQuery(value);
+    saveToHistory(value);
+  };
+
+  const handleClearHistory = () => {
+    clearSearchHistory().then(() => setHistory([]));
+  };
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -56,6 +76,9 @@ export default function SearchScreen() {
             style={styles.searchInput}
             value={query}
             onChangeText={setQuery}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onSubmitEditing={() => saveToHistory(query)}
             placeholder="Search dancers, organizers, auditions..."
             placeholderTextColor="#9B7FC7"
             autoCapitalize="none"
@@ -75,7 +98,26 @@ export default function SearchScreen() {
         ) : error ? (
           <Text style={styles.emptyText}>Couldn&apos;t search. Check your connection.</Text>
         ) : !query.trim() ? (
-          <Text style={styles.emptyText}>Search for dancers, organizers, or auditions by name or description.</Text>
+          focused && history.length > 0 ? (
+            <View style={styles.section}>
+              <View style={styles.historyHeader}>
+                <Text style={styles.sectionLabel}>Recent searches</Text>
+                <Pressable onPress={handleClearHistory} hitSlop={8}>
+                  <Text style={styles.clearHistoryText}>Clear</Text>
+                </Pressable>
+              </View>
+              {history.map((entry) => (
+                <Pressable key={entry} style={styles.historyRow} onPress={() => handleSelectHistory(entry)}>
+                  <Ionicons name="time-outline" size={16} color="#9B7FC7" />
+                  <Text style={styles.historyText} numberOfLines={1}>
+                    {entry}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyText}>Search for dancers, organizers, or auditions by name or description.</Text>
+          )
         ) : !hasResults ? (
           <Text style={styles.emptyText}>No results for &quot;{query.trim()}&quot;.</Text>
         ) : (
@@ -187,6 +229,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     letterSpacing: 0.5,
   },
+  historyHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  clearHistoryText: { fontSize: 12, fontWeight: "700", color: "#C06BE4" },
+  historyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 10,
+  },
+  historyText: { fontSize: 14, color: "#093A7D", flex: 1 },
   personRow: {
     flexDirection: "row",
     alignItems: "center",
