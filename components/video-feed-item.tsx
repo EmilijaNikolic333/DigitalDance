@@ -23,6 +23,8 @@ interface VideoFeedItemProps {
   video: FeedVideo;
   height: number;
   active: boolean;
+  /** Opens the comments sheet as soon as this item mounts - e.g. arriving from a "new comment" notification. */
+  initialShowComments?: boolean;
 }
 
 function formatTime(seconds: number) {
@@ -32,14 +34,14 @@ function formatTime(seconds: number) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
+export function VideoFeedItem({ video, height, active, initialShowComments }: VideoFeedItemProps) {
   const [muted, setMuted] = useState(false);
   const [displayedViews, setDisplayedViews] = useState(video.views_count);
   const [expanded, setExpanded] = useState(false);
   const [liked, setLiked] = useState(video.isLiked);
   const [likesCount, setLikesCount] = useState(video.likesCount);
   const [commentsCount, setCommentsCount] = useState(video.commentsCount);
-  const [showComments, setShowComments] = useState(false);
+  const [showComments, setShowComments] = useState(initialShowComments ?? false);
   const [followingAuthor, setFollowingAuthor] = useState(video.isFollowingAuthor);
   const [showShare, setShowShare] = useState(false);
   const { isVideoReposted, setVideoReposted } = useRepostContext();

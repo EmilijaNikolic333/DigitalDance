@@ -61,7 +61,9 @@ export default function AllSavedVideosScreen() {
                 <ProfileVideoCard
                   key={video.id}
                   video={video}
-                  onPress={() => router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)}
+                  onPress={() =>
+                    router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}&videoId=${video.id}`)
+                  }
                   authorName={video.author?.full_name ?? undefined}
                   authorId={video.author?.id}
                   authorAvatar={video.author?.avatar_url}

@@ -1,16 +1,31 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { useCallback, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
-import { ShareToSheet } from "@/components/share-to-sheet";
-import { VideoCommentsSheet } from "@/components/video-comments-sheet";
+import { VideoFeedItem } from "@/components/video-feed-item";
 import { goToUserProfile } from "@/lib/profile-navigation";
+import { type FeedVideo, getFeedVideoById } from "@/services/videos";
+
+/** Bare player, for videos we don't have full Feed data for (no videoId passed). */
+function BarePlayer({ url }: { url: string }) {
+  const player = useVideoPlayer(url, (p) => {
+    p.play();
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      player.play();
+    }, [player])
+  );
+
+  return <VideoView player={player} style={styles.video} contentFit="contain" nativeControls />;
+}
 
 export default function WatchVideoScreen() {
-  const { url, videoId, ownerId, showComments, actorId, actorName, actorAvatar, actorIcon } = useLocalSearchParams<{
+  const { url, videoId, showComments, actorId, actorName, actorAvatar, actorIcon } = useLocalSearchParams<{
     url: string;
     videoId?: string;
     ownerId?: string;
@@ -20,38 +35,55 @@ export default function WatchVideoScreen() {
     actorAvatar?: string;
     actorIcon?: "heart" | "bookmark" | "repeat";
   }>();
-  const player = useVideoPlayer(url, (p) => {
-    p.play();
-  });
-  const [commentsVisible, setCommentsVisible] = useState(showComments === "1");
-  const [showShare, setShowShare] = useState(false);
+  const { height } = useWindowDimensions();
+  const [feedVideo, setFeedVideo] = useState<FeedVideo | null>(null);
+  const [loading, setLoading] = useState(!!videoId);
+  // Drives VideoFeedItem's active/paused state - e.g. paused while viewing the actor's
+  // profile, since pushing it leaves this screen mounted underneath.
+  const [videoActive, setVideoActive] = useState(true);
 
-  // Resumes playback when this screen regains focus - e.g. coming back from the actor's
-  // profile, which we explicitly paused for before navigating there.
+  useEffect(() => {
+    if (!videoId) return;
+    getFeedVideoById(videoId).then((video) => {
+      setFeedVideo(video);
+      setLoading(false);
+    });
+  }, [videoId]);
+
   useFocusEffect(
     useCallback(() => {
-      player.play();
-    }, [player])
+      setVideoActive(true);
+    }, [])
   );
 
   return (
     <View style={styles.container}>
-      <VideoView player={player} style={styles.video} contentFit="contain" nativeControls />
+      {videoId ? (
+        loading ? (
+          <ActivityIndicator size="large" color="#fff" style={styles.loading} />
+        ) : feedVideo ? (
+          <VideoFeedItem
+            video={feedVideo}
+            height={height}
+            active={videoActive}
+            initialShowComments={showComments === "1"}
+          />
+        ) : (
+          <BarePlayer url={url} />
+        )
+      ) : (
+        <BarePlayer url={url} />
+      )}
       <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
         <Ionicons name="close" size={28} color="#fff" />
       </Pressable>
-      {videoId ? (
-        <Pressable onPress={() => setShowShare(true)} style={styles.shareButton} hitSlop={12}>
-          <Ionicons name="paper-plane-outline" size={22} color="#fff" />
-        </Pressable>
-      ) : null}
       {actorId ? (
         <Pressable
           style={styles.likerPill}
           onPress={() => {
             // Pushing the profile leaves this screen mounted underneath, so its audio
             // would otherwise keep playing behind the profile view.
-            player.pause();
+            setVideoActive(false);
             // actorId is always someone else - self-notifications are never created.
             goToUserProfile(actorId, null);
           }}
@@ -63,16 +95,6 @@ export default function WatchVideoScreen() {
           </Text>
         </Pressable>
       ) : null}
-      {videoId ? (
-        <VideoCommentsSheet
-          videoId={videoId}
-          visible={commentsVisible}
-          onClose={() => setCommentsVisible(false)}
-          onCommentAdded={() => {}}
-          videoOwnerId={ownerId}
-        />
-      ) : null}
-      {videoId ? <ShareToSheet videoId={videoId} visible={showShare} onClose={() => setShowShare(false)} /> : null}
     </View>
   );
 }
@@ -80,8 +102,8 @@ export default function WatchVideoScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
   video: { flex: 1 },
-  closeButton: { position: "absolute", top: 50, left: 16 },
-  shareButton: { position: "absolute", top: 100, left: 16 },
+  loading: { flex: 1 },
+  closeButton: { position: "absolute", top: 50, left: 16, zIndex: 1 },
   likerPill: {
     position: "absolute",
     top: 50,
@@ -94,6 +116,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     maxWidth: 200,
+    zIndex: 1,
   },
   likerName: { color: "#fff", fontWeight: "700", fontSize: 13, flexShrink: 1 },
 });

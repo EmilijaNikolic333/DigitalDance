@@ -5,8 +5,6 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
 import { ShareToSheet } from "@/components/share-to-sheet";
-import { VideoCommentsSheet } from "@/components/video-comments-sheet";
-import { VideoLikesSheet } from "@/components/video-likes-sheet";
 import { useRepostContext } from "@/contexts/repost-context";
 import { useSavedContext } from "@/contexts/saved-context";
 import type { Video } from "@/lib/database.types";
@@ -31,6 +29,10 @@ interface ProfileVideoCardProps {
   authorAvatar?: string | null;
 }
 
+/**
+ * A compact, thumbnail-first preview - likes/comments/song details live on the full Feed-style
+ * watch screen (opened by tapping the card), not here.
+ */
 export function ProfileVideoCard({
   video,
   onPress,
@@ -41,9 +43,6 @@ export function ProfileVideoCard({
   authorId,
   authorAvatar,
 }: ProfileVideoCardProps) {
-  const [commentsCount, setCommentsCount] = useState(video.commentsCount);
-  const [showComments, setShowComments] = useState(false);
-  const [showLikers, setShowLikers] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { isVideoReposted, setVideoReposted } = useRepostContext();
@@ -142,36 +141,8 @@ export function ProfileVideoCard({
             <Text style={styles.chipText}>#{video.dance_style.replace(" ", "")}</Text>
           </View>
         ) : null}
-        <Text style={styles.videoSong} numberOfLines={1}>
-          {video.song_title ? `🎵 ${video.song_title} · ${video.song_artist}` : "🎵 Original sound"}
-        </Text>
-
-        <View style={styles.videoStats}>
-          <View style={styles.statRow}>
-            <Ionicons name="eye-outline" size={13} color="#9B7FC7" />
-            <Text style={styles.videoStatsText}>{video.views_count} views</Text>
-          </View>
-
-          <Pressable style={styles.statRow} onPress={() => setShowLikers(true)} hitSlop={6}>
-            <Ionicons name="heart-outline" size={13} color="#9B7FC7" />
-            <Text style={styles.videoStatsText}>{video.likesCount} likes</Text>
-          </Pressable>
-
-          <Pressable style={styles.statRow} onPress={() => setShowComments(true)} hitSlop={6}>
-            <Ionicons name="chatbubble-ellipses-outline" size={13} color="#9B7FC7" />
-            <Text style={styles.videoStatsText}>{commentsCount} comments</Text>
-          </Pressable>
-        </View>
       </View>
 
-      <VideoCommentsSheet
-        videoId={video.id}
-        visible={showComments}
-        onClose={() => setShowComments(false)}
-        onCommentAdded={() => setCommentsCount((count) => count + 1)}
-        videoOwnerId={video.user_id}
-      />
-      <VideoLikesSheet videoId={video.id} visible={showLikers} onClose={() => setShowLikers(false)} />
       <ShareToSheet videoId={video.id} visible={showShare} onClose={() => setShowShare(false)} />
     </Pressable>
   );
@@ -218,7 +189,6 @@ const styles = StyleSheet.create({
   videoInfo: { padding: 12, gap: 4 },
   authorRow: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start" },
   videoAuthor: { fontSize: 11, color: "#9B7FC7", fontWeight: "700" },
-  videoSong: { fontSize: 11, color: "#9B7FC7", fontStyle: "italic" },
   videoTitle: { fontSize: 14, fontWeight: "700", color: "#093A7D" },
   chip: {
     alignSelf: "flex-start",
@@ -228,7 +198,4 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   chipText: { color: "#093A7D", fontSize: 12, fontWeight: "700" },
-  videoStats: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", marginTop: 4, gap: 14 },
-  videoStatsText: { fontSize: 11, color: "#9B7FC7", marginLeft: 4 },
-  statRow: { flexDirection: "row", alignItems: "center" },
 });

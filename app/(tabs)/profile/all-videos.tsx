@@ -53,7 +53,9 @@ export default function AllVideosScreen() {
               <ProfileVideoCard
                 key={video.id}
                 video={video}
-                onPress={() => router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}`)}
+                onPress={() =>
+                  router.push(`/(tabs)/profile/watch?url=${encodeURIComponent(video.video_url)}&videoId=${video.id}`)
+                }
                 onEditPress={() => router.push(`/(tabs)/profile/edit-video?id=${video.id}`)}
               />
             ))}
