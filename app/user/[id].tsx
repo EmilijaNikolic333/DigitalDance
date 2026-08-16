@@ -9,6 +9,7 @@ import { FollowBadge } from "@/components/follow-badge";
 import { FollowListSheet } from "@/components/follow-list-sheet";
 import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
+import { useFollowContext } from "@/contexts/follow-context";
 import type { Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { getMyAppliedEventIds } from "@/services/applications";
@@ -34,7 +35,7 @@ export default function UserProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [following, setFollowing] = useState(false);
+  const [serverFollowing, setServerFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
@@ -46,6 +47,8 @@ export default function UserProfileScreen() {
   const [repostedEvents, setRepostedEvents] = useState<RepostedEventItem[]>([]);
   const [repostedSubTab, setRepostedSubTab] = useState<"videos" | "events">("videos");
   const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
+  const { isFollowingUser, setFollowingUser } = useFollowContext();
+  const following = isFollowingUser(id, serverFollowing);
 
   useFocusEffect(
     useCallback(() => {
@@ -89,7 +92,7 @@ export default function UserProfileScreen() {
 
           setProfile(profileResult.data);
           setLoadError(profileResult.error ?? null);
-          setFollowing(followingResult);
+          setServerFollowing(followingResult);
           setFollowerCount(counts.followers);
           setFollowingCount(counts.following);
           setVideos(videosResult.data);
@@ -109,18 +112,18 @@ export default function UserProfileScreen() {
   const handleToggleFollow = async () => {
     const nextFollowing = !following;
     setFollowLoading(true);
-    setFollowing(nextFollowing);
+    setFollowingUser(id, nextFollowing);
     setFollowerCount((count) => count + (nextFollowing ? 1 : -1));
 
     const { following: confirmedFollowing, error } = await toggleFollow(id);
     setFollowLoading(false);
 
     if (error) {
-      setFollowing(!nextFollowing);
+      setFollowingUser(id, !nextFollowing);
       setFollowerCount((count) => count + (nextFollowing ? -1 : 1));
       return;
     }
-    setFollowing(confirmedFollowing);
+    setFollowingUser(id, confirmedFollowing);
   };
 
   if (loading) {

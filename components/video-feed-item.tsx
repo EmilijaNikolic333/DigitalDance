@@ -10,6 +10,7 @@ import { Avatar } from "@/components/avatar";
 import { FollowBadge } from "@/components/follow-badge";
 import { ShareToSheet } from "@/components/share-to-sheet";
 import { VideoCommentsSheet } from "@/components/video-comments-sheet";
+import { useFollowContext } from "@/contexts/follow-context";
 import { useRepostContext } from "@/contexts/repost-context";
 import { useSavedContext } from "@/contexts/saved-context";
 import { toggleFollow } from "@/services/follows";
@@ -42,12 +43,13 @@ export function VideoFeedItem({ video, height, active, initialShowComments }: Vi
   const [likesCount, setLikesCount] = useState(video.likesCount);
   const [commentsCount, setCommentsCount] = useState(video.commentsCount);
   const [showComments, setShowComments] = useState(initialShowComments ?? false);
-  const [followingAuthor, setFollowingAuthor] = useState(video.isFollowingAuthor);
   const [showShare, setShowShare] = useState(false);
   const { isVideoReposted, setVideoReposted } = useRepostContext();
   const reposted = isVideoReposted(video.id, video.isReposted);
   const { isVideoSaved, setVideoSaved } = useSavedContext();
   const saved = isVideoSaved(video.id, video.isSaved);
+  const { isFollowingUser, setFollowingUser } = useFollowContext();
+  const followingAuthor = video.author ? isFollowingUser(video.author.id, video.isFollowingAuthor) : false;
 
   const lastTapRef = useRef(0);
   const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -133,16 +135,17 @@ export function VideoFeedItem({ video, height, active, initialShowComments }: Vi
 
   const handleToggleFollow = async () => {
     if (!video.author) return;
+    const authorId = video.author.id;
 
     const nextFollowing = !followingAuthor;
-    setFollowingAuthor(nextFollowing);
+    setFollowingUser(authorId, nextFollowing);
 
-    const { following: confirmedFollowing, error } = await toggleFollow(video.author.id);
+    const { following: confirmedFollowing, error } = await toggleFollow(authorId);
     if (error) {
-      setFollowingAuthor(!nextFollowing);
+      setFollowingUser(authorId, !nextFollowing);
       return;
     }
-    setFollowingAuthor(confirmedFollowing);
+    setFollowingUser(authorId, confirmedFollowing);
   };
 
   const playHeartBurst = () => {

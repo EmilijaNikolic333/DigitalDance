@@ -17,6 +17,7 @@ import {
 import { Avatar } from "@/components/avatar";
 import { FollowBadge } from "@/components/follow-badge";
 import { ShareToSheet } from "@/components/share-to-sheet";
+import { useFollowContext } from "@/contexts/follow-context";
 import { useRepostContext } from "@/contexts/repost-context";
 import { useSavedContext } from "@/contexts/saved-context";
 import { APPLICATION_STATUS_LABEL, APPLICATION_STATUS_STYLE } from "@/lib/application-status";
@@ -62,10 +63,14 @@ export default function EventDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [myApplication, setMyApplication] = useState<Applicant | null>(null);
-  const [followingOrganizer, setFollowingOrganizer] = useState(false);
+  const [serverFollowingOrganizer, setServerFollowingOrganizer] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const { isEventSaved, setEventSaved } = useSavedContext();
   const { isEventReposted, setEventReposted } = useRepostContext();
+  const { isFollowingUser, setFollowingUser } = useFollowContext();
+  const followingOrganizer = event?.organizer_id
+    ? isFollowingUser(event.organizer_id, serverFollowingOrganizer)
+    : false;
 
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [message, setMessage] = useState("");
@@ -81,7 +86,7 @@ export default function EventDetailScreen() {
         setLoading(false);
 
         if (eventData?.organizer_id && eventData.organizer_id !== userData.user?.id) {
-          fetchIsFollowing(eventData.organizer_id).then(setFollowingOrganizer);
+          fetchIsFollowing(eventData.organizer_id).then(setServerFollowingOrganizer);
         }
       }
     );
@@ -89,16 +94,17 @@ export default function EventDetailScreen() {
 
   const handleToggleFollowOrganizer = async () => {
     if (!event?.organizer_id) return;
+    const organizerId = event.organizer_id;
 
     const nextFollowing = !followingOrganizer;
-    setFollowingOrganizer(nextFollowing);
+    setFollowingUser(organizerId, nextFollowing);
 
-    const { following: confirmedFollowing, error } = await toggleFollow(event.organizer_id);
+    const { following: confirmedFollowing, error } = await toggleFollow(organizerId);
     if (error) {
-      setFollowingOrganizer(!nextFollowing);
+      setFollowingUser(organizerId, !nextFollowing);
       return;
     }
-    setFollowingOrganizer(confirmedFollowing);
+    setFollowingUser(organizerId, confirmedFollowing);
   };
 
   const handleApply = async () => {
