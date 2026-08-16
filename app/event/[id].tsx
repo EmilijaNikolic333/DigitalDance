@@ -17,6 +17,8 @@ import {
 import { Avatar } from "@/components/avatar";
 import { FollowBadge } from "@/components/follow-badge";
 import { ShareToSheet } from "@/components/share-to-sheet";
+import { useRepostContext } from "@/contexts/repost-context";
+import { useSavedContext } from "@/contexts/saved-context";
 import { APPLICATION_STATUS_LABEL, APPLICATION_STATUS_STYLE } from "@/lib/application-status";
 import type { Applicant } from "@/lib/database.types";
 import { goToUserProfile } from "@/lib/profile-navigation";
@@ -24,6 +26,8 @@ import { supabase } from "@/lib/supabase";
 import { applyToEvent, cancelApplication, getMyApplication } from "@/services/applications";
 import { type EventWithOrganizer, getEventById } from "@/services/events";
 import { isFollowing as fetchIsFollowing, toggleFollow } from "@/services/follows";
+import { toggleRepostEvent } from "@/services/reposted-events";
+import { toggleSaveEvent } from "@/services/saved-events";
 
 const EVENT_TYPE_LABEL: Record<string, string> = {
   audition: "Audition",
@@ -60,6 +64,8 @@ export default function EventDetailScreen() {
   const [myApplication, setMyApplication] = useState<Applicant | null>(null);
   const [followingOrganizer, setFollowingOrganizer] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const { isEventSaved, setEventSaved } = useSavedContext();
+  const { isEventReposted, setEventReposted } = useRepostContext();
 
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [message, setMessage] = useState("");
@@ -151,6 +157,34 @@ export default function EventDetailScreen() {
     );
   }
 
+  const saved = isEventSaved(event.id, event.isSaved);
+  const reposted = isEventReposted(event.id, event.isReposted);
+  const isOwnEvent = event.organizer_id === currentUserId;
+
+  const handleToggleSave = async () => {
+    const nextSaved = !saved;
+    setEventSaved(event.id, nextSaved);
+
+    const { saved: confirmedSaved, error } = await toggleSaveEvent(event.id, event.organizer_id);
+    if (error) {
+      setEventSaved(event.id, !nextSaved);
+      return;
+    }
+    setEventSaved(event.id, confirmedSaved);
+  };
+
+  const handleToggleRepost = async () => {
+    const nextReposted = !reposted;
+    setEventReposted(event.id, nextReposted);
+
+    const { reposted: confirmedReposted, error } = await toggleRepostEvent(event.id, event.organizer_id);
+    if (error) {
+      setEventReposted(event.id, !nextReposted);
+      return;
+    }
+    setEventReposted(event.id, confirmedReposted);
+  };
+
   return (
     <View style={styles.background}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -163,9 +197,25 @@ export default function EventDetailScreen() {
           <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
             <Ionicons name="close" size={22} color="#093A7D" />
           </Pressable>
-          <Pressable onPress={() => setShowShare(true)} style={styles.shareButton} hitSlop={12}>
-            <Ionicons name="paper-plane-outline" size={20} color="#093A7D" />
-          </Pressable>
+          <View style={styles.actionRow}>
+            {!isOwnEvent ? (
+              <>
+                <Pressable onPress={handleToggleSave} style={styles.coverActionButton} hitSlop={12}>
+                  <Ionicons
+                    name={saved ? "bookmark" : "bookmark-outline"}
+                    size={20}
+                    color={saved ? "#C06BE4" : "#093A7D"}
+                  />
+                </Pressable>
+                <Pressable onPress={handleToggleRepost} style={styles.coverActionButton} hitSlop={12}>
+                  <Ionicons name="repeat" size={20} color={reposted ? "#C06BE4" : "#093A7D"} />
+                </Pressable>
+              </>
+            ) : null}
+            <Pressable onPress={() => setShowShare(true)} style={styles.coverActionButton} hitSlop={12}>
+              <Ionicons name="paper-plane-outline" size={20} color="#093A7D" />
+            </Pressable>
+          </View>
           {actorId ? (
             <Pressable style={styles.actorPill} onPress={() => goToUserProfile(actorId, currentUserId)}>
               <Ionicons name={actorIcon ?? "bookmark"} size={16} color="#C06BE4" />
@@ -306,10 +356,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   coverImage: { width: "100%", height: "100%" },
-  shareButton: {
+  actionRow: {
     position: "absolute",
     top: 50,
     left: 60,
+    flexDirection: "row",
+    gap: 8,
+  },
+  coverActionButton: {
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 6,
