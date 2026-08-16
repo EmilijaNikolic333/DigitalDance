@@ -4,12 +4,26 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Calendar, type DateData } from "react-native-calendars";
 import MapView, { Marker, type Region } from "react-native-maps";
 
 import { EventCard } from "@/components/event-card";
 import { isExpoGo } from "@/lib/is-expo-go";
 import { getMyAppliedEventIds } from "@/services/applications";
 import { type EventWithOrganizer, getActiveEvents } from "@/services/events";
+
+/** Local-time YYYY-MM-DD key, matching how dates are shown elsewhere (device local time, not UTC). */
+function toDateKey(iso: string) {
+  const date = new Date(iso);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatEventTime(iso: string) {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
 
 const DEFAULT_REGION: Region = {
   latitude: 44.7866,
@@ -23,6 +37,7 @@ export default function EventsListScreen() {
   const [appliedEventIds, setAppliedEventIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const hasLoadedRef = useRef(false);
 
   const load = useCallback(() => {
@@ -43,6 +58,33 @@ export default function EventsListScreen() {
   );
 
   const eventsWithLocation = events.filter((e) => e.location_lat !== null && e.location_lng !== null);
+
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, EventWithOrganizer[]>();
+    for (const event of events) {
+      const key = toDateKey(event.event_date);
+      const list = map.get(key);
+      if (list) list.push(event);
+      else map.set(key, [event]);
+    }
+    return map;
+  }, [events]);
+
+  const markedDates = useMemo(() => {
+    const eventDayStyle = { container: { backgroundColor: "#C06BE4", borderRadius: 16 }, text: { color: "#fff", fontWeight: "700" as const } };
+    const selectedDayStyle = { container: { backgroundColor: "#093A7D", borderRadius: 16 }, text: { color: "#fff", fontWeight: "700" as const } };
+
+    const marks: Record<string, { customStyles: typeof eventDayStyle }> = {};
+    for (const key of eventsByDate.keys()) {
+      marks[key] = { customStyles: eventDayStyle };
+    }
+    if (selectedDate) {
+      marks[selectedDate] = { customStyles: selectedDayStyle };
+    }
+    return marks;
+  }, [eventsByDate, selectedDate]);
+
+  const selectedDateEvents = selectedDate ? eventsByDate.get(selectedDate) ?? [] : [];
 
   const region = useMemo<Region>(() => {
     if (eventsWithLocation.length === 0) return DEFAULT_REGION;
@@ -99,6 +141,55 @@ export default function EventsListScreen() {
           )}
         </View>
 
+        <View style={styles.calendarCard}>
+          <Calendar
+            markingType="custom"
+            markedDates={markedDates}
+            onDayPress={(day: DateData) => setSelectedDate((current) => (current === day.dateString ? null : day.dateString))}
+            theme={{
+              backgroundColor: "#fff",
+              calendarBackground: "#fff",
+              textSectionTitleColor: "#9B7FC7",
+              dayTextColor: "#093A7D",
+              todayTextColor: "#C06BE4",
+              monthTextColor: "#093A7D",
+              arrowColor: "#093A7D",
+              selectedDayBackgroundColor: "#093A7D",
+              selectedDayTextColor: "#fff",
+              dotColor: "#C06BE4",
+              textDayFontWeight: "600",
+              textMonthFontWeight: "700",
+            }}
+          />
+
+          {selectedDate ? (
+            selectedDateEvents.length === 0 ? (
+              <Text style={styles.calendarEmptyText}>No auditions on this day.</Text>
+            ) : (
+              <View style={styles.calendarEventsList}>
+                {selectedDateEvents.map((event) => (
+                  <Pressable key={event.id} style={styles.calendarEventRow} onPress={() => goToEvent(event.id)}>
+                    <View style={styles.calendarEventCover}>
+                      {event.cover_image_url ? (
+                        <Image source={{ uri: event.cover_image_url }} style={styles.calendarEventCoverImage} contentFit="cover" />
+                      ) : (
+                        <Ionicons name="calendar" size={16} color="#fff" />
+                      )}
+                    </View>
+                    <View style={styles.calendarEventInfo}>
+                      <Text style={styles.calendarEventTitle} numberOfLines={1}>
+                        {event.title}
+                      </Text>
+                      <Text style={styles.calendarEventTime}>{formatEventTime(event.event_date)}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#9B7FC7" />
+                  </Pressable>
+                ))}
+              </View>
+            )
+          ) : null}
+        </View>
+
         {loading ? (
           <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
         ) : error ? (
@@ -150,6 +241,38 @@ const styles = StyleSheet.create({
     backgroundColor: "#C06BE4",
   },
   mapUnavailableText: { color: "#fff", fontSize: 12, fontWeight: "700", paddingHorizontal: 24, textAlign: "center" },
+  calendarCard: {
+    width: "100%",
+    borderRadius: 20,
+    overflow: "hidden",
+    marginBottom: 20,
+    backgroundColor: "#fff",
+    borderWidth: 3,
+    borderColor: "#fff",
+  },
+  calendarEmptyText: { fontSize: 13, color: "#9B7FC7", textAlign: "center", paddingVertical: 16 },
+  calendarEventsList: { padding: 12, paddingTop: 0, gap: 8 },
+  calendarEventRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#F8ECFF",
+    borderRadius: 14,
+    padding: 8,
+  },
+  calendarEventCover: {
+    width: 36,
+    height: 36,
+    borderRadius: 9,
+    backgroundColor: "#C06BE4",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  calendarEventCoverImage: { width: "100%", height: "100%" },
+  calendarEventInfo: { flex: 1, gap: 1 },
+  calendarEventTitle: { fontSize: 13, fontWeight: "700", color: "#093A7D" },
+  calendarEventTime: { fontSize: 11, color: "#9B7FC7" },
   pin: { alignItems: "center" },
   pinLabel: {
     backgroundColor: "#C06BE4",
