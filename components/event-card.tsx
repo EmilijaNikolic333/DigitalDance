@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { ShareToSheet } from "@/components/share-to-sheet";
 import { useRepostContext } from "@/contexts/repost-context";
 import { useSavedContext } from "@/contexts/saved-context";
 import type { EventWithOrganizer } from "@/services/events";
@@ -30,6 +32,7 @@ export function EventCard({ event, onPress, isApplied, isSaved, isReposted }: Ev
   const reposted = isEventReposted(event.id, isReposted ?? false);
   const { isEventSaved, setEventSaved } = useSavedContext();
   const saved = isEventSaved(event.id, isSaved ?? false);
+  const [showShare, setShowShare] = useState(false);
 
   const handleToggleSave = async () => {
     const nextSaved = !saved;
@@ -98,7 +101,11 @@ export function EventCard({ event, onPress, isApplied, isSaved, isReposted }: Ev
         <Pressable style={styles.saveButton} onPress={handleToggleRepost} hitSlop={8}>
           <Ionicons name="repeat" size={16} color={reposted ? "#C06BE4" : "#093A7D"} />
         </Pressable>
+        <Pressable style={styles.saveButton} onPress={() => setShowShare(true)} hitSlop={8}>
+          <Ionicons name="paper-plane-outline" size={16} color="#093A7D" />
+        </Pressable>
       </View>
+      <ShareToSheet eventId={event.id} visible={showShare} onClose={() => setShowShare(false)} />
     </Pressable>
   );
 }

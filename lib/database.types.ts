@@ -148,6 +148,8 @@ export interface Message {
   text: string;
   sent_at: string;
   read_at: string | null;
+  shared_video_id: string | null;
+  shared_event_id: string | null;
 }
 
 export interface Notification {

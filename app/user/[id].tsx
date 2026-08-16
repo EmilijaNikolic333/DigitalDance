@@ -288,7 +288,7 @@ export default function UserProfileScreen() {
                     <ProfileVideoCard
                       key={video.id}
                       video={video}
-                      onPress={() => router.push({ pathname: "/watch", params: { url: video.video_url } })}
+                      onPress={() => router.push({ pathname: "/watch", params: { url: video.video_url, videoId: video.id } })}
                       showSaveButton
                       showRepostButton
                     />
@@ -347,7 +347,7 @@ export default function UserProfileScreen() {
                       <ProfileVideoCard
                         key={video.id}
                         video={video}
-                        onPress={() => router.push({ pathname: "/watch", params: { url: video.video_url } })}
+                        onPress={() => router.push({ pathname: "/watch", params: { url: video.video_url, videoId: video.id } })}
                         authorName={video.author?.full_name ?? undefined}
                         authorId={video.author?.id}
                         authorAvatar={video.author?.avatar_url}

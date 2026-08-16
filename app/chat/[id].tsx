@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -17,10 +18,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
-import type { Message, Profile } from "@/lib/database.types";
+import type { Profile } from "@/lib/database.types";
 import { goToUserProfile } from "@/lib/profile-navigation";
 import { supabase } from "@/lib/supabase";
-import { getConversation, markMessagesAsRead, sendMessage } from "@/services/messages";
+import { type ConversationMessage, getConversation, markMessagesAsRead, sendMessage } from "@/services/messages";
 import { getProfileById } from "@/services/profiles";
 
 function formatTime(iso: string) {
@@ -30,11 +31,11 @@ function formatTime(iso: string) {
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const listRef = useRef<FlatList<Message>>(null);
+  const listRef = useRef<FlatList<ConversationMessage>>(null);
 
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ConversationMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -132,7 +133,61 @@ export default function ChatScreen() {
             return (
               <View style={[styles.bubbleRow, isMine ? styles.bubbleRowMine : styles.bubbleRowTheirs]}>
                 <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs]}>
-                  <Text style={[styles.bubbleText, isMine && styles.bubbleTextMine]}>{item.text}</Text>
+                  {item.sharedVideo ? (
+                    <Pressable
+                      style={styles.sharedCard}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/watch",
+                          params: { url: item.sharedVideo!.video_url, videoId: item.sharedVideo!.id },
+                        })
+                      }
+                    >
+                      {item.sharedVideo.thumbnail_url ? (
+                        <Image source={{ uri: item.sharedVideo.thumbnail_url }} style={styles.sharedThumb} contentFit="cover" />
+                      ) : (
+                        <View style={[styles.sharedThumb, styles.sharedThumbFallback]}>
+                          <Ionicons name="videocam" size={20} color="#fff" />
+                        </View>
+                      )}
+                      <View style={styles.sharedPlayBadge}>
+                        <Ionicons name="play" size={14} color="#fff" />
+                      </View>
+                      <Text
+                        style={[styles.sharedCardText, isMine && styles.bubbleTextMine]}
+                        numberOfLines={2}
+                      >
+                        {item.sharedVideo.description || "Video"}
+                      </Text>
+                    </Pressable>
+                  ) : item.sharedEvent ? (
+                    <Pressable
+                      style={styles.sharedCard}
+                      onPress={() =>
+                        router.push({ pathname: "/event/[id]", params: { id: item.sharedEvent!.id } })
+                      }
+                    >
+                      {item.sharedEvent.cover_image_url ? (
+                        <Image
+                          source={{ uri: item.sharedEvent.cover_image_url }}
+                          style={styles.sharedThumb}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <View style={[styles.sharedThumb, styles.sharedThumbFallback]}>
+                          <Ionicons name="calendar" size={20} color="#fff" />
+                        </View>
+                      )}
+                      <Text
+                        style={[styles.sharedCardText, isMine && styles.bubbleTextMine]}
+                        numberOfLines={2}
+                      >
+                        {item.sharedEvent.title}
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <Text style={[styles.bubbleText, isMine && styles.bubbleTextMine]}>{item.text}</Text>
+                  )}
                   <View style={styles.bubbleFooter}>
                     <Text style={[styles.bubbleTime, isMine && styles.bubbleTimeMine]}>
                       {formatTime(item.sent_at)}
@@ -208,6 +263,26 @@ const styles = StyleSheet.create({
   bubbleTheirs: { backgroundColor: "#fff", borderBottomLeftRadius: 4 },
   bubbleText: { fontSize: 14, color: "#093A7D" },
   bubbleTextMine: { color: "#fff" },
+  sharedCard: { width: 180 },
+  sharedThumb: {
+    width: "100%",
+    height: 120,
+    borderRadius: 12,
+    backgroundColor: "#C06BE4",
+  },
+  sharedThumbFallback: { alignItems: "center", justifyContent: "center" },
+  sharedPlayBadge: {
+    position: "absolute",
+    top: 44,
+    left: 74,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sharedCardText: { fontSize: 13, fontWeight: "700", color: "#093A7D", marginTop: 6 },
   bubbleFooter: { flexDirection: "row", alignItems: "center", alignSelf: "flex-end", marginTop: 3 },
   bubbleTime: { fontSize: 10, color: "#9B7FC7" },
   bubbleTimeMine: { color: "rgba(255,255,255,0.7)" },

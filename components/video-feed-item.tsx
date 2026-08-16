@@ -8,6 +8,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
 import { FollowBadge } from "@/components/follow-badge";
+import { ShareToSheet } from "@/components/share-to-sheet";
 import { VideoCommentsSheet } from "@/components/video-comments-sheet";
 import { useRepostContext } from "@/contexts/repost-context";
 import { useSavedContext } from "@/contexts/saved-context";
@@ -40,6 +41,7 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
   const [commentsCount, setCommentsCount] = useState(video.commentsCount);
   const [showComments, setShowComments] = useState(false);
   const [followingAuthor, setFollowingAuthor] = useState(video.isFollowingAuthor);
+  const [showShare, setShowShare] = useState(false);
   const { isVideoReposted, setVideoReposted } = useRepostContext();
   const reposted = isVideoReposted(video.id, video.isReposted);
   const { isVideoSaved, setVideoSaved } = useSavedContext();
@@ -242,6 +244,9 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
         <Pressable style={styles.statItem} onPress={handleToggleRepost} hitSlop={8}>
           <Ionicons name="repeat" size={22} color={reposted ? "#C06BE4" : "#fff"} />
         </Pressable>
+        <Pressable style={styles.statItem} onPress={() => setShowShare(true)} hitSlop={8}>
+          <Ionicons name="paper-plane-outline" size={22} color="#fff" />
+        </Pressable>
       </View>
 
       <View style={styles.bottomInfo}>
@@ -291,6 +296,7 @@ export function VideoFeedItem({ video, height, active }: VideoFeedItemProps) {
         onCommentAdded={() => setCommentsCount((count) => count + 1)}
         videoOwnerId={video.user_id}
       />
+      <ShareToSheet videoId={video.id} visible={showShare} onClose={() => setShowShare(false)} />
     </View>
   );
 }

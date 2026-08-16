@@ -1,4 +1,4 @@
-import type { Message, Profile } from "@/lib/database.types";
+import type { Event, Message, Profile, Video } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 
 export interface ConversationSummary {
@@ -7,6 +7,31 @@ export interface ConversationSummary {
   lastMessage: string;
   lastMessageAt: string;
   isMine: boolean;
+}
+
+export type SharedVideoPreview = Pick<Video, "id" | "video_url" | "thumbnail_url" | "description">;
+export type SharedEventPreview = Pick<Event, "id" | "title" | "cover_image_url">;
+
+export type ConversationMessage = Message & {
+  sharedVideo?: SharedVideoPreview | null;
+  sharedEvent?: SharedEventPreview | null;
+};
+
+/** Best-effort "you got a message" notification - shared by sendMessage and the share-to-chat helpers. */
+async function notifyNewMessage(receiverId: string, messageId: string, senderId: string) {
+  const { data: senderProfile } = await supabase.from("profiles").select("full_name").eq("id", senderId).single();
+
+  const { error } = await supabase.from("notifications").insert({
+    user_id: receiverId,
+    type: "new_message",
+    reference_id: messageId,
+    message: `${senderProfile?.full_name || "Someone"} sent you a message`,
+    is_read: false,
+  });
+
+  if (error) {
+    console.error("notifyNewMessage failed:", error.message, error);
+  }
 }
 
 /** One entry per person the current user has exchanged messages with, most recent first. */
@@ -49,10 +74,15 @@ export async function getConversations(): Promise<{ data: ConversationSummary[];
     return {
       data: partnerIds.map((partnerId) => {
         const message = latestByPartner.get(partnerId) as Message;
+        const lastMessage = message.shared_video_id
+          ? "🎥 Video"
+          : message.shared_event_id
+            ? "📅 Event"
+            : message.text;
         return {
           otherUserId: partnerId,
           otherUser: profileById.get(partnerId) ?? null,
-          lastMessage: message.text,
+          lastMessage,
           lastMessageAt: message.sent_at,
           isMine: message.sender_id === user.id,
         };
@@ -64,8 +94,8 @@ export async function getConversations(): Promise<{ data: ConversationSummary[];
   }
 }
 
-/** All messages exchanged with another user, oldest first. */
-export async function getConversation(otherUserId: string): Promise<{ data: Message[]; error?: string }> {
+/** All messages exchanged with another user, oldest first, with any shared video/event resolved to a preview. */
+export async function getConversation(otherUserId: string): Promise<{ data: ConversationMessage[]; error?: string }> {
   try {
     const {
       data: { session },
@@ -86,7 +116,28 @@ export async function getConversation(otherUserId: string): Promise<{ data: Mess
       return { data: [], error: error.message };
     }
 
-    return { data: (data as Message[]) ?? [] };
+    const messages = (data as Message[]) ?? [];
+    const videoIds = [...new Set(messages.map((m) => m.shared_video_id).filter((id): id is string => !!id))];
+    const eventIds = [...new Set(messages.map((m) => m.shared_event_id).filter((id): id is string => !!id))];
+
+    const [{ data: videos }, { data: events }] = await Promise.all([
+      videoIds.length > 0
+        ? supabase.from("videos").select("id, video_url, thumbnail_url, description").in("id", videoIds)
+        : Promise.resolve({ data: [] as SharedVideoPreview[] }),
+      eventIds.length > 0
+        ? supabase.from("events").select("id, title, cover_image_url").in("id", eventIds)
+        : Promise.resolve({ data: [] as SharedEventPreview[] }),
+    ]);
+    const videoById = new Map((videos ?? []).map((v) => [v.id, v]));
+    const eventById = new Map((events ?? []).map((e) => [e.id, e]));
+
+    return {
+      data: messages.map((message) => ({
+        ...message,
+        sharedVideo: message.shared_video_id ? (videoById.get(message.shared_video_id) ?? null) : null,
+        sharedEvent: message.shared_event_id ? (eventById.get(message.shared_event_id) ?? null) : null,
+      })),
+    };
   } catch (err) {
     console.error("getConversation failed:", err);
     return { data: [], error: err instanceof Error ? err.message : "Network error" };
@@ -154,28 +205,75 @@ export async function sendMessage(receiverId: string, text: string): Promise<{ d
       return { error: messageError.message };
     }
 
-    const { data: senderProfile } = await supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .single();
-
-    const { error: notificationError } = await supabase.from("notifications").insert({
-      user_id: receiverId,
-      type: "new_message",
-      reference_id: insertedMessage?.id ?? null,
-      message: `${senderProfile?.full_name || "Someone"} sent you a message`,
-      is_read: false,
-    });
-
-    if (notificationError) {
-      // The message itself was sent successfully - a failed notification isn't worth failing the whole action for.
-      console.error("sendMessage (notification) failed:", notificationError.message, notificationError);
+    if (insertedMessage) {
+      notifyNewMessage(receiverId, insertedMessage.id, user.id);
     }
 
     return { data: insertedMessage as Message };
   } catch (err) {
     console.error("sendMessage failed:", err);
+    return { error: err instanceof Error ? err.message : "Network error" };
+  }
+}
+
+/** Sends a video to another user as a chat message and creates a "new_message" notification for them. */
+export async function shareVideoToUser(receiverId: string, videoId: string): Promise<{ error?: string }> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return { error: "Not authenticated" };
+
+    const { data: insertedMessage, error } = await supabase
+      .from("messages")
+      .insert({ sender_id: user.id, receiver_id: receiverId, text: "Shared a video", shared_video_id: videoId })
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error("shareVideoToUser failed:", error.message, error);
+      return { error: error.message };
+    }
+
+    if (insertedMessage) {
+      notifyNewMessage(receiverId, insertedMessage.id, user.id);
+    }
+
+    return {};
+  } catch (err) {
+    console.error("shareVideoToUser failed:", err);
+    return { error: err instanceof Error ? err.message : "Network error" };
+  }
+}
+
+/** Sends an event to another user as a chat message and creates a "new_message" notification for them. */
+export async function shareEventToUser(receiverId: string, eventId: string): Promise<{ error?: string }> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const user = session?.user;
+    if (!user) return { error: "Not authenticated" };
+
+    const { data: insertedMessage, error } = await supabase
+      .from("messages")
+      .insert({ sender_id: user.id, receiver_id: receiverId, text: "Shared an event", shared_event_id: eventId })
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error("shareEventToUser failed:", error.message, error);
+      return { error: error.message };
+    }
+
+    if (insertedMessage) {
+      notifyNewMessage(receiverId, insertedMessage.id, user.id);
+    }
+
+    return {};
+  } catch (err) {
+    console.error("shareEventToUser failed:", err);
     return { error: err instanceof Error ? err.message : "Network error" };
   }
 }

@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { ShareToSheet } from "@/components/share-to-sheet";
 import { VideoCommentsSheet } from "@/components/video-comments-sheet";
 import { goToUserProfile } from "@/lib/profile-navigation";
 
@@ -23,6 +24,7 @@ export default function WatchVideoScreen() {
     p.play();
   });
   const [commentsVisible, setCommentsVisible] = useState(showComments === "1");
+  const [showShare, setShowShare] = useState(false);
 
   // Resumes playback when this screen regains focus - e.g. coming back from the actor's
   // profile, which we explicitly paused for before navigating there.
@@ -38,6 +40,11 @@ export default function WatchVideoScreen() {
       <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
         <Ionicons name="close" size={28} color="#fff" />
       </Pressable>
+      {videoId ? (
+        <Pressable onPress={() => setShowShare(true)} style={styles.shareButton} hitSlop={12}>
+          <Ionicons name="paper-plane-outline" size={22} color="#fff" />
+        </Pressable>
+      ) : null}
       {actorId ? (
         <Pressable
           style={styles.likerPill}
@@ -65,6 +72,7 @@ export default function WatchVideoScreen() {
           videoOwnerId={ownerId}
         />
       ) : null}
+      {videoId ? <ShareToSheet videoId={videoId} visible={showShare} onClose={() => setShowShare(false)} /> : null}
     </View>
   );
 }
@@ -73,6 +81,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
   video: { flex: 1 },
   closeButton: { position: "absolute", top: 50, left: 16 },
+  shareButton: { position: "absolute", top: 100, left: 16 },
   likerPill: {
     position: "absolute",
     top: 50,

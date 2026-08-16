@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { ShareToSheet } from "@/components/share-to-sheet";
 import { VideoCommentsSheet } from "@/components/video-comments-sheet";
 import { VideoLikesSheet } from "@/components/video-likes-sheet";
 import { useRepostContext } from "@/contexts/repost-context";
@@ -43,6 +44,7 @@ export function ProfileVideoCard({
   const [commentsCount, setCommentsCount] = useState(video.commentsCount);
   const [showComments, setShowComments] = useState(false);
   const [showLikers, setShowLikers] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { isVideoReposted, setVideoReposted } = useRepostContext();
   const reposted = isVideoReposted(video.id, video.isReposted ?? false);
@@ -92,20 +94,25 @@ export function ProfileVideoCard({
             <Ionicons name="pencil" size={16} color="#093A7D" />
           </Pressable>
         ) : null}
-        {showSaveButton ? (
-          <Pressable style={styles.saveVideoButton} onPress={handleToggleSave} hitSlop={8}>
-            <Ionicons
-              name={saved ? "bookmark" : "bookmark-outline"}
-              size={16}
-              color={saved ? "#C06BE4" : "#093A7D"}
-            />
+        <View style={styles.coverActionColumn}>
+          {showSaveButton ? (
+            <Pressable style={styles.coverActionButton} onPress={handleToggleSave} hitSlop={8}>
+              <Ionicons
+                name={saved ? "bookmark" : "bookmark-outline"}
+                size={16}
+                color={saved ? "#C06BE4" : "#093A7D"}
+              />
+            </Pressable>
+          ) : null}
+          {showRepostButton ? (
+            <Pressable style={styles.coverActionButton} onPress={handleToggleRepost} hitSlop={8}>
+              <Ionicons name="repeat" size={16} color={reposted ? "#C06BE4" : "#093A7D"} />
+            </Pressable>
+          ) : null}
+          <Pressable style={styles.coverActionButton} onPress={() => setShowShare(true)} hitSlop={8}>
+            <Ionicons name="paper-plane-outline" size={16} color="#093A7D" />
           </Pressable>
-        ) : null}
-        {showRepostButton ? (
-          <Pressable style={styles.repostVideoButton} onPress={handleToggleRepost} hitSlop={8}>
-            <Ionicons name="repeat" size={16} color={reposted ? "#C06BE4" : "#093A7D"} />
-          </Pressable>
-        ) : null}
+        </View>
       </View>
 
       <View style={styles.videoInfo}>
@@ -165,6 +172,7 @@ export function ProfileVideoCard({
         videoOwnerId={video.user_id}
       />
       <VideoLikesSheet videoId={video.id} visible={showLikers} onClose={() => setShowLikers(false)} />
+      <ShareToSheet videoId={video.id} visible={showShare} onClose={() => setShowShare(false)} />
     </Pressable>
   );
 }
@@ -201,18 +209,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 16,
   },
-  saveVideoButton: {
-    position: "absolute",
-    top: 10,
-    left: 10,
-    padding: 8,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-  },
-  repostVideoButton: {
-    position: "absolute",
-    top: 54,
-    left: 10,
+  coverActionColumn: { position: "absolute", top: 10, left: 10, gap: 8 },
+  coverActionButton: {
     padding: 8,
     backgroundColor: "#fff",
     borderRadius: 16,

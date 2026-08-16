@@ -16,6 +16,7 @@ import {
 
 import { Avatar } from "@/components/avatar";
 import { FollowBadge } from "@/components/follow-badge";
+import { ShareToSheet } from "@/components/share-to-sheet";
 import { APPLICATION_STATUS_LABEL, APPLICATION_STATUS_STYLE } from "@/lib/application-status";
 import type { Applicant } from "@/lib/database.types";
 import { goToUserProfile } from "@/lib/profile-navigation";
@@ -58,6 +59,7 @@ export default function EventDetailScreen() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [myApplication, setMyApplication] = useState<Applicant | null>(null);
   const [followingOrganizer, setFollowingOrganizer] = useState(false);
+  const [showShare, setShowShare] = useState(false);
 
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [message, setMessage] = useState("");
@@ -160,6 +162,9 @@ export default function EventDetailScreen() {
           )}
           <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
             <Ionicons name="close" size={22} color="#093A7D" />
+          </Pressable>
+          <Pressable onPress={() => setShowShare(true)} style={styles.shareButton} hitSlop={12}>
+            <Ionicons name="paper-plane-outline" size={20} color="#093A7D" />
           </Pressable>
           {actorId ? (
             <Pressable style={styles.actorPill} onPress={() => goToUserProfile(actorId, currentUserId)}>
@@ -282,6 +287,8 @@ export default function EventDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      <ShareToSheet eventId={id} visible={showShare} onClose={() => setShowShare(false)} />
     </View>
   );
 }
@@ -299,6 +306,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   coverImage: { width: "100%", height: "100%" },
+  shareButton: {
+    position: "absolute",
+    top: 50,
+    left: 60,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 6,
+  },
   closeButton: {
     position: "absolute",
     top: 50,

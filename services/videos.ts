@@ -168,6 +168,60 @@ export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: stri
   }
 }
 
+/** A single video with the same fields as the feed - for opening one video (e.g. shared in a chat) with full Feed-style UI. */
+export async function getFeedVideoById(videoId: string): Promise<FeedVideo | null> {
+  try {
+    const { data: video, error } = await supabase.from("videos").select("*").eq("id", videoId).single();
+    if (error || !video) return null;
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const currentUserId = session?.user?.id;
+
+    const [{ data: author }, { data: likes }, commentsCountByVideo, followingResult, savedResult, repostedResult] =
+      await Promise.all([
+        supabase.from("profiles").select("id, full_name, avatar_url").eq("id", (video as Video).user_id).maybeSingle(),
+        supabase.from("likes").select("user_id").eq("video_id", videoId),
+        getCountByVideoId("comments", [videoId]),
+        currentUserId
+          ? supabase
+              .from("follows")
+              .select("id")
+              .eq("follower_id", currentUserId)
+              .eq("following_id", (video as Video).user_id)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+        currentUserId
+          ? supabase.from("saved_videos").select("id").eq("user_id", currentUserId).eq("video_id", videoId).maybeSingle()
+          : Promise.resolve({ data: null }),
+        currentUserId
+          ? supabase
+              .from("reposted_videos")
+              .select("id")
+              .eq("user_id", currentUserId)
+              .eq("video_id", videoId)
+              .maybeSingle()
+          : Promise.resolve({ data: null }),
+      ]);
+
+    return {
+      ...(video as Video),
+      author: author ?? null,
+      likesCount: (likes ?? []).length,
+      isLiked: (likes ?? []).some((like) => like.user_id === currentUserId),
+      commentsCount: commentsCountByVideo.get(videoId) ?? 0,
+      isFollowingAuthor: !!followingResult.data,
+      isOwnVideo: (video as Video).user_id === currentUserId,
+      isSaved: !!savedResult.data,
+      isReposted: !!repostedResult.data,
+    };
+  } catch (err) {
+    console.error("getFeedVideoById failed:", err);
+    return null;
+  }
+}
+
 /** Increments a video's view count regardless of who owns it (see supabase-video-views-function.sql). */
 export async function incrementViewCount(videoId: string) {
   await supabase.rpc("increment_video_views", { video_id: videoId });

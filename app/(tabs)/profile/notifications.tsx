@@ -104,6 +104,8 @@ export default function NotificationsScreen() {
           pathname: "/(tabs)/profile/watch",
           params: {
             url: video.video_url,
+            videoId: video.id,
+            ownerId: video.user_id,
             actorId: liker?.id,
             actorName: liker?.full_name ?? undefined,
             actorAvatar: liker?.avatar_url ?? undefined,
@@ -136,6 +138,8 @@ export default function NotificationsScreen() {
             pathname: "/(tabs)/profile/watch",
             params: {
               url: video.video_url,
+              videoId: video.id,
+              ownerId: video.user_id,
               actorId: actor?.id,
               actorName: actor?.full_name ?? undefined,
               actorAvatar: actor?.avatar_url ?? undefined,

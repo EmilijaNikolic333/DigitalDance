@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { ShareToSheet } from "@/components/share-to-sheet";
 import { useRepostContext } from "@/contexts/repost-context";
 import { useSavedContext } from "@/contexts/saved-context";
 import type { Event } from "@/lib/database.types";
@@ -49,6 +51,7 @@ export function ProfileEventCard({
   const reposted = isEventReposted(event.id, isReposted ?? false);
   const { isEventSaved, setEventSaved } = useSavedContext();
   const saved = isEventSaved(event.id, isSaved ?? false);
+  const [showShare, setShowShare] = useState(false);
 
   const handleToggleSave = async () => {
     const nextSaved = !saved;
@@ -103,26 +106,31 @@ export function ProfileEventCard({
           ) : null}
         </View>
 
-        {onEditPress ? (
-          <Pressable style={styles.editButton} onPress={onEditPress} hitSlop={8}>
-            <Ionicons name="pencil" size={16} color="#093A7D" />
-          </Pressable>
-        ) : showSaveButton ? (
-          <View style={styles.actionColumn}>
-            <Pressable style={styles.editButton} onPress={handleToggleSave} hitSlop={8}>
-              <Ionicons
-                name={saved ? "bookmark" : "bookmark-outline"}
-                size={16}
-                color={saved ? "#C06BE4" : "#093A7D"}
-              />
+        <View style={styles.actionColumn}>
+          {onEditPress ? (
+            <Pressable style={styles.editButton} onPress={onEditPress} hitSlop={8}>
+              <Ionicons name="pencil" size={16} color="#093A7D" />
             </Pressable>
-            {showRepostButton ? (
-              <Pressable style={styles.editButton} onPress={handleToggleRepost} hitSlop={8}>
-                <Ionicons name="repeat" size={16} color={reposted ? "#C06BE4" : "#093A7D"} />
+          ) : showSaveButton ? (
+            <>
+              <Pressable style={styles.editButton} onPress={handleToggleSave} hitSlop={8}>
+                <Ionicons
+                  name={saved ? "bookmark" : "bookmark-outline"}
+                  size={16}
+                  color={saved ? "#C06BE4" : "#093A7D"}
+                />
               </Pressable>
-            ) : null}
-          </View>
-        ) : null}
+              {showRepostButton ? (
+                <Pressable style={styles.editButton} onPress={handleToggleRepost} hitSlop={8}>
+                  <Ionicons name="repeat" size={16} color={reposted ? "#C06BE4" : "#093A7D"} />
+                </Pressable>
+              ) : null}
+            </>
+          ) : null}
+          <Pressable style={styles.editButton} onPress={() => setShowShare(true)} hitSlop={8}>
+            <Ionicons name="paper-plane-outline" size={16} color="#093A7D" />
+          </Pressable>
+        </View>
       </View>
 
       {onApplicationsPress ? (
@@ -136,6 +144,8 @@ export function ProfileEventCard({
           <Text style={styles.applicationsButtonText}>View details</Text>
         </Pressable>
       ) : null}
+
+      <ShareToSheet eventId={event.id} visible={showShare} onClose={() => setShowShare(false)} />
     </CardWrapper>
   );
 }
