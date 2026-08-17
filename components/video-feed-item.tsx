@@ -56,9 +56,19 @@ export function VideoFeedItem({ video, height, active, initialShowComments }: Vi
   const heartScale = useRef(new Animated.Value(0)).current;
   const heartOpacity = useRef(new Animated.Value(0)).current;
 
+  const hasSong = !!video.song_preview_url;
+
   const player = useVideoPlayer(video.video_url, (p) => {
     p.loop = true;
     p.timeUpdateEventInterval = 0.5;
+    if (hasSong) p.muted = true;
+  });
+
+  // expo-video can play audio-only sources too, so the chosen song's 30s
+  // preview is played back as a second, looping "track" synced to the main
+  // player's play/pause state - the original video's own audio stays muted.
+  const songPlayer = useVideoPlayer(video.song_preview_url ?? null, (p) => {
+    p.loop = true;
   });
 
   const { isPlaying } = useEvent(player, "playingChange", { isPlaying: player.playing });
@@ -72,26 +82,35 @@ export function VideoFeedItem({ video, height, active, initialShowComments }: Vi
   useEffect(() => {
     if (active) {
       player.play();
+      if (hasSong) songPlayer.play();
       // Counts as a fresh view every time this video becomes the active/visible one
       // again (scroll away and back), not just the first time it's ever seen.
       setDisplayedViews((v) => v + 1);
       incrementViewCount(video.id);
     } else {
       player.pause();
+      if (hasSong) songPlayer.pause();
     }
-  }, [active, player, video.id]);
+  }, [active, player, songPlayer, hasSong, video.id]);
 
   const togglePlayback = () => {
     if (player.playing) {
       player.pause();
+      if (hasSong) songPlayer.pause();
     } else {
       player.play();
+      if (hasSong) songPlayer.play();
     }
   };
 
   const toggleMute = () => {
-    player.muted = !player.muted;
-    setMuted(player.muted);
+    if (hasSong) {
+      songPlayer.muted = !songPlayer.muted;
+      setMuted(songPlayer.muted);
+    } else {
+      player.muted = !player.muted;
+      setMuted(player.muted);
+    }
   };
 
   const handleToggleLike = async () => {
