@@ -350,7 +350,11 @@ export default function ProfileScreen() {
           </LinearGradient>
 
           <View style={styles.headerButtons}>
-            <Image source={require("@/assets/images/icon.png")} style={styles.logoSmall} contentFit="contain" />
+            <Image
+              source={darkMode ? require("@/assets/images/icon-dark.png") : require("@/assets/images/icon.png")}
+              style={styles.logoSmall}
+              contentFit="contain"
+            />
 
             <Pressable style={styles.editButtonSmall} onPress={() => router.push("/(tabs)/profile/edit")}>
               <Text style={styles.editButtonSmallText}>Edit profile</Text>

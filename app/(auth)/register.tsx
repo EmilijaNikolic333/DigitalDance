@@ -29,7 +29,7 @@ export default function RegisterScreen() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { palette } = useTheme();
+  const { palette, darkMode } = useTheme();
   const styles = useMemo(() => createStyles(palette), [palette]);
 
   const handleRegister = async () => {
@@ -88,7 +88,11 @@ export default function RegisterScreen() {
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <LinearGradient colors={palette.gradient} style={styles.background}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <Image source={require("@/assets/images/icon.png")} style={styles.logo} contentFit="contain" />
+          <Image
+            source={darkMode ? require("@/assets/images/icon-dark.png") : require("@/assets/images/icon.png")}
+            style={styles.logo}
+            contentFit="contain"
+          />
           <Text style={styles.title}>Welcome!</Text>
           <Text style={styles.subtitle}>Create your account.</Text>
 

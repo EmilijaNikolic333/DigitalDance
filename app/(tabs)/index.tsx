@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { VideoFeedItem } from "@/components/video-feed-item";
+import { useTheme } from "@/contexts/theme-context";
 import { type FeedVideo, getFeedVideos } from "@/services/videos";
 
 export default function FeedScreen() {
@@ -49,10 +50,11 @@ export default function FeedScreen() {
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 80 }).current;
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const { darkMode } = useTheme();
 
   const header = (
     <Image
-      source={require("@/assets/images/icon.png")}
+      source={darkMode ? require("@/assets/images/icon-dark.png") : require("@/assets/images/icon.png")}
       style={[styles.headerLogo, { top: insets.top + 8 }]}
       contentFit="contain"
     />

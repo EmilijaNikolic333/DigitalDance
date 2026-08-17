@@ -8,16 +8,24 @@ import { useTheme } from "@/contexts/theme-context";
 import type { Palette } from "@/lib/theme";
 
 export default function OnboardingScreen() {
-  const { palette } = useTheme();
+  const { palette, darkMode } = useTheme();
   const styles = useMemo(() => createStyles(palette), [palette]);
 
   return (
     <LinearGradient colors={palette.gradient} style={styles.background}>
       <View style={styles.container}>
-        <Image source={require("@/assets/images/icon.png")} style={styles.logo} contentFit="contain" />
+        <Image
+          source={darkMode ? require("@/assets/images/icon-dark.png") : require("@/assets/images/icon.png")}
+          style={styles.logo}
+          contentFit="contain"
+        />
 
         <Image
-          source={require("@/assets/images/onboarding-dancer.png")}
+          source={
+            darkMode
+              ? require("@/assets/images/onboarding-dancer-dark.png")
+              : require("@/assets/images/onboarding-dancer.png")
+          }
           style={styles.dancer}
           contentFit="contain"
         />

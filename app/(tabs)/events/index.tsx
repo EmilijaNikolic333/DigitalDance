@@ -113,7 +113,11 @@ export default function EventsListScreen() {
   return (
     <LinearGradient colors={palette.gradient} style={styles.background}>
       <ScrollView contentContainerStyle={styles.container}>
-        <Image source={require("@/assets/images/icon.png")} style={styles.logo} contentFit="contain" />
+        <Image
+          source={darkMode ? require("@/assets/images/icon-dark.png") : require("@/assets/images/icon.png")}
+          style={styles.logo}
+          contentFit="contain"
+        />
         <Text style={styles.subtitle}>Find and apply to upcoming auditions and dance workshops!</Text>
 
         <View style={styles.mapCard}>

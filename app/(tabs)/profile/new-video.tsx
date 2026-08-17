@@ -57,7 +57,7 @@ export default function NewVideoScreen() {
   const [searching, setSearching] = useState(false);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { palette } = useTheme();
+  const { palette, darkMode } = useTheme();
   const styles = useMemo(() => createStyles(palette), [palette]);
 
   useEffect(() => {
@@ -256,7 +256,11 @@ export default function NewVideoScreen() {
           </Pressable>
 
           <Image
-            source={require("@/assets/images/onboarding-dancer.png")}
+            source={
+              darkMode
+                ? require("@/assets/images/onboarding-dancer-dark.png")
+                : require("@/assets/images/onboarding-dancer.png")
+            }
             style={styles.dancer}
             contentFit="contain"
           />

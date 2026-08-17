@@ -16,7 +16,7 @@ interface BiometricLockProps {
 export function BiometricLock({ onUnlock, onUsePassword }: BiometricLockProps) {
   const [failed, setFailed] = useState(false);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
-  const { palette } = useTheme();
+  const { palette, darkMode } = useTheme();
   const styles = useMemo(() => createStyles(palette), [palette]);
 
   const tryAuthenticate = useCallback(async () => {
@@ -46,7 +46,11 @@ export function BiometricLock({ onUnlock, onUsePassword }: BiometricLockProps) {
   return (
     <LinearGradient colors={palette.gradient} style={styles.background}>
       <View style={styles.container}>
-        <Image source={require("@/assets/images/icon.png")} style={styles.logo} contentFit="contain" />
+        <Image
+          source={darkMode ? require("@/assets/images/icon-dark.png") : require("@/assets/images/icon.png")}
+          style={styles.logo}
+          contentFit="contain"
+        />
 
         <View style={styles.iconCircle}>
           <Ionicons name="keypad-outline" size={48} color={palette.text} />
