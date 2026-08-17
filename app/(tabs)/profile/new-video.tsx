@@ -19,6 +19,7 @@ import {
 } from "react-native";
 
 import { CameraRecorder } from "@/components/camera-recorder";
+import { VideoPreviewModal } from "@/components/video-preview-modal";
 import { useTheme } from "@/contexts/theme-context";
 import { DANCE_STYLES } from "@/lib/profile-options";
 import { supabase } from "@/lib/supabase";
@@ -59,6 +60,7 @@ export default function NewVideoScreen() {
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const { palette, darkMode } = useTheme();
   const styles = useMemo(() => createStyles(palette), [palette]);
 
@@ -277,6 +279,11 @@ export default function NewVideoScreen() {
 
           <Text style={styles.title}>Add details</Text>
 
+          <Pressable style={styles.previewButton} onPress={() => setShowPreview(true)}>
+            <Ionicons name="play-circle-outline" size={20} color={palette.text} />
+            <Text style={styles.previewButtonText}>Preview video</Text>
+          </Pressable>
+
           <Text style={styles.label}>Cover</Text>
           <Text style={styles.helperText}>Pick a frame from your video</Text>
           {generatingFrames ? (
@@ -389,6 +396,13 @@ export default function NewVideoScreen() {
             {posting ? <ActivityIndicator color="#fff" /> : <Text style={styles.postButtonText}>Post video</Text>}
           </Pressable>
         </ScrollView>
+
+        <VideoPreviewModal
+          visible={showPreview}
+          onClose={() => setShowPreview(false)}
+          videoUri={videoUri}
+          song={selectedSong}
+        />
       </LinearGradient>
     </KeyboardAvoidingView>
   );
@@ -416,6 +430,17 @@ function createStyles(p: Palette) {
       marginBottom: 14,
     },
     sourceButtonText: { color: p.buttonText, fontWeight: "700", fontSize: 15 },
+    previewButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: p.card,
+      paddingVertical: 10,
+      paddingHorizontal: 18,
+      borderRadius: 20,
+      marginBottom: 20,
+    },
+    previewButtonText: { color: p.text, fontWeight: "700", fontSize: 14 },
     dancer: { width: "100%", height: 220, marginTop: 24 },
     label: { fontSize: 14, fontWeight: "700", color: p.text, alignSelf: "flex-start", marginBottom: 4 },
     helperText: { fontSize: 12, color: p.textMuted, alignSelf: "flex-start", marginBottom: 10 },
