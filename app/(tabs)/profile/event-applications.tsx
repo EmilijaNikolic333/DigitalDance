@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
 import { useTheme } from "@/contexts/theme-context";
@@ -48,7 +48,19 @@ export default function EventApplicationsScreen() {
     }, [id])
   );
 
-  const handleUpdateStatus = async (applicationId: string, status: ApplicantStatus) => {
+  const handleUpdateStatus = (applicationId: string, status: ApplicantStatus) => {
+    const verb = status === "accepted" ? "accept" : "reject";
+    Alert.alert(
+      status === "accepted" ? "Accept applicant" : "Reject applicant",
+      `Are you sure you want to ${verb} this application?`,
+      [
+        { text: "No", style: "cancel" },
+        { text: "Yes", onPress: () => applyStatusUpdate(applicationId, status) },
+      ]
+    );
+  };
+
+  const applyStatusUpdate = async (applicationId: string, status: ApplicantStatus) => {
     setUpdatingId(applicationId);
     const { error } = await updateApplicationStatus(applicationId, status);
     setUpdatingId(null);

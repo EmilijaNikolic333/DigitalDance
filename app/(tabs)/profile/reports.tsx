@@ -3,7 +3,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useTheme } from "@/contexts/theme-context";
 import type { Palette } from "@/lib/theme";
@@ -47,7 +47,14 @@ export default function ReportsScreen() {
     }, [load])
   );
 
-  const handleApprove = async (report: PendingReport) => {
+  const handleApprove = (report: PendingReport) => {
+    Alert.alert("Remove content", "Are you sure you want to remove this content?", [
+      { text: "No", style: "cancel" },
+      { text: "Yes", onPress: () => applyApprove(report) },
+    ]);
+  };
+
+  const applyApprove = async (report: PendingReport) => {
     setBusyKey(report.id);
     const { error: approveError } = await approveReport(report);
     setBusyKey(null);
@@ -67,7 +74,14 @@ export default function ReportsScreen() {
     setPending((current) => current.filter((r) => r.id !== report.id));
   };
 
-  const handleRestore = async (item: HiddenContentItem) => {
+  const handleRestore = (item: HiddenContentItem) => {
+    Alert.alert("Restore content", "Are you sure you want to restore this content?", [
+      { text: "No", style: "cancel" },
+      { text: "Yes", onPress: () => applyRestore(item) },
+    ]);
+  };
+
+  const applyRestore = async (item: HiddenContentItem) => {
     const key = `${item.type}-${item.id}`;
     setBusyKey(key);
     const { error: restoreError } = await restoreContent(item.type, item.id);

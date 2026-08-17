@@ -20,6 +20,7 @@ import {
 } from "react-native";
 
 import { useTheme } from "@/contexts/theme-context";
+import { DANCE_STYLES } from "@/lib/profile-options";
 import { supabase } from "@/lib/supabase";
 import type { Palette } from "@/lib/theme";
 import { type Song, searchSongs } from "@/services/music";
@@ -29,8 +30,6 @@ import {
   updateVideo,
   uploadVideoThumbnail,
 } from "@/services/videos";
-
-const DANCE_STYLES = ["hip hop", "contemporary", "ballet", "breakdance", "jazz", "latin"];
 
 /** Resolves with the video's duration in seconds, or null if it can't be determined in time. */
 function getVideoDurationSeconds(uri: string): Promise<number | null> {
@@ -162,7 +161,7 @@ export default function EditVideoScreen() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     setError(null);
 
     if (!caption.trim()) {
@@ -177,6 +176,15 @@ export default function EditVideoScreen() {
       setError("Choose a cover image for your video.");
       return;
     }
+
+    Alert.alert("Save changes", "Are you sure you want to save these changes?", [
+      { text: "No", style: "cancel" },
+      { text: "Yes", onPress: saveVideo },
+    ]);
+  };
+
+  const saveVideo = async () => {
+    if (!thumbnailUri || !style) return;
 
     setSaving(true);
 

@@ -114,7 +114,7 @@ export default function EditProfileScreen() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     setError(null);
 
     if (!name.trim()) {
@@ -126,6 +126,13 @@ export default function EditProfileScreen() {
       return;
     }
 
+    Alert.alert("Save changes", "Are you sure you want to save these changes?", [
+      { text: "No", style: "cancel" },
+      { text: "Yes", onPress: saveProfile },
+    ]);
+  };
+
+  const saveProfile = async () => {
     setSaving(true);
 
     let newAvatarUrl = avatarUrl;
@@ -172,7 +179,7 @@ export default function EditProfileScreen() {
     router.back();
   };
 
-  const handleChangePassword = async () => {
+  const handleChangePassword = () => {
     setPasswordError(null);
 
     if (newPassword.length < 6) {
@@ -184,6 +191,13 @@ export default function EditProfileScreen() {
       return;
     }
 
+    Alert.alert("Change password", "Are you sure you want to change your password?", [
+      { text: "No", style: "cancel" },
+      { text: "Yes", onPress: savePassword },
+    ]);
+  };
+
+  const savePassword = async () => {
     setPasswordSaving(true);
     const { error: passwordUpdateError } = await changePassword(newPassword);
     setPasswordSaving(false);

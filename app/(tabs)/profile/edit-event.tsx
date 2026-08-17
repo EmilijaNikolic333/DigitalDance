@@ -213,7 +213,7 @@ export default function EditEventScreen() {
     setStep("form");
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     setError(null);
 
     if (!title.trim()) {
@@ -236,6 +236,15 @@ export default function EditEventScreen() {
       setError("Set a date and time.");
       return;
     }
+
+    Alert.alert("Save changes", "Are you sure you want to save these changes?", [
+      { text: "No", style: "cancel" },
+      { text: "Yes", onPress: saveEvent },
+    ]);
+  };
+
+  const saveEvent = async () => {
+    if (!eventType || !place || !dateTime) return;
 
     setSaving(true);
 

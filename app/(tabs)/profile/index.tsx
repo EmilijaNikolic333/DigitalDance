@@ -43,9 +43,14 @@ const EXPERIENCE_LABEL: Record<string, string> = {
 type ProfileTab = "videos" | "events" | "applications" | "saved" | "reposted";
 
 export default function ProfileScreen() {
-  const { tab: tabParam, eventsSubTab: eventsSubTabParam } = useLocalSearchParams<{
+  const {
+    tab: tabParam,
+    eventsSubTab: eventsSubTabParam,
+    applicationsSubTab: applicationsSubTabParam,
+  } = useLocalSearchParams<{
     tab?: string;
     eventsSubTab?: string;
+    applicationsSubTab?: string;
   }>();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab | null>(null);
@@ -100,13 +105,16 @@ export default function ProfileScreen() {
     if (eventsSubTabParam === "done" || eventsSubTabParam === "your") {
       setEventsSubTab(eventsSubTabParam);
     }
-  }, [tabParam, eventsSubTabParam]);
+    if (applicationsSubTabParam === "done" || applicationsSubTabParam === "events") {
+      setApplicationsSubTab(applicationsSubTabParam);
+    }
+  }, [tabParam, eventsSubTabParam, applicationsSubTabParam]);
 
   useEffect(() => {
-    if ((tabParam || eventsSubTabParam) && tabsSectionY > 0) {
+    if ((tabParam || eventsSubTabParam || applicationsSubTabParam) && tabsSectionY > 0) {
       scrollViewRef.current?.scrollTo({ y: tabsSectionY, animated: true });
     }
-  }, [tabParam, eventsSubTabParam, tabsSectionY]);
+  }, [tabParam, eventsSubTabParam, applicationsSubTabParam, tabsSectionY]);
 
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);

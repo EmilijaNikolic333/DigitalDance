@@ -187,7 +187,7 @@ export default function NotificationsScreen() {
         if (event && event.organizer_id === userData.user?.id) {
           router.push({ pathname: "/(tabs)/profile", params: { tab: "events", eventsSubTab: "done" } });
         } else {
-          router.push({ pathname: "/(tabs)/profile", params: { tab: "applications" } });
+          router.push({ pathname: "/(tabs)/profile", params: { tab: "applications", applicationsSubTab: "done" } });
         }
         break;
       }
