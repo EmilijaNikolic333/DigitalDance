@@ -19,12 +19,11 @@ import {
 } from "react-native";
 
 import { useTheme } from "@/contexts/theme-context";
+import { DANCE_STYLES } from "@/lib/profile-options";
 import { supabase } from "@/lib/supabase";
 import type { Palette } from "@/lib/theme";
 import { type Song, searchSongs } from "@/services/music";
 import { createVideo, uploadVideoFile, uploadVideoThumbnail } from "@/services/videos";
-
-const DANCE_STYLES = ["hip hop", "contemporary", "ballet", "breakdance", "jazz", "latin"];
 
 /** Resolves with the video's duration in seconds, or null if it can't be determined in time. */
 function getVideoDurationSeconds(uri: string): Promise<number | null> {
