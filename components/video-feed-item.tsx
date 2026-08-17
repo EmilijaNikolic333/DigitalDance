@@ -65,11 +65,22 @@ export function VideoFeedItem({ video, height, active, initialShowComments }: Vi
   });
 
   // expo-video can play audio-only sources too, so the chosen song's 30s
-  // preview is played back as a second, looping "track" synced to the main
-  // player's play/pause state - the original video's own audio stays muted.
+  // preview is played back as a second track synced to the main player's
+  // play/pause state - the original video's own audio stays muted. It isn't
+  // looped on its own: it's restarted every time the video loops (below), so
+  // only as much of the song plays as the video itself actually lasts.
   const songPlayer = useVideoPlayer(video.song_preview_url ?? null, (p) => {
-    p.loop = true;
+    p.loop = false;
   });
+
+  useEffect(() => {
+    if (!hasSong) return;
+    const subscription = player.addListener("playToEnd", () => {
+      songPlayer.currentTime = 0;
+      songPlayer.play();
+    });
+    return () => subscription.remove();
+  }, [player, songPlayer, hasSong]);
 
   const { isPlaying } = useEvent(player, "playingChange", { isPlaying: player.playing });
   const { currentTime } = useEvent(player, "timeUpdate", {

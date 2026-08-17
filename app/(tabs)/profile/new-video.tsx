@@ -18,6 +18,7 @@ import {
   View,
 } from "react-native";
 
+import { CameraRecorder } from "@/components/camera-recorder";
 import { useTheme } from "@/contexts/theme-context";
 import { DANCE_STYLES } from "@/lib/profile-options";
 import { supabase } from "@/lib/supabase";
@@ -57,6 +58,7 @@ export default function NewVideoScreen() {
   const [searching, setSearching] = useState(false);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showCamera, setShowCamera] = useState(false);
   const { palette, darkMode } = useTheme();
   const styles = useMemo(() => createStyles(palette), [palette]);
 
@@ -134,21 +136,15 @@ export default function NewVideoScreen() {
     }
   };
 
-  const recordWithCamera = async () => {
+  const recordWithCamera = () => {
     setError(null);
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) {
-      setError("Camera access is needed to record a video. Please allow it in your device settings.");
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["videos"],
-      videoMaxDuration: 60,
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setVideoUri(result.assets[0].uri);
-    }
+    setShowCamera(true);
+  };
+
+  const handleRecorded = (uri: string, song: Song | null) => {
+    setVideoUri(uri);
+    if (song) setSelectedSong(song);
+    setShowCamera(false);
   };
 
   const uploadFromGallery = async () => {
@@ -265,6 +261,8 @@ export default function NewVideoScreen() {
             contentFit="contain"
           />
         </View>
+
+        <CameraRecorder visible={showCamera} onClose={() => setShowCamera(false)} onRecorded={handleRecorded} />
       </LinearGradient>
     );
   }

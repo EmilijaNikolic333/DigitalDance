@@ -63,6 +63,13 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow DigitalDance to use your camera to record dance videos.",
+          "microphonePermission": "Allow DigitalDance to use your microphone to record sound with your videos."
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "DigitalDance uses your location to show auditions near you and help you set the location when creating an event."
