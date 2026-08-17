@@ -12,7 +12,7 @@ import { FollowListSheet } from "@/components/follow-list-sheet";
 import { MyApplicationCard } from "@/components/my-application-card";
 import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
-import { RatingRow } from "@/components/rating-row";
+import { RateSheet } from "@/components/rate-sheet";
 import { useRepostContext } from "@/contexts/repost-context";
 import { useSavedContext } from "@/contexts/saved-context";
 import { useTheme } from "@/contexts/theme-context";
@@ -59,11 +59,13 @@ export default function ProfileScreen() {
   const [repostedEvents, setRepostedEvents] = useState<RepostedEventItem[]>([]);
   const [repostedSubTab, setRepostedSubTab] = useState<"videos" | "events">("videos");
   const [eventsSubTab, setEventsSubTab] = useState<"your" | "done">("your");
+  const [applicationsSubTab, setApplicationsSubTab] = useState<"events" | "done">("events");
   const [givenRatings, setGivenRatings] = useState<Map<string, EventRating>>(new Map());
   const [receivedRatings, setReceivedRatings] = useState<Map<string, EventRating>>(new Map());
   const [organizersById, setOrganizersById] = useState<Map<string, Pick<Profile, "id" | "full_name" | "avatar_url">>>(
     new Map()
   );
+  const [rateSheetApp, setRateSheetApp] = useState<MyApplication | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [videosError, setVideosError] = useState<string | null>(null);
@@ -119,7 +121,7 @@ export default function ProfileScreen() {
         getOwnProfile(),
         getOwnVideos(),
         getOwnEvents(),
-        getMyApplications(VISIBLE_ITEMS_LIMIT + 1),
+        getMyApplications(),
         userId ? getFollowCounts(userId) : Promise.resolve({ followers: 0, following: 0 }),
         getMyAppliedEventIds(),
         getSavedVideos(),
@@ -475,17 +477,28 @@ export default function ProfileScreen() {
                       return doneEvents.length === 0 ? (
                         <Text style={styles.emptyTabText}>No completed events yet.</Text>
                       ) : (
-                        doneEvents.map((event) => (
-                          <EventRatingCard
-                            key={event.id}
-                            event={event}
-                            givenRatings={givenRatings}
-                            receivedRatings={receivedRatings}
-                            onRated={(rateeId, rating) =>
-                              setGivenRatings((current) => new Map(current).set(`${event.id}:${rateeId}`, rating))
-                            }
-                          />
-                        ))
+                        <>
+                          {doneEvents.length > VISIBLE_ITEMS_LIMIT ? (
+                            <Pressable
+                              style={styles.viewAllRow}
+                              onPress={() => router.push("/(tabs)/profile/all-done-events")}
+                            >
+                              <Text style={styles.viewAllText}>View all done events</Text>
+                            </Pressable>
+                          ) : null}
+
+                          {doneEvents.slice(0, VISIBLE_ITEMS_LIMIT).map((event) => (
+                            <EventRatingCard
+                              key={event.id}
+                              event={event}
+                              givenRatings={givenRatings}
+                              receivedRatings={receivedRatings}
+                              onRated={(rateeId, rating) =>
+                                setGivenRatings((current) => new Map(current).set(`${event.id}:${rateeId}`, rating))
+                              }
+                            />
+                          ))}
+                        </>
                       );
                     })()}
                   </>
@@ -533,48 +546,93 @@ export default function ProfileScreen() {
 
                 {!applicationsError && applications.length === 0 ? (
                   <Text style={styles.emptyTabText}>You haven&apos;t applied to any events yet.</Text>
-                ) : null}
-
-                {applications.length > VISIBLE_ITEMS_LIMIT ? (
-                  <Pressable
-                    style={styles.viewAllRow}
-                    onPress={() => router.push("/(tabs)/profile/all-applications")}
-                  >
-                    <Text style={styles.viewAllText}>View all applications</Text>
-                  </Pressable>
-                ) : null}
-
-                {applications.slice(0, VISIBLE_ITEMS_LIMIT).map((application) => {
-                  const eventIsPast = application.event ? new Date(application.event.event_date).getTime() < Date.now() : false;
-                  const canRateOrganizer = application.status === "accepted" && application.event && eventIsPast;
-                  const organizer = application.event ? organizersById.get(application.event.organizer_id) : null;
-
-                  return (
-                    <View key={application.id} style={styles.applicationBlock}>
-                      <MyApplicationCard
-                        application={application}
-                        onViewDetails={() =>
-                          router.push({ pathname: "/event/[id]", params: { id: application.event_id } })
-                        }
-                      />
-                      {canRateOrganizer && application.event ? (
-                        <RatingRow
-                          eventId={application.event.id}
-                          userId={application.event.organizer_id}
-                          name={organizer?.full_name || "Organizer"}
-                          avatar={organizer?.avatar_url}
-                          given={givenRatings.get(`${application.event.id}:${application.event.organizer_id}`)}
-                          received={receivedRatings.get(`${application.event.id}:${application.event.organizer_id}`)}
-                          onRated={(rating) =>
-                            setGivenRatings((current) =>
-                              new Map(current).set(`${application.event!.id}:${application.event!.organizer_id}`, rating)
-                            )
-                          }
-                        />
-                      ) : null}
+                ) : (
+                  <>
+                    <View style={styles.subTagRow}>
+                      <Pressable
+                        style={[styles.subTag, applicationsSubTab === "events" && styles.subTagSelected]}
+                        onPress={() => setApplicationsSubTab("events")}
+                      >
+                        <Text
+                          style={[styles.subTagText, applicationsSubTab === "events" && styles.subTagTextSelected]}
+                        >
+                          Events
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        style={[styles.subTag, applicationsSubTab === "done" && styles.subTagSelected]}
+                        onPress={() => setApplicationsSubTab("done")}
+                      >
+                        <Text style={[styles.subTagText, applicationsSubTab === "done" && styles.subTagTextSelected]}>
+                          Done events
+                        </Text>
+                      </Pressable>
                     </View>
-                  );
-                })}
+
+                    {(() => {
+                      const isDone = (a: MyApplication) =>
+                        !!a.event && new Date(a.event.event_date).getTime() < Date.now();
+                      const filtered = applications.filter((a) =>
+                        applicationsSubTab === "done" ? isDone(a) : !isDone(a)
+                      );
+
+                      if (filtered.length === 0) {
+                        return (
+                          <Text style={styles.emptyTabText}>
+                            {applicationsSubTab === "done" ? "No completed applications yet." : "No upcoming applications."}
+                          </Text>
+                        );
+                      }
+
+                      return (
+                        <>
+                          {filtered.length > VISIBLE_ITEMS_LIMIT ? (
+                            <Pressable
+                              style={styles.viewAllRow}
+                              onPress={() =>
+                                router.push({
+                                  pathname: "/(tabs)/profile/all-applications",
+                                  params: { subTab: applicationsSubTab },
+                                })
+                              }
+                            >
+                              <Text style={styles.viewAllText}>View all applications</Text>
+                            </Pressable>
+                          ) : null}
+
+                          {filtered.slice(0, VISIBLE_ITEMS_LIMIT).map((application) => {
+                            const eventIsPast = application.event
+                              ? new Date(application.event.event_date).getTime() < Date.now()
+                              : false;
+                            const canRateOrganizer = application.status === "accepted" && application.event && eventIsPast;
+                            const alreadyRated =
+                              canRateOrganizer && application.event
+                                ? givenRatings.has(`${application.event.id}:${application.event.organizer_id}`)
+                                : false;
+
+                            return (
+                              <MyApplicationCard
+                                key={application.id}
+                                application={application}
+                                onViewDetails={() =>
+                                  router.push({ pathname: "/event/[id]", params: { id: application.event_id } })
+                                }
+                                rateButton={
+                                  canRateOrganizer
+                                    ? {
+                                        label: alreadyRated ? "View rating" : "Submit rating",
+                                        onPress: () => setRateSheetApp(application),
+                                      }
+                                    : undefined
+                                }
+                              />
+                            );
+                          })}
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
               </View>
             ) : null}
 
@@ -775,6 +833,27 @@ export default function ProfileScreen() {
             onClose={() => setShowFollowing(false)}
           />
         </>
+      ) : null}
+
+      {rateSheetApp?.event ? (
+        <RateSheet
+          visible={!!rateSheetApp}
+          onClose={() => setRateSheetApp(null)}
+          title={rateSheetApp.event.title}
+          eventId={rateSheetApp.event.id}
+          targets={[
+            {
+              userId: rateSheetApp.event.organizer_id,
+              name: organizersById.get(rateSheetApp.event.organizer_id)?.full_name || "Organizer",
+              avatar: organizersById.get(rateSheetApp.event.organizer_id)?.avatar_url,
+              given: givenRatings.get(`${rateSheetApp.event.id}:${rateSheetApp.event.organizer_id}`),
+              received: receivedRatings.get(`${rateSheetApp.event.id}:${rateSheetApp.event.organizer_id}`),
+            },
+          ]}
+          onRated={(userId, rating) =>
+            setGivenRatings((current) => new Map(current).set(`${rateSheetApp.event!.id}:${userId}`, rating))
+          }
+        />
       ) : null}
 
       <ActionSheet

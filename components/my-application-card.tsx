@@ -19,9 +19,11 @@ function formatEventDate(iso: string) {
 interface MyApplicationCardProps {
   application: MyApplication;
   onViewDetails: () => void;
+  /** Only present once the event has passed and this application was accepted. */
+  rateButton?: { label: string; onPress: () => void };
 }
 
-export function MyApplicationCard({ application, onViewDetails }: MyApplicationCardProps) {
+export function MyApplicationCard({ application, onViewDetails, rateButton }: MyApplicationCardProps) {
   const event = application.event;
   const statusStyle = APPLICATION_STATUS_STYLE[application.status];
   const { palette } = useTheme();
@@ -65,9 +67,16 @@ export function MyApplicationCard({ application, onViewDetails }: MyApplicationC
         </View>
       </View>
 
-      <Pressable style={styles.detailsButton} onPress={onViewDetails}>
-        <Text style={styles.detailsButtonText}>View details</Text>
-      </Pressable>
+      <View style={styles.actionsRow}>
+        {rateButton ? (
+          <Pressable style={styles.rateButton} onPress={rateButton.onPress}>
+            <Text style={styles.rateButtonText}>{rateButton.label}</Text>
+          </Pressable>
+        ) : null}
+        <Pressable style={styles.detailsButton} onPress={onViewDetails}>
+          <Text style={styles.detailsButtonText}>View details</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -97,13 +106,19 @@ function createStyles(p: Palette) {
     metaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
     metaText: { fontSize: 11, color: p.textMuted },
     statusText: { fontSize: 11, fontWeight: "700" },
+    actionsRow: { flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 10 },
+    rateButton: {
+      backgroundColor: p.card,
+      paddingVertical: 6,
+      paddingHorizontal: 16,
+      borderRadius: 14,
+    },
+    rateButtonText: { color: p.text, fontSize: 12, fontWeight: "700" },
     detailsButton: {
-      alignSelf: "flex-end",
       backgroundColor: p.buttonBg,
       paddingVertical: 6,
       paddingHorizontal: 16,
       borderRadius: 14,
-      marginTop: 10,
     },
     detailsButtonText: { color: p.buttonText, fontSize: 12, fontWeight: "700" },
   });

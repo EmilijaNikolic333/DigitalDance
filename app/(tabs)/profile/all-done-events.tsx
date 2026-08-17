@@ -4,14 +4,17 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { ProfileEventCard } from "@/components/profile-event-card";
+import { EventRatingCard } from "@/components/event-rating-card";
 import { useTheme } from "@/contexts/theme-context";
-import type { Event } from "@/lib/database.types";
+import type { EventRating } from "@/lib/database.types";
 import type { Palette } from "@/lib/theme";
-import { getOwnEvents } from "@/services/events";
+import { getOwnEvents, type OwnEvent } from "@/services/events";
+import { getMyGivenRatings, getMyReceivedRatings } from "@/services/ratings";
 
-export default function AllEventsScreen() {
-  const [events, setEvents] = useState<Event[]>([]);
+export default function AllDoneEventsScreen() {
+  const [events, setEvents] = useState<OwnEvent[]>([]);
+  const [givenRatings, setGivenRatings] = useState<Map<string, EventRating>>(new Map());
+  const [receivedRatings, setReceivedRatings] = useState<Map<string, EventRating>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasLoadedRef = useRef(false);
@@ -20,12 +23,16 @@ export default function AllEventsScreen() {
 
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
-    getOwnEvents().then(({ data, error: loadError }) => {
-      setEvents(data);
-      setError(loadError ?? null);
-      setLoading(false);
-      hasLoadedRef.current = true;
-    });
+    Promise.all([getOwnEvents(), getMyGivenRatings(), getMyReceivedRatings()]).then(
+      ([{ data, error: loadError }, given, received]) => {
+        setEvents(data);
+        setGivenRatings(given);
+        setReceivedRatings(received);
+        setError(loadError ?? null);
+        setLoading(false);
+        hasLoadedRef.current = true;
+      }
+    );
   }, []);
 
   useFocusEffect(
@@ -34,6 +41,8 @@ export default function AllEventsScreen() {
     }, [load])
   );
 
+  const doneEvents = events.filter((event) => new Date(event.event_date).getTime() < Date.now());
+
   return (
     <LinearGradient colors={palette.gradient} style={styles.background}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -41,7 +50,7 @@ export default function AllEventsScreen() {
           <Ionicons name="close" size={26} color={palette.text} />
         </Pressable>
 
-        <Text style={styles.title}>Your events</Text>
+        <Text style={styles.title}>Done events</Text>
 
         {loading ? (
           <ActivityIndicator size="large" color={palette.text} style={{ marginTop: 40 }} />
@@ -52,18 +61,21 @@ export default function AllEventsScreen() {
               <Text style={styles.retryButtonText}>Try again</Text>
             </Pressable>
           </View>
+        ) : doneEvents.length === 0 ? (
+          <Text style={styles.emptyText}>No completed events yet.</Text>
         ) : (
           <View style={styles.list}>
-            {events
-              .filter((event) => new Date(event.event_date).getTime() >= Date.now())
-              .map((event) => (
-                <ProfileEventCard
-                  key={event.id}
-                  event={event}
-                  onEditPress={() => router.push(`/(tabs)/profile/edit-event?id=${event.id}`)}
-                  onApplicationsPress={() => router.push(`/(tabs)/profile/event-applications?id=${event.id}`)}
-                />
-              ))}
+            {doneEvents.map((event) => (
+              <EventRatingCard
+                key={event.id}
+                event={event}
+                givenRatings={givenRatings}
+                receivedRatings={receivedRatings}
+                onRated={(rateeId, rating) =>
+                  setGivenRatings((current) => new Map(current).set(`${event.id}:${rateeId}`, rating))
+                }
+              />
+            ))}
           </View>
         )}
       </ScrollView>
@@ -79,7 +91,7 @@ function createStyles(p: Palette) {
     title: { fontSize: 22, fontWeight: "700", color: p.text, marginBottom: 8 },
     list: { width: "100%" },
     errorBox: { alignItems: "center", marginTop: 40 },
-    emptyText: { fontSize: 14, color: p.text, textAlign: "center" },
+    emptyText: { fontSize: 14, color: p.text, textAlign: "center", marginTop: 20 },
     retryButton: {
       marginTop: 16,
       backgroundColor: p.buttonBg,

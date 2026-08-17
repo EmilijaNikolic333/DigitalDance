@@ -34,6 +34,8 @@ interface ProfileEventCardProps {
   /** Shows a repost toggle, below the save button - for events you don't organize. */
   showRepostButton?: boolean;
   isReposted?: boolean;
+  /** Shown to the left of "View applications"/"View details". */
+  rateButton?: { label: string; onPress: () => void };
 }
 
 export function ProfileEventCard({
@@ -46,6 +48,7 @@ export function ProfileEventCard({
   isSaved,
   showRepostButton,
   isReposted,
+  rateButton,
 }: ProfileEventCardProps) {
   const CardWrapper = onPress ? Pressable : View;
   const showViewDetails = onPress && !onEditPress && !onApplicationsPress;
@@ -137,16 +140,24 @@ export function ProfileEventCard({
         </View>
       </View>
 
-      {onApplicationsPress ? (
-        <Pressable style={styles.applicationsButton} onPress={onApplicationsPress}>
-          <Text style={styles.applicationsButtonText}>View applications</Text>
-        </Pressable>
-      ) : null}
-
-      {showViewDetails ? (
-        <Pressable style={styles.applicationsButton} onPress={onPress}>
-          <Text style={styles.applicationsButtonText}>View details</Text>
-        </Pressable>
+      {onApplicationsPress || showViewDetails || rateButton ? (
+        <View style={styles.bottomActionsRow}>
+          {rateButton ? (
+            <Pressable style={styles.rateButton} onPress={rateButton.onPress}>
+              <Text style={styles.rateButtonText}>{rateButton.label}</Text>
+            </Pressable>
+          ) : null}
+          {onApplicationsPress ? (
+            <Pressable style={styles.applicationsButton} onPress={onApplicationsPress}>
+              <Text style={styles.applicationsButtonText}>View applications</Text>
+            </Pressable>
+          ) : null}
+          {showViewDetails ? (
+            <Pressable style={styles.applicationsButton} onPress={onPress}>
+              <Text style={styles.applicationsButtonText}>View details</Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
 
       <ShareToSheet eventId={event.id} visible={showShare} onClose={() => setShowShare(false)} />
@@ -190,13 +201,19 @@ function createStyles(p: Palette) {
       borderRadius: 14,
     },
     actionColumn: { gap: 8 },
+    bottomActionsRow: { flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 10 },
+    rateButton: {
+      backgroundColor: p.gradient[0],
+      paddingVertical: 6,
+      paddingHorizontal: 16,
+      borderRadius: 14,
+    },
+    rateButtonText: { color: p.text, fontSize: 12, fontWeight: "700" },
     applicationsButton: {
-      alignSelf: "flex-end",
       backgroundColor: p.buttonBg,
       paddingVertical: 6,
       paddingHorizontal: 16,
       borderRadius: 14,
-      marginTop: 10,
     },
     applicationsButtonText: { color: p.buttonText, fontSize: 12, fontWeight: "700" },
   });

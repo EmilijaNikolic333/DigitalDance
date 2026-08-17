@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
 import { StarRating } from "@/components/star-rating";
@@ -29,8 +29,15 @@ export function RatingRow({ eventId, userId, name, avatar, given, received, onRa
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (rating === 0) return;
+    Alert.alert("Submit rating", "Are you sure you rated well?", [
+      { text: "No", style: "cancel" },
+      { text: "Yes", onPress: submitRating },
+    ]);
+  };
+
+  const submitRating = async () => {
     setError(null);
     setSubmitting(true);
     const { error: submitError } = await rateForEvent(eventId, userId, rating, comment);
