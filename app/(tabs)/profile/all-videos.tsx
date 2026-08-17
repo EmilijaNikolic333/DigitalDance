@@ -74,7 +74,7 @@ function createStyles(p: Palette) {
   return StyleSheet.create({
     background: { flex: 1 },
     container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
-    closeButton: { position: "absolute", top: 16, left: 16 },
+    closeButton: { position: "absolute", top: 50, left: 16 },
     title: { fontSize: 22, fontWeight: "700", color: p.text, marginBottom: 8 },
     list: { width: "100%" },
     errorBox: { alignItems: "center", marginTop: 40 },
