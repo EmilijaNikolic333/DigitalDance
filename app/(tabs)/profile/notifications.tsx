@@ -8,6 +8,7 @@ import { useTheme } from "@/contexts/theme-context";
 import type { Notification, NotificationType } from "@/lib/database.types";
 import type { Palette } from "@/lib/theme";
 import { goToUserProfile } from "@/lib/profile-navigation";
+import { supabase } from "@/lib/supabase";
 import { getApplicantById } from "@/services/applications";
 import { getEventById } from "@/services/events";
 import { getMessageById } from "@/services/messages";
@@ -25,6 +26,7 @@ const ICON_BY_TYPE: Record<NotificationType, keyof typeof Ionicons.glyphMap> = {
   application_status: "checkmark-circle",
   new_applicant: "person",
   new_repost: "repeat",
+  rate_reminder: "star",
 };
 
 function formatNotificationTime(iso: string) {
@@ -174,6 +176,21 @@ export default function NotificationsScreen() {
         // reference_id is the new follower's id - always someone else.
         goToUserProfile(notification.reference_id, null);
         break;
+      case "rate_reminder": {
+        // reference_id is the event's id - route straight to wherever the rating UI actually
+        // lives: Done events (organizer) or Applications (accepted dancer).
+        const [event, { data: userData }] = await Promise.all([
+          getEventById(notification.reference_id),
+          supabase.auth.getUser(),
+        ]);
+        router.back();
+        if (event && event.organizer_id === userData.user?.id) {
+          router.push({ pathname: "/(tabs)/profile", params: { tab: "events", eventsSubTab: "done" } });
+        } else {
+          router.push({ pathname: "/(tabs)/profile", params: { tab: "applications" } });
+        }
+        break;
+      }
       default:
         break;
     }

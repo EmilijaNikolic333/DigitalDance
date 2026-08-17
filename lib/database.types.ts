@@ -25,7 +25,8 @@ export type NotificationType =
   | "new_like"
   | "new_save"
   | "new_applicant"
-  | "new_repost";
+  | "new_repost"
+  | "rate_reminder";
 
 export interface Profile {
   id: string;
@@ -162,6 +163,16 @@ export interface Notification {
   actor_id: string | null;
   message: string | null;
   is_read: boolean;
+  created_at: string;
+}
+
+export interface EventRating {
+  id: string;
+  event_id: string;
+  rater_id: string;
+  ratee_id: string;
+  rating: number;
+  comment: string | null;
   created_at: string;
 }
 

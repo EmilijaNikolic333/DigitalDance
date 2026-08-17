@@ -7,7 +7,7 @@ export type ApplicantWithDancer = Applicant & {
 };
 
 export type MyApplication = Applicant & {
-  event: Pick<Event, "id" | "title" | "cover_image_url" | "event_date" | "city"> | null;
+  event: Pick<Event, "id" | "title" | "cover_image_url" | "event_date" | "city" | "organizer_id"> | null;
 };
 
 /** The current dancer's application for a given event, if any. */
@@ -138,7 +138,7 @@ export async function getMyApplications(limit?: number): Promise<{ data: MyAppli
     const eventIds = [...new Set((applications as Applicant[]).map((a) => a.event_id))];
     const { data: events } = await supabase
       .from("events")
-      .select("id, title, cover_image_url, event_date, city")
+      .select("id, title, cover_image_url, event_date, city, organizer_id")
       .in("id", eventIds);
 
     const eventById = new Map((events ?? []).map((e) => [e.id, e]));

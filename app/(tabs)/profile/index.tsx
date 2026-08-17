@@ -1,20 +1,22 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ActionSheet } from "@/components/action-sheet";
 import { Avatar } from "@/components/avatar";
+import { EventRatingCard } from "@/components/event-rating-card";
 import { FollowListSheet } from "@/components/follow-list-sheet";
 import { MyApplicationCard } from "@/components/my-application-card";
 import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
+import { RatingRow } from "@/components/rating-row";
 import { useRepostContext } from "@/contexts/repost-context";
 import { useSavedContext } from "@/contexts/saved-context";
 import { useTheme } from "@/contexts/theme-context";
-import type { Profile } from "@/lib/database.types";
+import type { EventRating, Profile } from "@/lib/database.types";
 import { getPalette, type Palette } from "@/lib/theme";
 import { supabase } from "@/lib/supabase";
 import { getMyApplications, getMyAppliedEventIds, type MyApplication } from "@/services/applications";
@@ -23,6 +25,7 @@ import { getOwnEvents, type OwnEvent } from "@/services/events";
 import { getFollowCounts } from "@/services/follows";
 import { getOwnProfile } from "@/services/profiles";
 import { getUnreadNotificationsCount } from "@/services/notifications";
+import { getMyGivenRatings, getMyReceivedRatings, sendPendingRateReminders } from "@/services/ratings";
 import { getRepostedEvents, type RepostedEventItem } from "@/services/reposted-events";
 import { getRepostedVideos, type RepostedVideoItem } from "@/services/reposted-videos";
 import { getSavedEvents, type SavedEventItem } from "@/services/saved-events";
@@ -40,6 +43,10 @@ const EXPERIENCE_LABEL: Record<string, string> = {
 type ProfileTab = "videos" | "events" | "applications" | "saved" | "reposted";
 
 export default function ProfileScreen() {
+  const { tab: tabParam, eventsSubTab: eventsSubTabParam } = useLocalSearchParams<{
+    tab?: string;
+    eventsSubTab?: string;
+  }>();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab | null>(null);
   const [videos, setVideos] = useState<OwnVideo[]>([]);
@@ -51,6 +58,12 @@ export default function ProfileScreen() {
   const [repostedVideos, setRepostedVideos] = useState<RepostedVideoItem[]>([]);
   const [repostedEvents, setRepostedEvents] = useState<RepostedEventItem[]>([]);
   const [repostedSubTab, setRepostedSubTab] = useState<"videos" | "events">("videos");
+  const [eventsSubTab, setEventsSubTab] = useState<"your" | "done">("your");
+  const [givenRatings, setGivenRatings] = useState<Map<string, EventRating>>(new Map());
+  const [receivedRatings, setReceivedRatings] = useState<Map<string, EventRating>>(new Map());
+  const [organizersById, setOrganizersById] = useState<Map<string, Pick<Profile, "id" | "full_name" | "avatar_url">>>(
+    new Map()
+  );
   const [loading, setLoading] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [videosError, setVideosError] = useState<string | null>(null);
@@ -69,15 +82,38 @@ export default function ProfileScreen() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const previousRoleRef = useRef<string | null>(null);
   const hasLoadedRef = useRef(false);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [tabsSectionY, setTabsSectionY] = useState(0);
   const { isVideoReposted, isEventReposted } = useRepostContext();
   const { isVideoSaved, isEventSaved } = useSavedContext();
   const { darkMode, toggleDarkMode, palette } = useTheme();
   const styles = useMemo(() => createStyles(palette), [palette]);
 
+  // Deep-linked from a "rate reminder" notification - jump straight to where the rating UI is,
+  // and scroll down to it too (it's well below the profile header/bio).
+  useEffect(() => {
+    if (tabParam === "events" || tabParam === "applications" || tabParam === "videos" || tabParam === "saved" || tabParam === "reposted") {
+      setActiveTab(tabParam);
+    }
+    if (eventsSubTabParam === "done" || eventsSubTabParam === "your") {
+      setEventsSubTab(eventsSubTabParam);
+    }
+  }, [tabParam, eventsSubTabParam]);
+
+  useEffect(() => {
+    if ((tabParam || eventsSubTabParam) && tabsSectionY > 0) {
+      scrollViewRef.current?.scrollTo({ y: tabsSectionY, animated: true });
+    }
+  }, [tabParam, eventsSubTabParam, tabsSectionY]);
+
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
     supabase.auth.getSession().then(({ data: { session } }) => {
       const userId = session?.user?.id;
+
+      // Best-effort, fire-and-forget - creates any missing "please rate" notifications for
+      // events that have already passed. Never awaited so it can't block this screen.
+      sendPendingRateReminders();
 
       Promise.all([
         getOwnProfile(),
@@ -91,6 +127,8 @@ export default function ProfileScreen() {
         getRepostedVideos(),
         getRepostedEvents(),
         getUnreadNotificationsCount(),
+        getMyGivenRatings(),
+        getMyReceivedRatings(),
       ]).then(
         ([
           profileResult,
@@ -104,6 +142,8 @@ export default function ProfileScreen() {
           repostedVideosResult,
           repostedEventsResult,
           unreadCount,
+          givenRatingsResult,
+          receivedRatingsResult,
         ]) => {
           setProfile(profileResult.data);
           setProfileError(profileResult.error ?? null);
@@ -125,6 +165,28 @@ export default function ProfileScreen() {
           setUnreadNotifications(unreadCount);
           setFollowerCount(followCounts.followers);
           setFollowingCount(followCounts.following);
+          setGivenRatings(givenRatingsResult);
+          setReceivedRatings(receivedRatingsResult);
+
+          // Rating an organizer needs their name/avatar - fetch just the ones behind an
+          // accepted application whose event has already happened.
+          const now = Date.now();
+          const organizerIds = [
+            ...new Set(
+              applicationsResult.data
+                .filter((a) => a.status === "accepted" && a.event && new Date(a.event.event_date).getTime() < now)
+                .map((a) => a.event!.organizer_id)
+            ),
+          ];
+          if (organizerIds.length > 0) {
+            supabase
+              .from("profiles")
+              .select("id, full_name, avatar_url")
+              .in("id", organizerIds)
+              .then(({ data }) => {
+                setOrganizersById(new Map((data ?? []).map((o) => [o.id, o])));
+              });
+          }
           // Keep the user's chosen tab across a plain background refocus reload, but jump back
           // to the role default whenever the roles themselves changed (e.g. they just checked
           // "Dancer" on Edit Profile, on top of already being an organizer) - dancer always
@@ -252,7 +314,7 @@ export default function ProfileScreen() {
 
   return (
     <LinearGradient colors={palette.gradient} style={styles.background}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView ref={scrollViewRef} contentContainerStyle={styles.container}>
         {profileError && profile ? (
           <Text style={styles.inlineError}>Couldn&apos;t refresh your profile. Check your connection.</Text>
         ) : null}
@@ -328,7 +390,7 @@ export default function ProfileScreen() {
         )}
 
         {profileTabs.length > 0 ? (
-          <>
+          <View style={styles.tabsSection} onLayout={(e) => setTabsSectionY(e.nativeEvent.layout.y)}>
             <View style={styles.sectionDivider} />
 
             <View style={styles.tagRow}>
@@ -356,27 +418,78 @@ export default function ProfileScreen() {
                 </Pressable>
                 <Text style={styles.addVideoSubtitle}>Post auditions and events to find your next dancers!</Text>
 
+                <View style={styles.subTagRow}>
+                  <Pressable
+                    style={[styles.subTag, eventsSubTab === "your" && styles.subTagSelected]}
+                    onPress={() => setEventsSubTab("your")}
+                  >
+                    <Text style={[styles.subTagText, eventsSubTab === "your" && styles.subTagTextSelected]}>
+                      Your events
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.subTag, eventsSubTab === "done" && styles.subTagSelected]}
+                    onPress={() => setEventsSubTab("done")}
+                  >
+                    <Text style={[styles.subTagText, eventsSubTab === "done" && styles.subTagTextSelected]}>
+                      Done events
+                    </Text>
+                  </Pressable>
+                </View>
+
                 {eventsError ? <Text style={styles.inlineError}>Couldn&apos;t load your events.</Text> : null}
 
-                {!eventsError && events.length === 0 ? (
-                  <Text style={styles.emptyTabText}>You haven&apos;t posted any events yet.</Text>
-                ) : null}
+                {eventsSubTab === "your" ? (
+                  <>
+                    {(() => {
+                      const upcomingEvents = events.filter((e) => new Date(e.event_date).getTime() >= Date.now());
+                      return (
+                        <>
+                          {!eventsError && upcomingEvents.length === 0 ? (
+                            <Text style={styles.emptyTabText}>No upcoming events.</Text>
+                          ) : null}
 
-                {events.length > VISIBLE_ITEMS_LIMIT ? (
-                  <Pressable style={styles.viewAllRow} onPress={() => router.push("/(tabs)/profile/all-events")}>
-                    <Text style={styles.viewAllText}>View all events</Text>
-                  </Pressable>
-                ) : null}
+                          {upcomingEvents.length > VISIBLE_ITEMS_LIMIT ? (
+                            <Pressable style={styles.viewAllRow} onPress={() => router.push("/(tabs)/profile/all-events")}>
+                              <Text style={styles.viewAllText}>View all events</Text>
+                            </Pressable>
+                          ) : null}
 
-                {events.slice(0, VISIBLE_ITEMS_LIMIT).map((event) => (
-                  <ProfileEventCard
-                    key={event.id}
-                    event={event}
-                    onEditPress={() => router.push(`/(tabs)/profile/edit-event?id=${event.id}`)}
-                    onApplicationsPress={() => router.push(`/(tabs)/profile/event-applications?id=${event.id}`)}
-                    isApplied={appliedEventIds.has(event.id)}
-                  />
-                ))}
+                          {upcomingEvents.slice(0, VISIBLE_ITEMS_LIMIT).map((event) => (
+                            <ProfileEventCard
+                              key={event.id}
+                              event={event}
+                              onEditPress={() => router.push(`/(tabs)/profile/edit-event?id=${event.id}`)}
+                              onApplicationsPress={() => router.push(`/(tabs)/profile/event-applications?id=${event.id}`)}
+                              isApplied={appliedEventIds.has(event.id)}
+                            />
+                          ))}
+                        </>
+                      );
+                    })()}
+                  </>
+                ) : (
+                  <>
+                    {(() => {
+                      const doneEvents = events.filter((e) => new Date(e.event_date).getTime() < Date.now());
+                      return doneEvents.length === 0 ? (
+                        <Text style={styles.emptyTabText}>No completed events yet.</Text>
+                      ) : (
+                        doneEvents.map((event) => (
+                          <EventRatingCard
+                            key={event.id}
+                            event={event}
+                            givenRatings={givenRatings}
+                            receivedRatings={receivedRatings}
+                            onRated={(rateeId, rating) =>
+                              setGivenRatings((current) => new Map(current).set(`${event.id}:${rateeId}`, rating))
+                            }
+                          />
+                        ))
+                      );
+                    })()}
+                  </>
+                )}
               </View>
             ) : null}
 
@@ -431,15 +544,37 @@ export default function ProfileScreen() {
                   </Pressable>
                 ) : null}
 
-                {applications.slice(0, VISIBLE_ITEMS_LIMIT).map((application) => (
-                  <MyApplicationCard
-                    key={application.id}
-                    application={application}
-                    onViewDetails={() =>
-                      router.push({ pathname: "/event/[id]", params: { id: application.event_id } })
-                    }
-                  />
-                ))}
+                {applications.slice(0, VISIBLE_ITEMS_LIMIT).map((application) => {
+                  const eventIsPast = application.event ? new Date(application.event.event_date).getTime() < Date.now() : false;
+                  const canRateOrganizer = application.status === "accepted" && application.event && eventIsPast;
+                  const organizer = application.event ? organizersById.get(application.event.organizer_id) : null;
+
+                  return (
+                    <View key={application.id} style={styles.applicationBlock}>
+                      <MyApplicationCard
+                        application={application}
+                        onViewDetails={() =>
+                          router.push({ pathname: "/event/[id]", params: { id: application.event_id } })
+                        }
+                      />
+                      {canRateOrganizer && application.event ? (
+                        <RatingRow
+                          eventId={application.event.id}
+                          userId={application.event.organizer_id}
+                          name={organizer?.full_name || "Organizer"}
+                          avatar={organizer?.avatar_url}
+                          given={givenRatings.get(`${application.event.id}:${application.event.organizer_id}`)}
+                          received={receivedRatings.get(`${application.event.id}:${application.event.organizer_id}`)}
+                          onRated={(rating) =>
+                            setGivenRatings((current) =>
+                              new Map(current).set(`${application.event!.id}:${application.event!.organizer_id}`, rating)
+                            )
+                          }
+                        />
+                      ) : null}
+                    </View>
+                  );
+                })}
               </View>
             ) : null}
 
@@ -621,7 +756,7 @@ export default function ProfileScreen() {
                 )}
               </View>
             ) : null}
-          </>
+          </View>
         ) : null}
       </ScrollView>
 
@@ -836,6 +971,8 @@ function createStyles(p: Palette) {
     subTagText: { fontSize: 11, fontWeight: "700", color: p.accent },
     subTagTextSelected: { color: "#fff" },
     tabContent: { width: "100%", alignItems: "center" },
+    applicationBlock: { width: "100%" },
+    tabsSection: { width: "100%", alignItems: "center" },
     emptyTabText: { fontSize: 13, color: p.accent, fontWeight: "700", textAlign: "center", marginTop: 20 },
     viewAllRow: { width: "100%", alignItems: "flex-end", marginTop: 16 },
     viewAllText: { fontSize: 12, color: p.accent, fontWeight: "700" },
