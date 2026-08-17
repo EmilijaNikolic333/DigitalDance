@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { MyApplicationCard } from "@/components/my-application-card";
+import { useTheme } from "@/contexts/theme-context";
+import type { Palette } from "@/lib/theme";
 import { getMyApplications, type MyApplication } from "@/services/applications";
 
 export default function AllApplicationsScreen() {
@@ -12,6 +14,8 @@ export default function AllApplicationsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasLoadedRef = useRef(false);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
@@ -30,16 +34,16 @@ export default function AllApplicationsScreen() {
   );
 
   return (
-    <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+    <LinearGradient colors={palette.gradient} style={styles.background}>
       <ScrollView contentContainerStyle={styles.container}>
         <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
-          <Ionicons name="close" size={26} color="#093A7D" />
+          <Ionicons name="close" size={26} color={palette.text} />
         </Pressable>
 
         <Text style={styles.title}>Your applications</Text>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color={palette.text} style={{ marginTop: 40 }} />
         ) : error ? (
           <View style={styles.errorBox}>
             <Text style={styles.emptyText}>Couldn&apos;t load your applications. Check your connection.</Text>
@@ -67,20 +71,22 @@ export default function AllApplicationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1 },
-  container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
-  closeButton: { position: "absolute", top: 16, left: 16 },
-  title: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginBottom: 8 },
-  emptyText: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 40 },
-  list: { width: "100%" },
-  errorBox: { alignItems: "center" },
-  retryButton: {
-    marginTop: 16,
-    backgroundColor: "#093A7D",
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 20,
-  },
-  retryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    background: { flex: 1 },
+    container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
+    closeButton: { position: "absolute", top: 16, left: 16 },
+    title: { fontSize: 22, fontWeight: "700", color: p.text, marginBottom: 8 },
+    emptyText: { fontSize: 14, color: p.text, textAlign: "center", marginTop: 40 },
+    list: { width: "100%" },
+    errorBox: { alignItems: "center" },
+    retryButton: {
+      marginTop: 16,
+      backgroundColor: p.buttonBg,
+      paddingVertical: 10,
+      paddingHorizontal: 24,
+      borderRadius: 20,
+    },
+    retryButtonText: { color: p.buttonText, fontWeight: "700", fontSize: 14 },
+  });
+}

@@ -2,12 +2,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { Tabs } from "expo-router";
 
+import { useTheme } from "@/contexts/theme-context";
+
 export default function TabLayout() {
+  const { darkMode, palette } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#C06BE4",
-        tabBarInactiveTintColor: "#093A7D",
+        tabBarActiveTintColor: palette.accent,
+        tabBarInactiveTintColor: palette.text,
+        tabBarStyle: darkMode ? { backgroundColor: palette.card, borderTopColor: palette.gradient[0] } : undefined,
         headerShown: false,
       }}
     >
@@ -19,7 +24,13 @@ export default function TabLayout() {
           headerShown: false,
           tabBarIcon: ({ focused }) => (
             <Image
-              source={focused ? require("@/assets/images/homePurple.png") : require("@/assets/images/homeBlue.png")}
+              source={
+                focused
+                  ? require("@/assets/images/homePurple.png")
+                  : darkMode
+                    ? require("@/assets/images/homeLight.png")
+                    : require("@/assets/images/homeBlue.png")
+              }
               style={{ width: 24, height: 24 }}
               contentFit="contain"
             />

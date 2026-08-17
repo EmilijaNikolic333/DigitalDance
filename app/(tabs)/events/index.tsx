@@ -8,7 +8,9 @@ import { Calendar, type DateData } from "react-native-calendars";
 import MapView, { Marker, type Region } from "react-native-maps";
 
 import { EventCard } from "@/components/event-card";
+import { useTheme } from "@/contexts/theme-context";
 import { isExpoGo } from "@/lib/is-expo-go";
+import type { Palette } from "@/lib/theme";
 import { getMyAppliedEventIds } from "@/services/applications";
 import { type EventWithOrganizer, getActiveEvents } from "@/services/events";
 
@@ -39,6 +41,8 @@ export default function EventsListScreen() {
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const hasLoadedRef = useRef(false);
+  const { darkMode, palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
@@ -71,8 +75,8 @@ export default function EventsListScreen() {
   }, [events]);
 
   const markedDates = useMemo(() => {
-    const eventDayStyle = { container: { backgroundColor: "#C06BE4", borderRadius: 16 }, text: { color: "#fff", fontWeight: "700" as const } };
-    const selectedDayStyle = { container: { backgroundColor: "#093A7D", borderRadius: 16 }, text: { color: "#fff", fontWeight: "700" as const } };
+    const eventDayStyle = { container: { backgroundColor: palette.accent, borderRadius: 16 }, text: { color: "#fff", fontWeight: "700" as const } };
+    const selectedDayStyle = { container: { backgroundColor: palette.selectedBg, borderRadius: 16 }, text: { color: palette.selectedText, fontWeight: "700" as const } };
 
     const marks: Record<string, { customStyles: typeof eventDayStyle }> = {};
     for (const key of eventsByDate.keys()) {
@@ -82,7 +86,7 @@ export default function EventsListScreen() {
       marks[selectedDate] = { customStyles: selectedDayStyle };
     }
     return marks;
-  }, [eventsByDate, selectedDate]);
+  }, [eventsByDate, selectedDate, palette]);
 
   const selectedDateEvents = selectedDate ? eventsByDate.get(selectedDate) ?? [] : [];
 
@@ -107,7 +111,7 @@ export default function EventsListScreen() {
   const goToEvent = (id: string) => router.push({ pathname: "/event/[id]", params: { id } });
 
   return (
-    <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+    <LinearGradient colors={palette.gradient} style={styles.background}>
       <ScrollView contentContainerStyle={styles.container}>
         <Image source={require("@/assets/images/icon.png")} style={styles.logo} contentFit="contain" />
         <Text style={styles.subtitle}>Find and apply to upcoming auditions and dance workshops!</Text>
@@ -128,7 +132,7 @@ export default function EventsListScreen() {
                         {event.title}
                       </Text>
                     </View>
-                    <Ionicons name="location" size={30} color="#C06BE4" />
+                    <Ionicons name="location" size={30} color={palette.accent} />
                   </View>
                 </Marker>
               ))}
@@ -147,19 +151,20 @@ export default function EventsListScreen() {
             markedDates={markedDates}
             onDayPress={(day: DateData) => setSelectedDate((current) => (current === day.dateString ? null : day.dateString))}
             theme={{
-              backgroundColor: "#fff",
-              calendarBackground: "#fff",
-              textSectionTitleColor: "#9B7FC7",
-              dayTextColor: "#093A7D",
-              todayTextColor: "#C06BE4",
-              monthTextColor: "#093A7D",
-              arrowColor: "#093A7D",
-              selectedDayBackgroundColor: "#093A7D",
-              selectedDayTextColor: "#fff",
-              dotColor: "#C06BE4",
+              backgroundColor: palette.card,
+              calendarBackground: palette.card,
+              textSectionTitleColor: palette.textMuted,
+              dayTextColor: palette.text,
+              todayTextColor: palette.accent,
+              monthTextColor: palette.text,
+              arrowColor: palette.text,
+              selectedDayBackgroundColor: palette.selectedBg,
+              selectedDayTextColor: palette.selectedText,
+              dotColor: palette.accent,
               textDayFontWeight: "600",
               textMonthFontWeight: "700",
             }}
+            key={darkMode ? "dark" : "light"}
           />
 
           {selectedDate ? (
@@ -182,7 +187,7 @@ export default function EventsListScreen() {
                       </Text>
                       <Text style={styles.calendarEventTime}>{formatEventTime(event.event_date)}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color="#9B7FC7" />
+                    <Ionicons name="chevron-forward" size={18} color={palette.textMuted} />
                   </Pressable>
                 ))}
               </View>
@@ -191,7 +196,7 @@ export default function EventsListScreen() {
         </View>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color={palette.text} style={{ marginTop: 40 }} />
         ) : error ? (
           <View style={styles.errorBox}>
             <Text style={styles.emptyText}>Couldn&apos;t load events. Check your connection.</Text>
@@ -218,79 +223,81 @@ export default function EventsListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1 },
-  container: { alignItems: "center", padding: 20, paddingTop: 60, paddingBottom: 40 },
-  logo: { width: "100%", height: 60, marginBottom: 8 },
-  subtitle: { fontSize: 13, color: "#9B7FC7", textAlign: "center", marginBottom: 16, paddingHorizontal: 16 },
-  mapCard: {
-    width: "100%",
-    height: 200,
-    borderRadius: 20,
-    overflow: "hidden",
-    marginBottom: 20,
-    borderWidth: 3,
-    borderColor: "#fff",
-  },
-  map: { flex: 1 },
-  mapUnavailable: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#C06BE4",
-  },
-  mapUnavailableText: { color: "#fff", fontSize: 12, fontWeight: "700", paddingHorizontal: 24, textAlign: "center" },
-  calendarCard: {
-    width: "100%",
-    borderRadius: 20,
-    overflow: "hidden",
-    marginBottom: 20,
-    backgroundColor: "#fff",
-    borderWidth: 3,
-    borderColor: "#fff",
-  },
-  calendarEmptyText: { fontSize: 13, color: "#9B7FC7", textAlign: "center", paddingVertical: 16 },
-  calendarEventsList: { padding: 12, paddingTop: 0, gap: 8 },
-  calendarEventRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#F8ECFF",
-    borderRadius: 14,
-    padding: 8,
-  },
-  calendarEventCover: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
-    backgroundColor: "#C06BE4",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  calendarEventCoverImage: { width: "100%", height: "100%" },
-  calendarEventInfo: { flex: 1, gap: 1 },
-  calendarEventTitle: { fontSize: 13, fontWeight: "700", color: "#093A7D" },
-  calendarEventTime: { fontSize: 11, color: "#9B7FC7" },
-  pin: { alignItems: "center" },
-  pinLabel: {
-    backgroundColor: "#C06BE4",
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    maxWidth: 170,
-    marginBottom: 3,
-  },
-  pinLabelText: { color: "#fff", fontSize: 11, fontWeight: "700", textAlign: "center" },
-  emptyText: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 40 },
-  errorBox: { alignItems: "center", marginTop: 40 },
-  retryButton: {
-    marginTop: 16,
-    backgroundColor: "#093A7D",
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 20,
-  },
-  retryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    background: { flex: 1 },
+    container: { alignItems: "center", padding: 20, paddingTop: 60, paddingBottom: 40 },
+    logo: { width: "100%", height: 60, marginBottom: 8 },
+    subtitle: { fontSize: 13, color: p.textMuted, textAlign: "center", marginBottom: 16, paddingHorizontal: 16 },
+    mapCard: {
+      width: "100%",
+      height: 200,
+      borderRadius: 20,
+      overflow: "hidden",
+      marginBottom: 20,
+      borderWidth: 3,
+      borderColor: p.card,
+    },
+    map: { flex: 1 },
+    mapUnavailable: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: p.accent,
+    },
+    mapUnavailableText: { color: "#fff", fontSize: 12, fontWeight: "700", paddingHorizontal: 24, textAlign: "center" },
+    calendarCard: {
+      width: "100%",
+      borderRadius: 20,
+      overflow: "hidden",
+      marginBottom: 20,
+      backgroundColor: p.card,
+      borderWidth: 3,
+      borderColor: p.card,
+    },
+    calendarEmptyText: { fontSize: 13, color: p.textMuted, textAlign: "center", paddingVertical: 16 },
+    calendarEventsList: { padding: 12, paddingTop: 0, gap: 8 },
+    calendarEventRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: p.gradient[0],
+      borderRadius: 14,
+      padding: 8,
+    },
+    calendarEventCover: {
+      width: 36,
+      height: 36,
+      borderRadius: 9,
+      backgroundColor: p.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    calendarEventCoverImage: { width: "100%", height: "100%" },
+    calendarEventInfo: { flex: 1, gap: 1 },
+    calendarEventTitle: { fontSize: 13, fontWeight: "700", color: p.text },
+    calendarEventTime: { fontSize: 11, color: p.textMuted },
+    pin: { alignItems: "center" },
+    pinLabel: {
+      backgroundColor: p.accent,
+      paddingVertical: 4,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+      maxWidth: 170,
+      marginBottom: 3,
+    },
+    pinLabelText: { color: "#fff", fontSize: 11, fontWeight: "700", textAlign: "center" },
+    emptyText: { fontSize: 14, color: p.text, textAlign: "center", marginTop: 40 },
+    errorBox: { alignItems: "center", marginTop: 40 },
+    retryButton: {
+      marginTop: 16,
+      backgroundColor: p.buttonBg,
+      paddingVertical: 10,
+      paddingHorizontal: 24,
+      borderRadius: 20,
+    },
+    retryButtonText: { color: p.buttonText, fontWeight: "700", fontSize: 14 },
+  });
+}

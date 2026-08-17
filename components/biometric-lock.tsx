@@ -1,9 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
+import type { Palette } from "@/lib/theme";
 import { authenticateWithBiometrics } from "@/services/biometrics";
 
 interface BiometricLockProps {
@@ -14,6 +16,8 @@ interface BiometricLockProps {
 export function BiometricLock({ onUnlock, onUsePassword }: BiometricLockProps) {
   const [failed, setFailed] = useState(false);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const tryAuthenticate = useCallback(async () => {
     setFailed(false);
@@ -40,12 +44,12 @@ export function BiometricLock({ onUnlock, onUsePassword }: BiometricLockProps) {
   }, [tryAuthenticate]);
 
   return (
-    <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+    <LinearGradient colors={palette.gradient} style={styles.background}>
       <View style={styles.container}>
         <Image source={require("@/assets/images/icon.png")} style={styles.logo} contentFit="contain" />
 
         <View style={styles.iconCircle}>
-          <Ionicons name="keypad-outline" size={48} color="#093A7D" />
+          <Ionicons name="keypad-outline" size={48} color={palette.text} />
         </View>
 
         <Text style={styles.title}>{failed ? "Authentication failed" : "Unlock DigitalDance"}</Text>
@@ -67,30 +71,32 @@ export function BiometricLock({ onUnlock, onUsePassword }: BiometricLockProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1 },
-  container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-  logo: { width: "100%", height: 80, marginBottom: 32 },
-  iconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
-  },
-  title: { fontSize: 20, fontWeight: "700", color: "#093A7D", marginBottom: 8 },
-  subtitle: { fontSize: 13, color: "#9B7FC7", textAlign: "center", marginBottom: 12, paddingHorizontal: 24 },
-  errorDetail: { fontSize: 11, color: "#D0342C", textAlign: "center", marginBottom: 16, paddingHorizontal: 24 },
-  button: {
-    backgroundColor: "#093A7D",
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 28,
-    marginBottom: 16,
-    marginTop: 12,
-  },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  linkText: { color: "#093A7D", fontSize: 13, fontWeight: "700", textDecorationLine: "underline" },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    background: { flex: 1 },
+    container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
+    logo: { width: "100%", height: 80, marginBottom: 32 },
+    iconCircle: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: p.card,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 24,
+    },
+    title: { fontSize: 20, fontWeight: "700", color: p.text, marginBottom: 8 },
+    subtitle: { fontSize: 13, color: p.textMuted, textAlign: "center", marginBottom: 12, paddingHorizontal: 24 },
+    errorDetail: { fontSize: 11, color: "#D0342C", textAlign: "center", marginBottom: 16, paddingHorizontal: 24 },
+    button: {
+      backgroundColor: p.buttonBg,
+      paddingVertical: 14,
+      paddingHorizontal: 40,
+      borderRadius: 28,
+      marginBottom: 16,
+      marginTop: 12,
+    },
+    buttonText: { color: p.buttonText, fontWeight: "700", fontSize: 16 },
+    linkText: { color: p.text, fontSize: 13, fontWeight: "700", textDecorationLine: "underline" },
+  });
+}

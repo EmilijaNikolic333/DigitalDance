@@ -5,7 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -21,9 +21,11 @@ import {
 } from "react-native";
 import MapView, { Marker, type Region } from "react-native-maps";
 
+import { useTheme } from "@/contexts/theme-context";
 import type { EventType } from "@/lib/database.types";
 import { isExpoGo } from "@/lib/is-expo-go";
 import { supabase } from "@/lib/supabase";
+import type { Palette } from "@/lib/theme";
 import { createEvent, type GeocodedPlace, reverseGeocode, searchPlace, uploadEventCover } from "@/services/events";
 
 const EVENT_TYPES: { value: EventType; label: string }[] = [
@@ -69,6 +71,8 @@ export default function NewEventScreen() {
 
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { darkMode, palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   // location step local state
   const [locationQuery, setLocationQuery] = useState("");
@@ -245,27 +249,27 @@ export default function NewEventScreen() {
 
   if (step === "location") {
     return (
-      <View style={styles.flex}>
+      <View style={[styles.flex, { backgroundColor: palette.gradient[0] }]}>
         <View style={styles.stepHeader}>
           <Pressable onPress={() => setStep("form")} hitSlop={12}>
-            <Ionicons name="chevron-back" size={24} color="#093A7D" />
+            <Ionicons name="chevron-back" size={24} color={palette.text} />
           </Pressable>
           <Text style={styles.stepTitle}>Set location</Text>
           <View style={{ width: 24 }} />
         </View>
 
         <View style={styles.searchRow}>
-          <Ionicons name="search" size={18} color="#9B7FC7" />
+          <Ionicons name="search" size={18} color={palette.textMuted} />
           <TextInput
             style={styles.searchInput}
             value={locationQuery}
             onChangeText={setLocationQuery}
             placeholder="Search location..."
-            placeholderTextColor="#9AA5B8"
+            placeholderTextColor={palette.textMuted}
             onSubmitEditing={handleSearchLocation}
             returnKeyType="search"
           />
-          {searchingLocation ? <ActivityIndicator color="#093A7D" /> : null}
+          {searchingLocation ? <ActivityIndicator color={palette.text} /> : null}
         </View>
 
         {error ? <Text style={styles.locationError}>{error}</Text> : null}
@@ -285,7 +289,7 @@ export default function NewEventScreen() {
                         {locationQuery || "Selected location"}
                       </Text>
                     </View>
-                    <Ionicons name="location" size={34} color="#C06BE4" />
+                    <Ionicons name="location" size={34} color={palette.accent} />
                   </View>
                 </Marker>
               ) : null}
@@ -301,9 +305,9 @@ export default function NewEventScreen() {
 
           <Pressable style={styles.locateButton} onPress={useCurrentLocation} disabled={locatingMe}>
             {locatingMe ? (
-              <ActivityIndicator size="small" color="#093A7D" />
+              <ActivityIndicator size="small" color={palette.text} />
             ) : (
-              <Ionicons name="locate" size={20} color="#093A7D" />
+              <Ionicons name="locate" size={20} color={palette.text} />
             )}
           </Pressable>
         </View>
@@ -317,10 +321,10 @@ export default function NewEventScreen() {
 
   if (step === "date") {
     return (
-      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.flex}>
+      <LinearGradient colors={palette.gradient} style={styles.flex}>
         <View style={styles.stepHeader}>
           <Pressable onPress={() => setStep("form")} hitSlop={12}>
-            <Ionicons name="chevron-back" size={24} color="#093A7D" />
+            <Ionicons name="chevron-back" size={24} color={palette.text} />
           </Pressable>
           <Text style={styles.stepTitle}>Set date</Text>
           <View style={{ width: 24 }} />
@@ -332,8 +336,8 @@ export default function NewEventScreen() {
               value={dateDraft}
               mode="date"
               display={Platform.OS === "ios" ? "inline" : "default"}
-              themeVariant="light"
-              accentColor="#C06BE4"
+              themeVariant={darkMode ? "dark" : "light"}
+              accentColor={palette.accent}
               minimumDate={new Date()}
               onChange={(_, selected) => selected && setDateDraft(selected)}
             />
@@ -349,10 +353,10 @@ export default function NewEventScreen() {
 
   if (step === "time") {
     return (
-      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.flex}>
+      <LinearGradient colors={palette.gradient} style={styles.flex}>
         <View style={styles.stepHeader}>
           <Pressable onPress={() => setStep("form")} hitSlop={12}>
-            <Ionicons name="chevron-back" size={24} color="#093A7D" />
+            <Ionicons name="chevron-back" size={24} color={palette.text} />
           </Pressable>
           <Text style={styles.stepTitle}>Set time</Text>
           <View style={{ width: 24 }} />
@@ -364,8 +368,8 @@ export default function NewEventScreen() {
               value={timeDraft}
               mode="time"
               display="spinner"
-              themeVariant="light"
-              textColor="#093A7D"
+              themeVariant={darkMode ? "dark" : "light"}
+              textColor={palette.text}
               onChange={(_, selected) => selected && setTimeDraft(selected)}
             />
           </View>
@@ -380,10 +384,10 @@ export default function NewEventScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+      <LinearGradient colors={palette.gradient} style={styles.background}>
         <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
           <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
-            <Ionicons name="close" size={26} color="#093A7D" />
+            <Ionicons name="close" size={26} color={palette.text} />
           </Pressable>
 
           <Text style={styles.title}>Add new event</Text>
@@ -393,14 +397,14 @@ export default function NewEventScreen() {
               <Image source={{ uri: coverUri }} style={styles.coverImage} contentFit="cover" />
             ) : (
               <>
-                <Ionicons name="image-outline" size={28} color="#093A7D" />
+                <Ionicons name="image-outline" size={28} color={palette.text} />
                 <Text style={styles.coverText}>Upload cover photo</Text>
               </>
             )}
           </Pressable>
 
           <Text style={styles.label}>Event title</Text>
-          <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Event title" placeholderTextColor="#9AA5B8" />
+          <TextInput style={styles.input} value={title} onChangeText={setTitle} placeholder="Event title" placeholderTextColor={palette.textMuted} />
 
           <Text style={styles.label}>Description</Text>
           <TextInput
@@ -408,7 +412,7 @@ export default function NewEventScreen() {
             value={description}
             onChangeText={setDescription}
             placeholder="What's this event about?"
-            placeholderTextColor="#9AA5B8"
+            placeholderTextColor={palette.textMuted}
             multiline
           />
 
@@ -427,19 +431,19 @@ export default function NewEventScreen() {
 
           <Text style={styles.label}>Date</Text>
           <Pressable style={styles.fieldButton} onPress={() => setStep("date")}>
-            <Ionicons name="calendar-outline" size={18} color="#093A7D" />
+            <Ionicons name="calendar-outline" size={18} color={palette.text} />
             <Text style={styles.fieldButtonText}>{dateTime ? formatDate(dateTime) : "Select date"}</Text>
           </Pressable>
 
           <Text style={styles.label}>Time</Text>
           <Pressable style={styles.fieldButton} onPress={() => setStep("time")}>
-            <Ionicons name="time-outline" size={18} color="#093A7D" />
+            <Ionicons name="time-outline" size={18} color={palette.text} />
             <Text style={styles.fieldButtonText}>{dateTime ? formatTime(dateTime) : "Select time"}</Text>
           </Pressable>
 
           <Text style={styles.label}>Location</Text>
           <Pressable style={styles.fieldButton} onPress={() => setStep("location")}>
-            <Ionicons name="location-outline" size={18} color="#093A7D" />
+            <Ionicons name="location-outline" size={18} color={palette.text} />
             <Text style={styles.fieldButtonText}>{place ? place.city : "Select location"}</Text>
           </Pressable>
 
@@ -449,7 +453,7 @@ export default function NewEventScreen() {
             value={requirements}
             onChangeText={setRequirements}
             placeholder="What are you looking for?"
-            placeholderTextColor="#9AA5B8"
+            placeholderTextColor={palette.textMuted}
             multiline
           />
 
@@ -459,7 +463,7 @@ export default function NewEventScreen() {
             value={price}
             onChangeText={setPrice}
             placeholder="0 din"
-            placeholderTextColor="#9AA5B8"
+            placeholderTextColor={palette.textMuted}
             keyboardType="numeric"
           />
 
@@ -474,139 +478,141 @@ export default function NewEventScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  background: { flex: 1 },
-  formContainer: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 60 },
-  closeButton: { position: "absolute", top: 16, left: 16 },
-  title: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginBottom: 20 },
-  error: { color: "#D0342C", fontSize: 13, marginBottom: 12, textAlign: "center" },
-  coverBox: {
-    width: "100%",
-    height: 140,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginBottom: 20,
-    overflow: "hidden",
-  },
-  coverImage: { width: "100%", height: "100%" },
-  coverText: { color: "#093A7D", fontSize: 13, fontWeight: "700" },
-  label: { fontSize: 14, fontWeight: "700", color: "#093A7D", alignSelf: "flex-start", marginBottom: 6 },
-  input: {
-    width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: "#093A7D",
-    marginBottom: 16,
-  },
-  inputMultiline: { minHeight: 70, textAlignVertical: "top" },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, width: "100%", marginBottom: 16 },
-  chip: { backgroundColor: "#fff", paddingVertical: 8, paddingHorizontal: 16, borderRadius: 18 },
-  chipSelected: { backgroundColor: "#093A7D" },
-  chipText: { color: "#093A7D", fontSize: 13, fontWeight: "700" },
-  chipTextSelected: { color: "#fff" },
-  fieldButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    marginBottom: 16,
-  },
-  fieldButtonText: { color: "#093A7D", fontSize: 15, fontWeight: "700" },
-  postButton: {
-    marginTop: 10,
-    backgroundColor: "#093A7D",
-    paddingVertical: 15,
-    paddingHorizontal: 48,
-    borderRadius: 28,
-    alignItems: "center",
-    width: "100%",
-  },
-  postButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    flex: { flex: 1 },
+    background: { flex: 1 },
+    formContainer: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 60 },
+    closeButton: { position: "absolute", top: 16, left: 16 },
+    title: { fontSize: 22, fontWeight: "700", color: p.text, marginBottom: 20 },
+    error: { color: "#D0342C", fontSize: 13, marginBottom: 12, textAlign: "center" },
+    coverBox: {
+      width: "100%",
+      height: 140,
+      backgroundColor: p.card,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      marginBottom: 20,
+      overflow: "hidden",
+    },
+    coverImage: { width: "100%", height: "100%" },
+    coverText: { color: p.text, fontSize: 13, fontWeight: "700" },
+    label: { fontSize: 14, fontWeight: "700", color: p.text, alignSelf: "flex-start", marginBottom: 6 },
+    input: {
+      width: "100%",
+      backgroundColor: p.card,
+      borderRadius: 20,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+      fontSize: 15,
+      color: p.text,
+      marginBottom: 16,
+    },
+    inputMultiline: { minHeight: 70, textAlignVertical: "top" },
+    chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, width: "100%", marginBottom: 16 },
+    chip: { backgroundColor: p.card, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 18 },
+    chipSelected: { backgroundColor: p.selectedBg },
+    chipText: { color: p.text, fontSize: 13, fontWeight: "700" },
+    chipTextSelected: { color: p.selectedText },
+    fieldButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      width: "100%",
+      backgroundColor: p.card,
+      borderRadius: 20,
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      marginBottom: 16,
+    },
+    fieldButtonText: { color: p.text, fontSize: 15, fontWeight: "700" },
+    postButton: {
+      marginTop: 10,
+      backgroundColor: p.buttonBg,
+      paddingVertical: 15,
+      paddingHorizontal: 48,
+      borderRadius: 28,
+      alignItems: "center",
+      width: "100%",
+    },
+    postButtonText: { color: p.buttonText, fontWeight: "700", fontSize: 16 },
 
-  // Step screens (location / date / time)
-  stepHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingTop: 56,
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  stepTitle: { fontSize: 18, fontWeight: "700", color: "#093A7D" },
-  searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginBottom: 12,
-  },
-  searchInput: { flex: 1, fontSize: 15, color: "#093A7D" },
-  locationError: { color: "#D0342C", fontSize: 12, marginHorizontal: 20, marginBottom: 8, textAlign: "center" },
-  mapWrapper: { flex: 1 },
-  map: { flex: 1 },
-  mapUnavailable: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#C06BE4",
-    paddingHorizontal: 40,
-  },
-  mapUnavailableText: { color: "#fff", fontSize: 13, fontWeight: "700", textAlign: "center" },
-  locateButton: {
-    position: "absolute",
-    bottom: 16,
-    right: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  markerWrapper: { alignItems: "center" },
-  markerLabel: {
-    backgroundColor: "#C06BE4",
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    maxWidth: 180,
-    marginBottom: 4,
-  },
-  markerLabelText: { color: "#fff", fontSize: 11, fontWeight: "700" },
-  pickerContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
-  calendarCard: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 12,
-    marginHorizontal: 20,
-  },
-  confirmButton: {
-    backgroundColor: "#093A7D",
-    paddingVertical: 15,
-    alignItems: "center",
-    margin: 20,
-    borderRadius: 28,
-  },
-  confirmButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-});
+    // Step screens (location / date / time)
+    stepHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingTop: 56,
+      paddingHorizontal: 20,
+      paddingBottom: 12,
+    },
+    stepTitle: { fontSize: 18, fontWeight: "700", color: p.text },
+    searchRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: p.card,
+      marginHorizontal: 20,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      marginBottom: 12,
+    },
+    searchInput: { flex: 1, fontSize: 15, color: p.text },
+    locationError: { color: "#D0342C", fontSize: 12, marginHorizontal: 20, marginBottom: 8, textAlign: "center" },
+    mapWrapper: { flex: 1 },
+    map: { flex: 1 },
+    mapUnavailable: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: p.accent,
+      paddingHorizontal: 40,
+    },
+    mapUnavailableText: { color: "#fff", fontSize: 13, fontWeight: "700", textAlign: "center" },
+    locateButton: {
+      position: "absolute",
+      bottom: 16,
+      right: 16,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: p.card,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    markerWrapper: { alignItems: "center" },
+    markerLabel: {
+      backgroundColor: p.accent,
+      paddingVertical: 5,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+      maxWidth: 180,
+      marginBottom: 4,
+    },
+    markerLabelText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+    pickerContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
+    calendarCard: {
+      backgroundColor: p.card,
+      borderRadius: 20,
+      padding: 12,
+      marginHorizontal: 20,
+    },
+    confirmButton: {
+      backgroundColor: p.buttonBg,
+      paddingVertical: 15,
+      alignItems: "center",
+      margin: 20,
+      borderRadius: 28,
+    },
+    confirmButtonText: { color: p.buttonText, fontWeight: "700", fontSize: 16 },
+  });
+}

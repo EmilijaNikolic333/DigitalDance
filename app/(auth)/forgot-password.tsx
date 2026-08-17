@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -12,6 +12,8 @@ import {
 } from "react-native";
 
 import { AuthInput } from "@/components/auth-input";
+import { useTheme } from "@/contexts/theme-context";
+import type { Palette } from "@/lib/theme";
 import { changePassword, requestPasswordReset, verifyPasswordResetCode } from "@/services/auth";
 
 export default function ForgotPasswordScreen() {
@@ -23,6 +25,8 @@ export default function ForgotPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const handleSendCode = async () => {
     setError(null);
@@ -75,7 +79,7 @@ export default function ForgotPasswordScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+      <LinearGradient colors={palette.gradient} style={styles.background}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>Reset Password</Text>
           <Text style={styles.subtitle}>
@@ -153,23 +157,25 @@ export default function ForgotPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  background: { flex: 1 },
-  scrollContent: { flexGrow: 1, justifyContent: "center", padding: 28 },
-  title: { fontSize: 28, fontWeight: "700", color: "#093A7D", marginBottom: 4 },
-  subtitle: { fontSize: 14, color: "#C06BE4", marginBottom: 24 },
-  error: { color: "#D0342C", fontSize: 13, marginBottom: 10 },
-  info: { color: "#093A7D", fontSize: 13, marginBottom: 14 },
-  button: {
-    backgroundColor: "#093A7D",
-    paddingVertical: 15,
-    borderRadius: 28,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  link: { marginTop: 18, alignSelf: "center" },
-  linkText: { color: "#093A7D", fontSize: 13 },
-  linkAccent: { color: "#C06BE4", fontWeight: "700" },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    flex: { flex: 1 },
+    background: { flex: 1 },
+    scrollContent: { flexGrow: 1, justifyContent: "center", padding: 28 },
+    title: { fontSize: 28, fontWeight: "700", color: p.text, marginBottom: 4 },
+    subtitle: { fontSize: 14, color: p.accent, marginBottom: 24 },
+    error: { color: "#D0342C", fontSize: 13, marginBottom: 10 },
+    info: { color: p.text, fontSize: 13, marginBottom: 14 },
+    button: {
+      backgroundColor: p.buttonBg,
+      paddingVertical: 15,
+      borderRadius: 28,
+      alignItems: "center",
+      marginTop: 10,
+    },
+    buttonText: { color: p.buttonText, fontWeight: "700", fontSize: 16 },
+    link: { marginTop: 18, alignSelf: "center" },
+    linkText: { color: p.text, fontSize: 13 },
+    linkAccent: { color: p.accent, fontWeight: "700" },
+  });
+}

@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,8 +18,10 @@ import {
 } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { useTheme } from "@/contexts/theme-context";
 import type { ExperienceLevel } from "@/lib/database.types";
 import { DANCE_STYLES, EXPERIENCE_LEVELS } from "@/lib/profile-options";
+import type { Palette } from "@/lib/theme";
 import { changePassword } from "@/services/auth";
 import { getOwnProfile, updateOwnProfile, uploadAvatar } from "@/services/profiles";
 
@@ -57,6 +59,8 @@ export default function EditProfileScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const loadProfile = useCallback(() => {
     setLoading(true);
@@ -197,9 +201,9 @@ export default function EditProfileScreen() {
 
   if (loading) {
     return (
-      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+      <LinearGradient colors={palette.gradient} style={styles.background}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#093A7D" />
+          <ActivityIndicator size="large" color={palette.text} />
         </View>
       </LinearGradient>
     );
@@ -207,7 +211,7 @@ export default function EditProfileScreen() {
 
   if (loadError) {
     return (
-      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+      <LinearGradient colors={palette.gradient} style={styles.background}>
         <View style={styles.centered}>
           <Text style={styles.error}>Couldn&apos;t load your profile. Check your connection.</Text>
           <Pressable style={styles.saveButton} onPress={loadProfile}>
@@ -220,10 +224,10 @@ export default function EditProfileScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+      <LinearGradient colors={palette.gradient} style={styles.background}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
-            <Ionicons name="close" size={26} color="#093A7D" />
+            <Ionicons name="close" size={26} color={palette.text} />
           </Pressable>
 
           <Text style={styles.label}>Profile picture</Text>
@@ -234,17 +238,17 @@ export default function EditProfileScreen() {
             </View>
           </Pressable>
 
-          <Field label="Name" value={name} onChangeText={(t) => setName(t.slice(0, NAME_MAX))} max={NAME_MAX} />
-          <Field label="City" value={city} onChangeText={setCity} placeholder="e.g. Belgrade" />
+          <Field label="Name" value={name} onChangeText={(t) => setName(t.slice(0, NAME_MAX))} max={NAME_MAX} palette={palette} />
+          <Field label="City" value={city} onChangeText={setCity} placeholder="e.g. Belgrade" palette={palette} />
 
           <Text style={styles.label}>I am a...</Text>
           <View style={styles.roleRow}>
             <Pressable style={styles.roleOption} onPress={() => setIsDancer((v) => !v)}>
-              <Ionicons name={isDancer ? "checkbox" : "square-outline"} size={20} color="#093A7D" />
+              <Ionicons name={isDancer ? "checkbox" : "square-outline"} size={20} color={palette.text} />
               <Text style={styles.roleOptionText}>Dancer</Text>
             </Pressable>
             <Pressable style={styles.roleOption} onPress={() => setIsOrganizer((v) => !v)}>
-              <Ionicons name={isOrganizer ? "checkbox" : "square-outline"} size={20} color="#093A7D" />
+              <Ionicons name={isOrganizer ? "checkbox" : "square-outline"} size={20} color={palette.text} />
               <Text style={styles.roleOptionText}>Organizer</Text>
             </Pressable>
           </View>
@@ -258,6 +262,7 @@ export default function EditProfileScreen() {
                 max={TEXT_MAX}
                 multiline
                 placeholder="Tell others about yourself"
+                palette={palette}
               />
 
               <Text style={styles.label}>Dance styles</Text>
@@ -295,6 +300,7 @@ export default function EditProfileScreen() {
                 value={availability}
                 onChangeText={setAvailability}
                 placeholder="e.g. Available weekends"
+                palette={palette}
               />
             </>
           ) : null}
@@ -308,22 +314,24 @@ export default function EditProfileScreen() {
                 max={TEXT_MAX}
                 multiline
                 placeholder="Tell dancers about your organization"
+                palette={palette}
               />
-              <Field label="Organization name" value={organizationName} onChangeText={setOrganizationName} />
+              <Field label="Organization name" value={organizationName} onChangeText={setOrganizationName} palette={palette} />
               <Field
                 label="Website"
                 value={website}
                 onChangeText={setWebsite}
                 placeholder="https://..."
                 keyboardType="url"
+                palette={palette}
               />
             </>
           ) : null}
 
           <Pressable style={styles.passwordCard} onPress={() => setShowPasswordModal(true)}>
-            <Ionicons name="lock-closed-outline" size={18} color="#093A7D" />
+            <Ionicons name="lock-closed-outline" size={18} color={palette.text} />
             <Text style={styles.passwordCardText}>Change password</Text>
-            <Ionicons name="chevron-forward" size={18} color="#9B7FC7" />
+            <Ionicons name="chevron-forward" size={18} color={palette.textMuted} />
           </Pressable>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -343,7 +351,7 @@ export default function EditProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Pressable onPress={() => setShowPasswordModal(false)} style={styles.modalCloseButton} hitSlop={12}>
-              <Ionicons name="close" size={22} color="#093A7D" />
+              <Ionicons name="close" size={22} color={palette.text} />
             </Pressable>
 
             <Text style={styles.modalTitle}>Change password</Text>
@@ -354,7 +362,7 @@ export default function EditProfileScreen() {
               value={newPassword}
               onChangeText={setNewPassword}
               placeholder="New password"
-              placeholderTextColor="#9AA5B8"
+              placeholderTextColor={palette.textMuted}
               secureTextEntry
             />
             <TextInput
@@ -362,7 +370,7 @@ export default function EditProfileScreen() {
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               placeholder="Confirm new password"
-              placeholderTextColor="#9AA5B8"
+              placeholderTextColor={palette.textMuted}
               secureTextEntry
             />
 
@@ -390,24 +398,29 @@ interface FieldProps {
   multiline?: boolean;
   placeholder?: string;
   keyboardType?: "default" | "url";
+  palette: Palette;
 }
 
-function Field({ label, value, onChangeText, max, multiline, placeholder, keyboardType }: FieldProps) {
+function Field({ label, value, onChangeText, max, multiline, placeholder, keyboardType, palette }: FieldProps) {
   return (
-    <View style={styles.fieldWrapper}>
-      <Text style={styles.label}>{label}</Text>
+    <View style={fieldStyles.fieldWrapper}>
+      <Text style={[fieldStyles.label, { color: palette.text }]}>{label}</Text>
       <TextInput
-        style={[styles.input, multiline && styles.inputMultiline]}
+        style={[
+          fieldStyles.input,
+          multiline && fieldStyles.inputMultiline,
+          { backgroundColor: palette.card, color: palette.text },
+        ]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#9AA5B8"
+        placeholderTextColor={palette.textMuted}
         multiline={multiline}
         keyboardType={keyboardType}
         autoCapitalize={keyboardType === "url" ? "none" : "sentences"}
       />
       {max ? (
-        <Text style={styles.counter}>
+        <Text style={[fieldStyles.counter, { color: palette.textMuted }]}>
           {value.length}/{max}
         </Text>
       ) : null}
@@ -415,38 +428,14 @@ function Field({ label, value, onChangeText, max, multiline, placeholder, keyboa
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  background: { flex: 1 },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  scrollContent: { flexGrow: 1, alignItems: "center", padding: 28, paddingTop: 60, paddingBottom: 60 },
-  closeButton: { position: "absolute", top: 16, right: 16 },
-  label: { fontSize: 14, fontWeight: "700", color: "#093A7D", alignSelf: "flex-start", marginBottom: 8 },
-  avatarWrapper: { position: "relative", marginBottom: 8 },
-  avatarEditBadge: {
-    position: "absolute",
-    bottom: 0,
-    right: 0,
-    backgroundColor: "#093A7D",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
+const fieldStyles = StyleSheet.create({
   fieldWrapper: { width: "100%", marginTop: 16 },
-  roleRow: { flexDirection: "row", gap: 20, marginBottom: 4 },
-  roleOption: { flexDirection: "row", alignItems: "center", gap: 8 },
-  roleOptionText: { color: "#093A7D", fontSize: 14, fontWeight: "700" },
+  label: { fontSize: 14, fontWeight: "700", alignSelf: "flex-start", marginBottom: 8 },
   input: {
-    backgroundColor: "#fff",
     borderRadius: 20,
     paddingHorizontal: 18,
     paddingVertical: 12,
     fontSize: 15,
-    color: "#093A7D",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -454,63 +443,107 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   inputMultiline: { minHeight: 80, textAlignVertical: "top" },
-  counter: { alignSelf: "flex-end", fontSize: 11, color: "#9B7FC7", marginTop: 4 },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, width: "100%", marginTop: 16 },
-  chip: {
-    backgroundColor: "#fff",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-  },
-  chipSelected: { backgroundColor: "#093A7D" },
-  chipText: { color: "#093A7D", fontSize: 13, fontWeight: "700" },
-  chipTextSelected: { color: "#fff" },
-  error: { color: "#D0342C", fontSize: 13, marginTop: 16, textAlign: "center" },
-  saveButton: {
-    marginTop: 28,
-    backgroundColor: "#093A7D",
-    paddingVertical: 15,
-    paddingHorizontal: 48,
-    borderRadius: 28,
-    alignItems: "center",
-  },
-  saveButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  passwordCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    marginTop: 24,
-  },
-  passwordCardText: { flex: 1, color: "#093A7D", fontSize: 14, fontWeight: "700" },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(9, 58, 125, 0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  modalCard: {
-    width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 24,
-  },
-  modalCloseButton: { position: "absolute", top: 14, left: 14, zIndex: 1 },
-  modalTitle: { fontSize: 18, fontWeight: "700", color: "#093A7D", textAlign: "center", marginBottom: 6 },
-  modalSubtitle: { fontSize: 12, color: "#9B7FC7", textAlign: "center", marginBottom: 16 },
-  modalInput: {
-    width: "100%",
-    backgroundColor: "#F8ECFF",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: "#093A7D",
-    marginBottom: 12,
-  },
+  counter: { alignSelf: "flex-end", fontSize: 11, marginTop: 4 },
 });
+
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    flex: { flex: 1 },
+    background: { flex: 1 },
+    centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+    scrollContent: { flexGrow: 1, alignItems: "center", padding: 28, paddingTop: 60, paddingBottom: 60 },
+    closeButton: { position: "absolute", top: 16, right: 16 },
+    label: { fontSize: 14, fontWeight: "700", color: p.text, alignSelf: "flex-start", marginBottom: 8 },
+    avatarWrapper: { position: "relative", marginBottom: 8 },
+    avatarEditBadge: {
+      position: "absolute",
+      bottom: 0,
+      right: 0,
+      backgroundColor: p.buttonBg,
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: p.card,
+    },
+    fieldWrapper: { width: "100%", marginTop: 16 },
+    roleRow: { flexDirection: "row", gap: 20, marginBottom: 4 },
+    roleOption: { flexDirection: "row", alignItems: "center", gap: 8 },
+    roleOptionText: { color: p.text, fontSize: 14, fontWeight: "700" },
+    input: {
+      backgroundColor: p.card,
+      borderRadius: 20,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+      fontSize: 15,
+      color: p.text,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    inputMultiline: { minHeight: 80, textAlignVertical: "top" },
+    counter: { alignSelf: "flex-end", fontSize: 11, color: p.textMuted, marginTop: 4 },
+    chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, width: "100%", marginTop: 16 },
+    chip: {
+      backgroundColor: p.card,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 18,
+    },
+    chipSelected: { backgroundColor: p.selectedBg },
+    chipText: { color: p.text, fontSize: 13, fontWeight: "700" },
+    chipTextSelected: { color: p.selectedText },
+    error: { color: "#D0342C", fontSize: 13, marginTop: 16, textAlign: "center" },
+    saveButton: {
+      marginTop: 28,
+      backgroundColor: p.buttonBg,
+      paddingVertical: 15,
+      paddingHorizontal: 48,
+      borderRadius: 28,
+      alignItems: "center",
+    },
+    saveButtonText: { color: p.buttonText, fontWeight: "700", fontSize: 16 },
+    passwordCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      width: "100%",
+      backgroundColor: p.card,
+      borderRadius: 20,
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      marginTop: 24,
+    },
+    passwordCardText: { flex: 1, color: p.text, fontSize: 14, fontWeight: "700" },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(9, 58, 125, 0.4)",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    },
+    modalCard: {
+      width: "100%",
+      backgroundColor: p.card,
+      borderRadius: 20,
+      padding: 24,
+    },
+    modalCloseButton: { position: "absolute", top: 14, left: 14, zIndex: 1 },
+    modalTitle: { fontSize: 18, fontWeight: "700", color: p.text, textAlign: "center", marginBottom: 6 },
+    modalSubtitle: { fontSize: 12, color: p.textMuted, textAlign: "center", marginBottom: 16 },
+    modalInput: {
+      width: "100%",
+      backgroundColor: p.gradient[0],
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      fontSize: 14,
+      color: p.text,
+      marginBottom: 12,
+    },
+  });
+}

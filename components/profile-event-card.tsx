@@ -1,12 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { ShareToSheet } from "@/components/share-to-sheet";
 import { useRepostContext } from "@/contexts/repost-context";
 import { useSavedContext } from "@/contexts/saved-context";
+import { useTheme } from "@/contexts/theme-context";
 import type { Event } from "@/lib/database.types";
+import type { Palette } from "@/lib/theme";
 import { toggleRepostEvent } from "@/services/reposted-events";
 import { toggleSaveEvent } from "@/services/saved-events";
 
@@ -52,6 +54,8 @@ export function ProfileEventCard({
   const { isEventSaved, setEventSaved } = useSavedContext();
   const saved = isEventSaved(event.id, isSaved ?? false);
   const [showShare, setShowShare] = useState(false);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const handleToggleSave = async () => {
     const nextSaved = !saved;
@@ -92,12 +96,12 @@ export function ProfileEventCard({
             {event.title}
           </Text>
           <View style={styles.metaRow}>
-            <Ionicons name="calendar-outline" size={12} color="#9B7FC7" />
+            <Ionicons name="calendar-outline" size={12} color={palette.textMuted} />
             <Text style={styles.metaText}>{formatEventDate(event.event_date)}</Text>
           </View>
           {event.city ? (
             <View style={styles.metaRow}>
-              <Ionicons name="location-outline" size={12} color="#9B7FC7" />
+              <Ionicons name="location-outline" size={12} color={palette.textMuted} />
               <Text style={styles.metaText}>{event.city}</Text>
             </View>
           ) : null}
@@ -109,7 +113,7 @@ export function ProfileEventCard({
         <View style={styles.actionColumn}>
           {onEditPress ? (
             <Pressable style={styles.editButton} onPress={onEditPress} hitSlop={8}>
-              <Ionicons name="pencil" size={16} color="#093A7D" />
+              <Ionicons name="pencil" size={16} color={palette.text} />
             </Pressable>
           ) : showSaveButton ? (
             <>
@@ -117,18 +121,18 @@ export function ProfileEventCard({
                 <Ionicons
                   name={saved ? "bookmark" : "bookmark-outline"}
                   size={16}
-                  color={saved ? "#C06BE4" : "#093A7D"}
+                  color={saved ? palette.accent : palette.text}
                 />
               </Pressable>
               {showRepostButton ? (
                 <Pressable style={styles.editButton} onPress={handleToggleRepost} hitSlop={8}>
-                  <Ionicons name="repeat" size={16} color={reposted ? "#C06BE4" : "#093A7D"} />
+                  <Ionicons name="repeat" size={16} color={reposted ? palette.accent : palette.text} />
                 </Pressable>
               ) : null}
             </>
           ) : null}
           <Pressable style={styles.editButton} onPress={() => setShowShare(true)} hitSlop={8}>
-            <Ionicons name="paper-plane-outline" size={16} color="#093A7D" />
+            <Ionicons name="paper-plane-outline" size={16} color={palette.text} />
           </Pressable>
         </View>
       </View>
@@ -150,48 +154,50 @@ export function ProfileEventCard({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 10,
-    marginTop: 14,
-  },
-  cardApplied: { backgroundColor: "#EAD9FF" },
-  row: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  cover: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: "#C06BE4",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  coverImage: { ...StyleSheet.absoluteFillObject },
-  info: { flex: 1, justifyContent: "center", gap: 3 },
-  title: { fontSize: 14, fontWeight: "700", color: "#093A7D" },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  metaText: { fontSize: 11, color: "#9B7FC7" },
-  price: { fontSize: 12, fontWeight: "700", color: "#093A7D", marginTop: 2 },
-  editButton: {
-    alignSelf: "flex-start",
-    padding: 6,
-    backgroundColor: "#F8ECFF",
-    borderRadius: 14,
-  },
-  actionColumn: { gap: 8 },
-  applicationsButton: {
-    alignSelf: "flex-end",
-    backgroundColor: "#093A7D",
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    marginTop: 10,
-  },
-  applicationsButtonText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    card: {
+      width: "100%",
+      backgroundColor: p.card,
+      borderRadius: 16,
+      padding: 10,
+      marginTop: 14,
+    },
+    cardApplied: { backgroundColor: p.gradient[1] },
+    row: {
+      flexDirection: "row",
+      gap: 12,
+    },
+    cover: {
+      width: 60,
+      height: 60,
+      borderRadius: 12,
+      backgroundColor: p.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    coverImage: { ...StyleSheet.absoluteFillObject },
+    info: { flex: 1, justifyContent: "center", gap: 3 },
+    title: { fontSize: 14, fontWeight: "700", color: p.text },
+    metaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+    metaText: { fontSize: 11, color: p.textMuted },
+    price: { fontSize: 12, fontWeight: "700", color: p.text, marginTop: 2 },
+    editButton: {
+      alignSelf: "flex-start",
+      padding: 6,
+      backgroundColor: p.gradient[0],
+      borderRadius: 14,
+    },
+    actionColumn: { gap: 8 },
+    applicationsButton: {
+      alignSelf: "flex-end",
+      backgroundColor: p.buttonBg,
+      paddingVertical: 6,
+      paddingHorizontal: 16,
+      borderRadius: 14,
+      marginTop: 10,
+    },
+    applicationsButtonText: { color: p.buttonText, fontSize: 12, fontWeight: "700" },
+  });
+}

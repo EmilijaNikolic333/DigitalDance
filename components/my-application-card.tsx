@@ -1,8 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
 import { APPLICATION_STATUS_LABEL, APPLICATION_STATUS_STYLE } from "@/lib/application-status";
+import type { Palette } from "@/lib/theme";
 import type { MyApplication } from "@/services/applications";
 
 function formatEventDate(iso: string) {
@@ -21,6 +24,8 @@ interface MyApplicationCardProps {
 export function MyApplicationCard({ application, onViewDetails }: MyApplicationCardProps) {
   const event = application.event;
   const statusStyle = APPLICATION_STATUS_STYLE[application.status];
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   return (
     <View style={styles.card}>
@@ -39,13 +44,13 @@ export function MyApplicationCard({ application, onViewDetails }: MyApplicationC
           </Text>
           {event ? (
             <View style={styles.metaRow}>
-              <Ionicons name="calendar-outline" size={12} color="#9B7FC7" />
+              <Ionicons name="calendar-outline" size={12} color={palette.textMuted} />
               <Text style={styles.metaText}>{formatEventDate(event.event_date)}</Text>
             </View>
           ) : null}
           {event?.city ? (
             <View style={styles.metaRow}>
-              <Ionicons name="location-outline" size={12} color="#9B7FC7" />
+              <Ionicons name="location-outline" size={12} color={palette.textMuted} />
               <Text style={styles.metaText} numberOfLines={1}>
                 {event.city}
               </Text>
@@ -67,37 +72,39 @@ export function MyApplicationCard({ application, onViewDetails }: MyApplicationC
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    width: "100%",
-    backgroundColor: "#EAD9FF",
-    borderRadius: 16,
-    padding: 10,
-    marginTop: 14,
-  },
-  row: { flexDirection: "row", gap: 12 },
-  cover: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: "#C06BE4",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  coverImage: { ...StyleSheet.absoluteFillObject },
-  info: { flex: 1, justifyContent: "center", gap: 3 },
-  title: { fontSize: 14, fontWeight: "700", color: "#093A7D" },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  metaText: { fontSize: 11, color: "#9B7FC7" },
-  statusText: { fontSize: 11, fontWeight: "700" },
-  detailsButton: {
-    alignSelf: "flex-end",
-    backgroundColor: "#093A7D",
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    marginTop: 10,
-  },
-  detailsButtonText: { color: "#fff", fontSize: 12, fontWeight: "700" },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    card: {
+      width: "100%",
+      backgroundColor: p.gradient[1],
+      borderRadius: 16,
+      padding: 10,
+      marginTop: 14,
+    },
+    row: { flexDirection: "row", gap: 12 },
+    cover: {
+      width: 60,
+      height: 60,
+      borderRadius: 12,
+      backgroundColor: p.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    coverImage: { ...StyleSheet.absoluteFillObject },
+    info: { flex: 1, justifyContent: "center", gap: 3 },
+    title: { fontSize: 14, fontWeight: "700", color: p.text },
+    metaRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+    metaText: { fontSize: 11, color: p.textMuted },
+    statusText: { fontSize: 11, fontWeight: "700" },
+    detailsButton: {
+      alignSelf: "flex-end",
+      backgroundColor: p.buttonBg,
+      paddingVertical: 6,
+      paddingHorizontal: 16,
+      borderRadius: 14,
+      marginTop: 10,
+    },
+    detailsButtonText: { color: p.buttonText, fontSize: 12, fontWeight: "700" },
+  });
+}

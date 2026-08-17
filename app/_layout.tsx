@@ -10,6 +10,7 @@ import { BiometricLock } from '@/components/biometric-lock';
 import { FollowProvider } from '@/contexts/follow-context';
 import { RepostProvider } from '@/contexts/repost-context';
 import { SavedProvider } from '@/contexts/saved-context';
+import { ThemeProvider as AppThemeProvider, useTheme } from '@/contexts/theme-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useNotificationListener } from '@/hooks/use-notification-listener';
 import { supabase } from '@/lib/supabase';
@@ -20,8 +21,9 @@ export const unstable_settings = {
   anchor: '(tabs)',
 };
 
-export default function RootLayout() {
+function RootLayoutContent() {
   const colorScheme = useColorScheme();
+  const { palette } = useTheme();
   const [session, setSession] = useState<Session | null>(null);
   const [isSessionLoaded, setIsSessionLoaded] = useState(false);
   const [needsBiometricUnlock, setNeedsBiometricUnlock] = useState(false);
@@ -53,8 +55,8 @@ export default function RootLayout() {
 
   if (!isSessionLoaded) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: palette.gradient[0] }}>
+        <ActivityIndicator size="large" color={palette.text} />
       </View>
     );
   }
@@ -94,5 +96,13 @@ export default function RootLayout() {
         </RepostProvider>
       </SavedProvider>
     </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AppThemeProvider>
+      <RootLayoutContent />
+    </AppThemeProvider>
   );
 }

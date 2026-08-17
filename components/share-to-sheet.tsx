@@ -1,21 +1,24 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
+import { useTheme } from "@/contexts/theme-context";
+import type { Palette } from "@/lib/theme";
 import { type ConversationSummary, getConversations, shareEventToUser, shareVideoToUser } from "@/services/messages";
 
 interface ShareToSheetProps {
   visible: boolean;
   onClose: () => void;
-  /** Pass exactly one of these. */
   videoId?: string;
   eventId?: string;
 }
 
 export function ShareToSheet({ visible, onClose, videoId, eventId }: ShareToSheetProps) {
   const insets = useSafeAreaInsets();
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,12 +60,12 @@ export function ShareToSheet({ visible, onClose, videoId, eventId }: ShareToShee
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Send to</Text>
             <Pressable onPress={onClose} hitSlop={12}>
-              <Ionicons name="close" size={22} color="#093A7D" />
+              <Ionicons name="close" size={22} color={palette.text} />
             </Pressable>
           </View>
 
           {loading ? (
-            <ActivityIndicator size="large" color="#093A7D" style={styles.loading} />
+            <ActivityIndicator size="large" color={palette.text} style={styles.loading} />
           ) : loadError ? (
             <Text style={styles.error}>{loadError}</Text>
           ) : (
@@ -87,11 +90,11 @@ export function ShareToSheet({ visible, onClose, videoId, eventId }: ShareToShee
                     {item.otherUser?.full_name || "Unknown"}
                   </Text>
                   {sendingToId === item.otherUserId ? (
-                    <ActivityIndicator size="small" color="#C06BE4" />
+                    <ActivityIndicator size="small" color={palette.accent} />
                   ) : sentToId === item.otherUserId ? (
                     <Ionicons name="checkmark-circle" size={22} color="#2E9E5B" />
                   ) : (
-                    <Ionicons name="paper-plane-outline" size={20} color="#C06BE4" />
+                    <Ionicons name="paper-plane-outline" size={20} color={palette.accent} />
                   )}
                 </Pressable>
               )}
@@ -103,38 +106,40 @@ export function ShareToSheet({ visible, onClose, videoId, eventId }: ShareToShee
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(9, 58, 125, 0.4)", justifyContent: "flex-end" },
-  sheet: {
-    minHeight: "45%",
-    maxHeight: "75%",
-    backgroundColor: "#F8ECFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 10,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(9, 58, 125, 0.2)",
-    alignSelf: "center",
-    marginBottom: 10,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  headerTitle: { fontSize: 15, fontWeight: "700", color: "#093A7D" },
-  loading: { marginTop: 30 },
-  list: { flex: 1 },
-  listContent: { flexGrow: 1, paddingHorizontal: 20, gap: 4 },
-  emptyWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
-  emptyText: { fontSize: 13, color: "#9B7FC7", textAlign: "center" },
-  row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
-  name: { fontSize: 14, fontWeight: "700", color: "#093A7D", flex: 1 },
-  error: { color: "#D0342C", fontSize: 12, textAlign: "center", paddingHorizontal: 16, marginBottom: 6 },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: "rgba(9, 58, 125, 0.4)", justifyContent: "flex-end" },
+    sheet: {
+      minHeight: "45%",
+      maxHeight: "75%",
+      backgroundColor: p.gradient[0],
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingTop: 10,
+    },
+    handle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: "rgba(192, 107, 228, 0.4)",
+      alignSelf: "center",
+      marginBottom: 10,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingBottom: 12,
+    },
+    headerTitle: { fontSize: 15, fontWeight: "700", color: p.text },
+    loading: { marginTop: 30 },
+    list: { flex: 1 },
+    listContent: { flexGrow: 1, paddingHorizontal: 20, gap: 4 },
+    emptyWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+    emptyText: { fontSize: 13, color: p.textMuted, textAlign: "center" },
+    row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
+    name: { fontSize: 14, fontWeight: "700", color: p.text, flex: 1 },
+    error: { color: "#D0342C", fontSize: 12, textAlign: "center", paddingHorizontal: 16, marginBottom: 6 },
+  });
+}

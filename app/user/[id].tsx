@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ActionSheet } from "@/components/action-sheet";
@@ -12,8 +12,10 @@ import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
 import { ReportContentSheet } from "@/components/report-content-sheet";
 import { useFollowContext } from "@/contexts/follow-context";
+import { useTheme } from "@/contexts/theme-context";
 import type { Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
+import type { Palette } from "@/lib/theme";
 import { getMyAppliedEventIds } from "@/services/applications";
 import { amIBlocking, blockUser, isBlockedEitherWay, unblockUser } from "@/services/blocks";
 import { getEventsByOrganizer, type OwnEvent } from "@/services/events";
@@ -56,6 +58,8 @@ export default function UserProfileScreen() {
   const [blockedEitherWay, setBlockedEitherWay] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   useFocusEffect(
     useCallback(() => {
@@ -166,7 +170,7 @@ export default function UserProfileScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#093A7D" />
+        <ActivityIndicator size="large" color={palette.text} />
       </View>
     );
   }
@@ -184,12 +188,12 @@ export default function UserProfileScreen() {
 
   if (blockedEitherWay) {
     return (
-      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+      <LinearGradient colors={palette.gradient} style={styles.background}>
         <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
-          <Ionicons name="close" size={26} color="#093A7D" />
+          <Ionicons name="close" size={26} color={palette.text} />
         </Pressable>
         <View style={styles.centered}>
-          <Ionicons name="ban-outline" size={40} color="#093A7D" />
+          <Ionicons name="ban-outline" size={40} color={palette.text} />
           <Text style={styles.notFoundText}>
             {blockedByMe ? "You blocked this account." : "This profile isn't available."}
           </Text>
@@ -208,9 +212,9 @@ export default function UserProfileScreen() {
 
   const organizerFields = (
     <>
-      {profile.organization_name ? <InfoBlock label="Organization" value={profile.organization_name} /> : null}
-      {profile.website ? <InfoBlock label="Website" value={profile.website} /> : null}
-      {profile.about ? <InfoBlock label="About" value={profile.about} /> : null}
+      {profile.organization_name ? <InfoBlock label="Organization" value={profile.organization_name} palette={palette} /> : null}
+      {profile.website ? <InfoBlock label="Website" value={profile.website} palette={palette} /> : null}
+      {profile.about ? <InfoBlock label="About" value={profile.about} palette={palette} /> : null}
     </>
   );
 
@@ -229,9 +233,9 @@ export default function UserProfileScreen() {
         </View>
       ) : null}
       {profile.experience_level ? (
-        <InfoBlock label="Experience" value={EXPERIENCE_LABEL[profile.experience_level]} />
+        <InfoBlock label="Experience" value={EXPERIENCE_LABEL[profile.experience_level]} palette={palette} />
       ) : null}
-      {profile.availability ? <InfoBlock label="Availability" value={profile.availability} /> : null}
+      {profile.availability ? <InfoBlock label="Availability" value={profile.availability} palette={palette} /> : null}
     </>
   );
 
@@ -246,18 +250,18 @@ export default function UserProfileScreen() {
   ];
 
   return (
-    <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+    <LinearGradient colors={palette.gradient} style={styles.background}>
       <ScrollView contentContainerStyle={styles.container}>
         <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
-          <Ionicons name="close" size={26} color="#093A7D" />
+          <Ionicons name="close" size={26} color={palette.text} />
         </Pressable>
 
         <Pressable onPress={() => setShowOptions(true)} style={styles.optionsButton} hitSlop={12}>
-          <Ionicons name="ellipsis-horizontal" size={22} color="#093A7D" />
+          <Ionicons name="ellipsis-horizontal" size={22} color={palette.text} />
         </Pressable>
 
         <View style={styles.avatarWrap}>
-          <LinearGradient colors={["#093A7D", "#C06BE4"]} style={styles.avatarRing}>
+          <LinearGradient colors={[palette.text, palette.accent]} style={styles.avatarRing}>
             <View style={styles.avatarGap}>
               <Avatar url={profile.avatar_url} size={100} />
             </View>
@@ -272,7 +276,7 @@ export default function UserProfileScreen() {
 
         {profile.city ? (
           <View style={styles.row}>
-            <Ionicons name="location-outline" size={14} color="#C06BE4" />
+            <Ionicons name="location-outline" size={14} color={palette.accent} />
             <Text style={styles.rowText}>{profile.city}</Text>
           </View>
         ) : null}
@@ -476,128 +480,142 @@ export default function UserProfileScreen() {
   );
 }
 
-function InfoBlock({ label, value }: { label: string; value: string }) {
+function InfoBlock({ label, value, palette }: { label: string; value: string; palette: Palette }) {
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionLabel}>{label}</Text>
-      <Text style={styles.sectionValue}>{value}</Text>
+    <View style={infoBlockStyles.section}>
+      <Text style={[infoBlockStyles.sectionLabel, { color: palette.accent }]}>{label}</Text>
+      <Text style={[infoBlockStyles.sectionValue, { color: palette.text }]}>{value}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1 },
-  centered: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F8ECFF" },
-  notFoundText: { fontSize: 15, color: "#093A7D" },
-  closeButtonInline: { marginTop: 16 },
-  closeButtonInlineText: { color: "#C06BE4", fontWeight: "700", fontSize: 14 },
-  container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
-  closeButton: { position: "absolute", top: 16, left: 16, zIndex: 1 },
-  optionsButton: { position: "absolute", top: 16, right: 16, zIndex: 1 },
-  avatarWrap: { width: 112, height: 112 },
-  avatarRing: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 3,
-  },
-  avatarGap: {
-    width: 106,
-    height: 106,
-    borderRadius: 53,
-    backgroundColor: "#F8ECFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  name: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginTop: 16 },
-  bio: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 6, paddingHorizontal: 16 },
-  row: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
-  rowText: { fontSize: 13, color: "#C06BE4", fontWeight: "700" },
-  followStatsRow: { flexDirection: "row", gap: 28, marginTop: 16 },
-  followStat: { alignItems: "center" },
-  followStatCount: { fontSize: 16, fontWeight: "700", color: "#093A7D" },
-  followStatLabel: { fontSize: 11, color: "#9B7FC7", fontWeight: "700", marginTop: 1 },
-  actionsRow: { flexDirection: "row", gap: 10, marginTop: 20 },
-  followButton: {
-    backgroundColor: "#C06BE4",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 24,
-  },
-  followButtonActive: {
-    backgroundColor: "#fff",
-    borderWidth: 1.5,
-    borderColor: "#C06BE4",
-  },
-  followButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  followButtonTextActive: { color: "#C06BE4" },
-  messageButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#093A7D",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 24,
-  },
-  messageButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  sectionDivider: {
-    width: "100%",
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: "rgba(192, 107, 228, 0.4)",
-    marginTop: 32,
-  },
-  dualRoleRow: { flexDirection: "row", width: "100%", gap: 12 },
-  roleColumn: { flex: 1, alignItems: "center" },
-  tagRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 10,
-    marginTop: 24,
-    width: "100%",
-  },
-  tag: {
-    backgroundColor: "#fff",
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 18,
-  },
-  tagSelected: { backgroundColor: "#093A7D" },
-  tagText: { fontSize: 12, fontWeight: "700", color: "#093A7D", letterSpacing: 0.5 },
-  tagTextSelected: { color: "#fff" },
-  subTagRow: { flexDirection: "row", gap: 8, marginTop: 14, marginBottom: 4 },
-  subTag: {
-    borderWidth: 1.5,
-    borderColor: "#C06BE4",
-    paddingVertical: 5,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-  },
-  subTagSelected: { backgroundColor: "#C06BE4" },
-  subTagText: { fontSize: 11, fontWeight: "700", color: "#C06BE4" },
-  subTagTextSelected: { color: "#fff" },
-  tabContent: { width: "100%", alignItems: "center" },
-  emptyTabText: { fontSize: 13, color: "#C06BE4", fontWeight: "700", textAlign: "center", marginTop: 20 },
+const infoBlockStyles = StyleSheet.create({
   section: { width: "100%", marginTop: 20, alignItems: "center" },
   sectionLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#C06BE4",
     textTransform: "uppercase",
     marginBottom: 6,
     textAlign: "center",
   },
-  sectionValue: { fontSize: 15, color: "#093A7D", lineHeight: 21, textAlign: "center" },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
-  chip: {
-    backgroundColor: "#fff",
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-  },
-  chipText: { color: "#093A7D", fontSize: 13, fontWeight: "700" },
+  sectionValue: { fontSize: 15, lineHeight: 21, textAlign: "center" },
 });
+
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    background: { flex: 1 },
+    centered: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: p.gradient[0] },
+    notFoundText: { fontSize: 15, color: p.text },
+    closeButtonInline: { marginTop: 16 },
+    closeButtonInlineText: { color: p.accent, fontWeight: "700", fontSize: 14 },
+    container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
+    closeButton: { position: "absolute", top: 16, left: 16, zIndex: 1 },
+    optionsButton: { position: "absolute", top: 16, right: 16, zIndex: 1 },
+    avatarWrap: { width: 112, height: 112 },
+    avatarRing: {
+      width: 112,
+      height: 112,
+      borderRadius: 56,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 3,
+    },
+    avatarGap: {
+      width: 106,
+      height: 106,
+      borderRadius: 53,
+      backgroundColor: p.card,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    name: { fontSize: 22, fontWeight: "700", color: p.text, marginTop: 16 },
+    bio: { fontSize: 14, color: p.text, textAlign: "center", marginTop: 6, paddingHorizontal: 16 },
+    row: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+    rowText: { fontSize: 13, color: p.accent, fontWeight: "700" },
+    followStatsRow: { flexDirection: "row", gap: 28, marginTop: 16 },
+    followStat: { alignItems: "center" },
+    followStatCount: { fontSize: 16, fontWeight: "700", color: p.text },
+    followStatLabel: { fontSize: 11, color: p.textMuted, fontWeight: "700", marginTop: 1 },
+    actionsRow: { flexDirection: "row", gap: 10, marginTop: 20 },
+    followButton: {
+      backgroundColor: p.accent,
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      borderRadius: 24,
+    },
+    followButtonActive: {
+      backgroundColor: p.card,
+      borderWidth: 1.5,
+      borderColor: p.accent,
+    },
+    followButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+    followButtonTextActive: { color: p.accent },
+    messageButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: p.buttonBg,
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+      borderRadius: 24,
+    },
+    messageButtonText: { color: p.buttonText, fontWeight: "700", fontSize: 15 },
+    sectionDivider: {
+      width: "100%",
+      height: 2,
+      borderRadius: 1,
+      backgroundColor: "rgba(192, 107, 228, 0.4)",
+      marginTop: 32,
+    },
+    dualRoleRow: { flexDirection: "row", width: "100%", gap: 12 },
+    roleColumn: { flex: 1, alignItems: "center" },
+    tagRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      gap: 10,
+      marginTop: 24,
+      width: "100%",
+    },
+    tag: {
+      backgroundColor: p.card,
+      paddingVertical: 8,
+      paddingHorizontal: 18,
+      borderRadius: 18,
+    },
+    tagSelected: { backgroundColor: p.selectedBg },
+    tagText: { fontSize: 12, fontWeight: "700", color: p.text, letterSpacing: 0.5 },
+    tagTextSelected: { color: p.selectedText },
+    subTagRow: { flexDirection: "row", gap: 8, marginTop: 14, marginBottom: 4 },
+    subTag: {
+      borderWidth: 1.5,
+      borderColor: p.accent,
+      paddingVertical: 5,
+      paddingHorizontal: 14,
+      borderRadius: 14,
+    },
+    subTagSelected: { backgroundColor: p.accent },
+    subTagText: { fontSize: 11, fontWeight: "700", color: p.accent },
+    subTagTextSelected: { color: "#fff" },
+    tabContent: { width: "100%", alignItems: "center" },
+    emptyTabText: { fontSize: 13, color: p.accent, fontWeight: "700", textAlign: "center", marginTop: 20 },
+    section: { width: "100%", marginTop: 20, alignItems: "center" },
+    sectionLabel: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: p.accent,
+      textTransform: "uppercase",
+      marginBottom: 6,
+      textAlign: "center",
+    },
+    sectionValue: { fontSize: 15, color: p.text, lineHeight: 21, textAlign: "center" },
+    chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
+    chip: {
+      backgroundColor: p.card,
+      paddingVertical: 6,
+      paddingHorizontal: 14,
+      borderRadius: 16,
+    },
+    chipText: { color: p.text, fontSize: 13, fontWeight: "700" },
+  });
+}

@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -18,9 +18,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
+import { useTheme } from "@/contexts/theme-context";
 import type { Profile } from "@/lib/database.types";
 import { goToUserProfile } from "@/lib/profile-navigation";
 import { supabase } from "@/lib/supabase";
+import type { Palette } from "@/lib/theme";
 import { isBlockedEitherWay } from "@/services/blocks";
 import { type ConversationMessage, getConversation, markMessagesAsRead, sendMessage } from "@/services/messages";
 import { getProfileById } from "@/services/profiles";
@@ -33,6 +35,8 @@ export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<ConversationMessage>>(null);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const [otherUser, setOtherUser] = useState<Profile | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -93,21 +97,21 @@ export default function ChatScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#093A7D" />
+        <ActivityIndicator size="large" color={palette.text} />
       </View>
     );
   }
 
   return (
     <View style={styles.background}>
-      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={palette.gradient} style={StyleSheet.absoluteFill} />
 
       <View
         style={[styles.header, { paddingTop: insets.top + 10 }]}
         onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
       >
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={26} color="#093A7D" />
+          <Ionicons name="chevron-back" size={26} color={palette.text} />
         </Pressable>
         <Pressable style={styles.headerProfile} onPress={() => goToUserProfile(id, currentUserId)}>
           <Avatar url={otherUser?.avatar_url} size={36} />
@@ -223,7 +227,7 @@ export default function ChatScreen() {
               value={text}
               onChangeText={setText}
               placeholder="Message..."
-              placeholderTextColor="#9AA5B8"
+              placeholderTextColor={palette.textMuted}
               multiline
             />
             <Pressable
@@ -244,85 +248,87 @@ export default function ChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1 },
-  centered: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F8ECFF" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-  },
-  headerProfile: { flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1 },
-  headerName: { fontSize: 16, fontWeight: "700", color: "#093A7D", flexShrink: 1 },
-  body: { flex: 1 },
-  list: { flexGrow: 1, padding: 16, gap: 8 },
-  emptyText: { fontSize: 13, color: "#9B7FC7", textAlign: "center", marginTop: 40 },
-  bubbleRow: { width: "100%", flexDirection: "row", marginBottom: 4 },
-  bubbleRowMine: { justifyContent: "flex-end" },
-  bubbleRowTheirs: { justifyContent: "flex-start" },
-  bubble: {
-    maxWidth: "78%",
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  bubbleMine: { backgroundColor: "#093A7D", borderBottomRightRadius: 4 },
-  bubbleTheirs: { backgroundColor: "#fff", borderBottomLeftRadius: 4 },
-  bubbleText: { fontSize: 14, color: "#093A7D" },
-  bubbleTextMine: { color: "#fff" },
-  sharedCard: { width: 180 },
-  sharedThumb: {
-    width: "100%",
-    height: 120,
-    borderRadius: 12,
-    backgroundColor: "#C06BE4",
-  },
-  sharedThumbFallback: { alignItems: "center", justifyContent: "center" },
-  sharedPlayBadge: {
-    position: "absolute",
-    top: 44,
-    left: 74,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sharedCardText: { fontSize: 13, fontWeight: "700", color: "#093A7D", marginTop: 6 },
-  bubbleFooter: { flexDirection: "row", alignItems: "center", alignSelf: "flex-end", marginTop: 3 },
-  bubbleTime: { fontSize: 10, color: "#9B7FC7" },
-  bubbleTimeMine: { color: "rgba(255,255,255,0.7)" },
-  readTick: { marginLeft: 3 },
-  error: { color: "#D0342C", fontSize: 12, textAlign: "center", paddingHorizontal: 16, marginBottom: 6 },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-  },
-  input: {
-    flex: 1,
-    maxHeight: 100,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: "#093A7D",
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#C06BE4",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sendButtonDisabled: { opacity: 0.5 },
-  blockedBanner: { paddingHorizontal: 16, paddingTop: 10, alignItems: "center" },
-  blockedBannerText: { fontSize: 13, color: "#9B7FC7", fontWeight: "600" },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    background: { flex: 1 },
+    centered: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: p.gradient[0] },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    headerProfile: { flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1 },
+    headerName: { fontSize: 16, fontWeight: "700", color: p.text, flexShrink: 1 },
+    body: { flex: 1 },
+    list: { flexGrow: 1, padding: 16, gap: 8 },
+    emptyText: { fontSize: 13, color: p.textMuted, textAlign: "center", marginTop: 40 },
+    bubbleRow: { width: "100%", flexDirection: "row", marginBottom: 4 },
+    bubbleRowMine: { justifyContent: "flex-end" },
+    bubbleRowTheirs: { justifyContent: "flex-start" },
+    bubble: {
+      maxWidth: "78%",
+      borderRadius: 18,
+      paddingHorizontal: 14,
+      paddingVertical: 9,
+    },
+    bubbleMine: { backgroundColor: p.buttonBg, borderBottomRightRadius: 4 },
+    bubbleTheirs: { backgroundColor: p.card, borderBottomLeftRadius: 4 },
+    bubbleText: { fontSize: 14, color: p.text },
+    bubbleTextMine: { color: p.buttonText },
+    sharedCard: { width: 180 },
+    sharedThumb: {
+      width: "100%",
+      height: 120,
+      borderRadius: 12,
+      backgroundColor: p.accent,
+    },
+    sharedThumbFallback: { alignItems: "center", justifyContent: "center" },
+    sharedPlayBadge: {
+      position: "absolute",
+      top: 44,
+      left: 74,
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: "rgba(0,0,0,0.4)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sharedCardText: { fontSize: 13, fontWeight: "700", color: p.text, marginTop: 6 },
+    bubbleFooter: { flexDirection: "row", alignItems: "center", alignSelf: "flex-end", marginTop: 3 },
+    bubbleTime: { fontSize: 10, color: p.textMuted },
+    bubbleTimeMine: { color: "rgba(255,255,255,0.7)" },
+    readTick: { marginLeft: 3 },
+    error: { color: "#D0342C", fontSize: 12, textAlign: "center", paddingHorizontal: 16, marginBottom: 6 },
+    inputRow: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      gap: 10,
+      paddingHorizontal: 16,
+      paddingTop: 10,
+    },
+    input: {
+      flex: 1,
+      maxHeight: 100,
+      backgroundColor: p.card,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      fontSize: 14,
+      color: p.text,
+    },
+    sendButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: p.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sendButtonDisabled: { opacity: 0.5 },
+    blockedBanner: { paddingHorizontal: 16, paddingTop: 10, alignItems: "center" },
+    blockedBannerText: { fontSize: 13, color: p.textMuted, fontWeight: "600" },
+  });
+}

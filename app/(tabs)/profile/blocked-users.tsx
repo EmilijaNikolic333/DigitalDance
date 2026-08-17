@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { useTheme } from "@/contexts/theme-context";
+import type { Palette } from "@/lib/theme";
 import { type BlockedUser, getBlockedUsers, unblockUser } from "@/services/blocks";
 
 export default function BlockedUsersScreen() {
@@ -13,6 +15,8 @@ export default function BlockedUsersScreen() {
   const [error, setError] = useState<string | null>(null);
   const [unblockingId, setUnblockingId] = useState<string | null>(null);
   const hasLoadedRef = useRef(false);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
@@ -39,16 +43,16 @@ export default function BlockedUsersScreen() {
   };
 
   return (
-    <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+    <LinearGradient colors={palette.gradient} style={styles.background}>
       <ScrollView contentContainerStyle={styles.container}>
         <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
-          <Ionicons name="close" size={26} color="#093A7D" />
+          <Ionicons name="close" size={26} color={palette.text} />
         </Pressable>
 
         <Text style={styles.title}>Blocked users</Text>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color={palette.text} style={{ marginTop: 40 }} />
         ) : error ? (
           <Text style={styles.emptyText}>Couldn&apos;t load blocked users. Check your connection.</Text>
         ) : users.length === 0 ? (
@@ -67,7 +71,7 @@ export default function BlockedUsersScreen() {
                   disabled={unblockingId === user.id}
                 >
                   {unblockingId === user.id ? (
-                    <ActivityIndicator size="small" color="#093A7D" />
+                    <ActivityIndicator size="small" color={palette.text} />
                   ) : (
                     <Text style={styles.unblockButtonText}>Unblock</Text>
                   )}
@@ -81,27 +85,29 @@ export default function BlockedUsersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1 },
-  container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
-  closeButton: { position: "absolute", top: 50, left: 16 },
-  title: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginBottom: 8 },
-  emptyText: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 20 },
-  list: { width: "100%", gap: 8, marginTop: 16 },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 12,
-  },
-  name: { flex: 1, fontSize: 14, fontWeight: "700", color: "#093A7D" },
-  unblockButton: {
-    backgroundColor: "#F8ECFF",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-  },
-  unblockButtonText: { fontSize: 12, fontWeight: "700", color: "#093A7D" },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    background: { flex: 1 },
+    container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
+    closeButton: { position: "absolute", top: 50, left: 16 },
+    title: { fontSize: 22, fontWeight: "700", color: p.text, marginBottom: 8 },
+    emptyText: { fontSize: 14, color: p.text, textAlign: "center", marginTop: 20 },
+    list: { width: "100%", gap: 8, marginTop: 16 },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      backgroundColor: p.card,
+      borderRadius: 16,
+      padding: 12,
+    },
+    name: { flex: 1, fontSize: 14, fontWeight: "700", color: p.text },
+    unblockButton: {
+      backgroundColor: p.gradient[0],
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 18,
+    },
+    unblockButtonText: { fontSize: 12, fontWeight: "700", color: p.text },
+  });
+}

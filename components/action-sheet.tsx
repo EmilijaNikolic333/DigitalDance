@@ -1,6 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import { useMemo } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { useTheme } from "@/contexts/theme-context";
+import type { Palette } from "@/lib/theme";
 
 export interface ActionSheetItem {
   key: string;
@@ -19,6 +23,8 @@ interface ActionSheetProps {
 /** A generic bottom sheet of tappable actions - e.g. the "..." menu on a profile. */
 export function ActionSheet({ visible, onClose, items }: ActionSheetProps) {
   const insets = useSafeAreaInsets();
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -37,7 +43,7 @@ export function ActionSheet({ visible, onClose, items }: ActionSheetProps) {
                 item.onPress();
               }}
             >
-              <Ionicons name={item.icon} size={20} color={item.destructive ? "#D0342C" : "#093A7D"} />
+              <Ionicons name={item.icon} size={20} color={item.destructive ? "#D0342C" : palette.text} />
               <Text style={[styles.label, item.destructive && styles.labelDestructive]}>{item.label}</Text>
             </Pressable>
           ))}
@@ -47,24 +53,26 @@ export function ActionSheet({ visible, onClose, items }: ActionSheetProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(9, 58, 125, 0.4)", justifyContent: "flex-end" },
-  sheet: {
-    backgroundColor: "#F8ECFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 10,
-    paddingHorizontal: 20,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(9, 58, 125, 0.2)",
-    alignSelf: "center",
-    marginBottom: 10,
-  },
-  row: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14 },
-  label: { fontSize: 15, fontWeight: "600", color: "#093A7D" },
-  labelDestructive: { color: "#D0342C" },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: "rgba(9, 58, 125, 0.4)", justifyContent: "flex-end" },
+    sheet: {
+      backgroundColor: p.gradient[0],
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingTop: 10,
+      paddingHorizontal: 20,
+    },
+    handle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: "rgba(192, 107, 228, 0.4)",
+      alignSelf: "center",
+      marginBottom: 10,
+    },
+    row: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 14 },
+    label: { fontSize: 15, fontWeight: "600", color: p.text },
+    labelDestructive: { color: "#D0342C" },
+  });
+}

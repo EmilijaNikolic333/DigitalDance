@@ -2,13 +2,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { useTheme } from "@/contexts/theme-context";
 import type { ExperienceLevel } from "@/lib/database.types";
 import { DANCE_STYLES, EXPERIENCE_LEVELS } from "@/lib/profile-options";
 import { addSearchHistoryEntry, clearSearchHistory, getSearchHistory } from "@/lib/search-history";
+import type { Palette } from "@/lib/theme";
 import { search, type SearchFilters, type SearchResults } from "@/services/search";
 
 function formatEventDate(iso: string) {
@@ -28,6 +30,8 @@ export default function SearchScreen() {
   const [city, setCity] = useState("");
   const [experienceLevel, setExperienceLevel] = useState<ExperienceLevel | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const activeFilterCount = [danceStyle, city.trim() || null, experienceLevel].filter(Boolean).length;
 
@@ -84,12 +88,12 @@ export default function SearchScreen() {
   const hasActiveSearch = !!query.trim() || activeFilterCount > 0;
 
   return (
-    <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+    <LinearGradient colors={palette.gradient} style={styles.background}>
       <View style={styles.header}>
         <Text style={styles.title}>Search</Text>
         <View style={styles.searchRow}>
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={18} color="#9B7FC7" />
+            <Ionicons name="search" size={18} color={palette.textMuted} />
             <TextInput
               style={styles.searchInput}
               value={query}
@@ -98,13 +102,13 @@ export default function SearchScreen() {
               onBlur={() => setFocused(false)}
               onSubmitEditing={() => saveToHistory(query)}
               placeholder="Search dancers, organizers, auditions..."
-              placeholderTextColor="#9B7FC7"
+              placeholderTextColor={palette.textMuted}
               autoCapitalize="none"
               returnKeyType="search"
             />
             {query.length > 0 ? (
               <Pressable onPress={() => setQuery("")} hitSlop={8}>
-                <Ionicons name="close-circle" size={18} color="#9B7FC7" />
+                <Ionicons name="close-circle" size={18} color={palette.textMuted} />
               </Pressable>
             ) : null}
           </View>
@@ -113,7 +117,7 @@ export default function SearchScreen() {
             onPress={() => setShowFilters((prev) => !prev)}
             hitSlop={8}
           >
-            <Ionicons name="options-outline" size={20} color={activeFilterCount > 0 ? "#fff" : "#093A7D"} />
+            <Ionicons name="options-outline" size={20} color={activeFilterCount > 0 ? "#fff" : palette.text} />
             {activeFilterCount > 0 ? (
               <View style={styles.filterBadge}>
                 <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
@@ -158,7 +162,7 @@ export default function SearchScreen() {
               value={city}
               onChangeText={setCity}
               placeholder="City"
-              placeholderTextColor="#9B7FC7"
+              placeholderTextColor={palette.textMuted}
               autoCapitalize="words"
             />
 
@@ -173,7 +177,7 @@ export default function SearchScreen() {
 
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         {loading ? (
-          <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color={palette.text} style={{ marginTop: 40 }} />
         ) : error ? (
           <Text style={styles.emptyText}>Couldn&apos;t search. Check your connection.</Text>
         ) : !hasActiveSearch ? (
@@ -187,7 +191,7 @@ export default function SearchScreen() {
               </View>
               {history.map((entry) => (
                 <Pressable key={entry} style={styles.historyRow} onPress={() => handleSelectHistory(entry)}>
-                  <Ionicons name="time-outline" size={16} color="#9B7FC7" />
+                  <Ionicons name="time-outline" size={16} color={palette.textMuted} />
                   <Text style={styles.historyText} numberOfLines={1}>
                     {entry}
                   </Text>
@@ -285,119 +289,121 @@ export default function SearchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1 },
-  header: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 16, gap: 12 },
-  title: { fontSize: 24, fontWeight: "700", color: "#093A7D" },
-  searchRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  searchBar: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  searchInput: { flex: 1, fontSize: 14, color: "#093A7D" },
-  filterToggle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  filterToggleActive: { backgroundColor: "#C06BE4" },
-  filterBadge: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "#093A7D",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  filterBadgeText: { fontSize: 10, fontWeight: "700", color: "#fff" },
-  filtersPanel: {
-    marginTop: 12,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 14,
-    gap: 8,
-  },
-  filterLabel: { fontSize: 12, fontWeight: "700", color: "#093A7D", marginTop: 4 },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    backgroundColor: "#F8ECFF",
-  },
-  chipActive: { backgroundColor: "#C06BE4" },
-  chipText: { fontSize: 12, fontWeight: "600", color: "#093A7D", textTransform: "capitalize" },
-  chipTextActive: { color: "#fff" },
-  cityInput: {
-    backgroundColor: "#F8ECFF",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: "#093A7D",
-  },
-  clearFiltersButton: { alignSelf: "flex-start", marginTop: 4 },
-  container: { paddingHorizontal: 20, paddingBottom: 40 },
-  emptyText: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 40, paddingHorizontal: 16 },
-  section: { marginBottom: 20 },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#C06BE4",
-    textTransform: "uppercase",
-    marginBottom: 8,
-    letterSpacing: 0.5,
-  },
-  historyHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  clearHistoryText: { fontSize: 12, fontWeight: "700", color: "#C06BE4" },
-  historyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 10,
-  },
-  historyText: { fontSize: 14, color: "#093A7D", flex: 1 },
-  personRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 10,
-    marginBottom: 8,
-  },
-  personInfo: { flex: 1, gap: 2 },
-  personName: { fontSize: 14, fontWeight: "700", color: "#093A7D" },
-  personSubtext: { fontSize: 12, color: "#9B7FC7" },
-  eventRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 10,
-    marginBottom: 8,
-  },
-  eventCover: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "#C06BE4",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  eventCoverImage: { width: "100%", height: "100%" },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    background: { flex: 1 },
+    header: { paddingHorizontal: 24, paddingTop: 60, paddingBottom: 16, gap: 12 },
+    title: { fontSize: 24, fontWeight: "700", color: p.text },
+    searchRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+    searchBar: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: p.card,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    searchInput: { flex: 1, fontSize: 14, color: p.text },
+    filterToggle: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: p.card,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    filterToggleActive: { backgroundColor: p.accent },
+    filterBadge: {
+      position: "absolute",
+      top: -4,
+      right: -4,
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      backgroundColor: p.buttonBg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    filterBadgeText: { fontSize: 10, fontWeight: "700", color: p.buttonText },
+    filtersPanel: {
+      marginTop: 12,
+      backgroundColor: p.card,
+      borderRadius: 16,
+      padding: 14,
+      gap: 8,
+    },
+    filterLabel: { fontSize: 12, fontWeight: "700", color: p.text, marginTop: 4 },
+    chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    chip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 14,
+      backgroundColor: p.gradient[0],
+    },
+    chipActive: { backgroundColor: p.accent },
+    chipText: { fontSize: 12, fontWeight: "600", color: p.text, textTransform: "capitalize" },
+    chipTextActive: { color: "#fff" },
+    cityInput: {
+      backgroundColor: p.gradient[0],
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 14,
+      color: p.text,
+    },
+    clearFiltersButton: { alignSelf: "flex-start", marginTop: 4 },
+    container: { paddingHorizontal: 20, paddingBottom: 40 },
+    emptyText: { fontSize: 14, color: p.text, textAlign: "center", marginTop: 40, paddingHorizontal: 16 },
+    section: { marginBottom: 20 },
+    sectionLabel: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: p.accent,
+      textTransform: "uppercase",
+      marginBottom: 8,
+      letterSpacing: 0.5,
+    },
+    historyHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    clearHistoryText: { fontSize: 12, fontWeight: "700", color: p.accent },
+    historyRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingVertical: 10,
+    },
+    historyText: { fontSize: 14, color: p.text, flex: 1 },
+    personRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      backgroundColor: p.card,
+      borderRadius: 16,
+      padding: 10,
+      marginBottom: 8,
+    },
+    personInfo: { flex: 1, gap: 2 },
+    personName: { fontSize: 14, fontWeight: "700", color: p.text },
+    personSubtext: { fontSize: 12, color: p.textMuted },
+    eventRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      backgroundColor: p.card,
+      borderRadius: 16,
+      padding: 10,
+      marginBottom: 8,
+    },
+    eventCover: {
+      width: 44,
+      height: 44,
+      borderRadius: 12,
+      backgroundColor: p.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    eventCoverImage: { width: "100%", height: "100%" },
+  });
+}

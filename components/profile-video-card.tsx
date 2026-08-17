@@ -1,15 +1,17 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
 import { ShareToSheet } from "@/components/share-to-sheet";
 import { useRepostContext } from "@/contexts/repost-context";
 import { useSavedContext } from "@/contexts/saved-context";
+import { useTheme } from "@/contexts/theme-context";
 import type { Video } from "@/lib/database.types";
 import { goToUserProfile } from "@/lib/profile-navigation";
 import { supabase } from "@/lib/supabase";
+import type { Palette } from "@/lib/theme";
 import { toggleRepostVideo } from "@/services/reposted-videos";
 import { toggleSaveVideo } from "@/services/saved-videos";
 
@@ -49,6 +51,8 @@ export function ProfileVideoCard({
   const reposted = isVideoReposted(video.id, video.isReposted ?? false);
   const { isVideoSaved, setVideoSaved } = useSavedContext();
   const saved = isVideoSaved(video.id, video.isSaved ?? false);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   useEffect(() => {
     if (!authorId) return;
@@ -90,7 +94,7 @@ export function ProfileVideoCard({
         </View>
         {onEditPress ? (
           <Pressable style={styles.editVideoButton} onPress={onEditPress} hitSlop={8}>
-            <Ionicons name="pencil" size={16} color="#093A7D" />
+            <Ionicons name="pencil" size={16} color={palette.text} />
           </Pressable>
         ) : null}
         <View style={styles.coverActionColumn}>
@@ -99,17 +103,17 @@ export function ProfileVideoCard({
               <Ionicons
                 name={saved ? "bookmark" : "bookmark-outline"}
                 size={16}
-                color={saved ? "#C06BE4" : "#093A7D"}
+                color={saved ? palette.accent : palette.text}
               />
             </Pressable>
           ) : null}
           {showRepostButton ? (
             <Pressable style={styles.coverActionButton} onPress={handleToggleRepost} hitSlop={8}>
-              <Ionicons name="repeat" size={16} color={reposted ? "#C06BE4" : "#093A7D"} />
+              <Ionicons name="repeat" size={16} color={reposted ? palette.accent : palette.text} />
             </Pressable>
           ) : null}
           <Pressable style={styles.coverActionButton} onPress={() => setShowShare(true)} hitSlop={8}>
-            <Ionicons name="paper-plane-outline" size={16} color="#093A7D" />
+            <Ionicons name="paper-plane-outline" size={16} color={palette.text} />
           </Pressable>
         </View>
       </View>
@@ -148,54 +152,56 @@ export function ProfileVideoCard({
   );
 }
 
-const styles = StyleSheet.create({
-  videoCard: {
-    width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    marginTop: 14,
-    overflow: "hidden",
-  },
-  cover: {
-    width: "100%",
-    height: 160,
-    backgroundColor: "#C06BE4",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  coverImage: { ...StyleSheet.absoluteFillObject },
-  coverPlayBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  editVideoButton: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    padding: 8,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-  },
-  coverActionColumn: { position: "absolute", top: 10, left: 10, gap: 8 },
-  coverActionButton: {
-    padding: 8,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-  },
-  videoInfo: { padding: 12, gap: 4 },
-  authorRow: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start" },
-  videoAuthor: { fontSize: 11, color: "#9B7FC7", fontWeight: "700" },
-  videoTitle: { fontSize: 14, fontWeight: "700", color: "#093A7D" },
-  chip: {
-    alignSelf: "flex-start",
-    backgroundColor: "#F8ECFF",
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-  },
-  chipText: { color: "#093A7D", fontSize: 12, fontWeight: "700" },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    videoCard: {
+      width: "100%",
+      backgroundColor: p.card,
+      borderRadius: 16,
+      marginTop: 14,
+      overflow: "hidden",
+    },
+    cover: {
+      width: "100%",
+      height: 160,
+      backgroundColor: p.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    coverImage: { ...StyleSheet.absoluteFillObject },
+    coverPlayBadge: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: "rgba(0,0,0,0.35)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    editVideoButton: {
+      position: "absolute",
+      top: 10,
+      right: 10,
+      padding: 8,
+      backgroundColor: p.card,
+      borderRadius: 16,
+    },
+    coverActionColumn: { position: "absolute", top: 10, left: 10, gap: 8 },
+    coverActionButton: {
+      padding: 8,
+      backgroundColor: p.card,
+      borderRadius: 16,
+    },
+    videoInfo: { padding: 12, gap: 4 },
+    authorRow: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start" },
+    videoAuthor: { fontSize: 11, color: p.textMuted, fontWeight: "700" },
+    videoTitle: { fontSize: 14, fontWeight: "700", color: p.text },
+    chip: {
+      alignSelf: "flex-start",
+      backgroundColor: p.gradient[0],
+      paddingVertical: 3,
+      paddingHorizontal: 10,
+      borderRadius: 12,
+    },
+    chipText: { color: p.text, fontSize: 12, fontWeight: "700" },
+  });
+}

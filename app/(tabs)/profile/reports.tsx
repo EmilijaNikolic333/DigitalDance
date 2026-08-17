@@ -2,9 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
+import type { Palette } from "@/lib/theme";
 import {
   approveReport,
   getHiddenContent,
@@ -25,6 +27,8 @@ export default function ReportsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const hasLoadedRef = useRef(false);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
@@ -73,10 +77,10 @@ export default function ReportsScreen() {
   };
 
   return (
-    <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+    <LinearGradient colors={palette.gradient} style={styles.background}>
       <ScrollView contentContainerStyle={styles.container}>
         <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
-          <Ionicons name="close" size={26} color="#093A7D" />
+          <Ionicons name="close" size={26} color={palette.text} />
         </Pressable>
 
         <Text style={styles.title}>Reported content</Text>
@@ -91,7 +95,7 @@ export default function ReportsScreen() {
         </View>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color={palette.text} style={{ marginTop: 40 }} />
         ) : error ? (
           <Text style={styles.emptyText}>Couldn&apos;t load reports. Check your connection.</Text>
         ) : tab === "pending" ? (
@@ -128,7 +132,7 @@ export default function ReportsScreen() {
                       disabled={busyKey === report.id}
                     >
                       {busyKey === report.id ? (
-                        <ActivityIndicator size="small" color="#093A7D" />
+                        <ActivityIndicator size="small" color={palette.text} />
                       ) : (
                         <Text style={styles.rejectButtonText}>Dismiss</Text>
                       )}
@@ -171,7 +175,7 @@ export default function ReportsScreen() {
 
                   <Pressable style={styles.restoreButton} onPress={() => handleRestore(item)} disabled={busyKey === key}>
                     {busyKey === key ? (
-                      <ActivityIndicator size="small" color="#093A7D" />
+                      <ActivityIndicator size="small" color={palette.text} />
                     ) : (
                       <Text style={styles.restoreButtonText}>Restore</Text>
                     )}
@@ -186,57 +190,59 @@ export default function ReportsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1 },
-  container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
-  closeButton: { position: "absolute", top: 50, left: 16 },
-  title: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginBottom: 16 },
-  tabRow: { flexDirection: "row", gap: 8, width: "100%" },
-  tab: { flex: 1, paddingVertical: 10, borderRadius: 18, backgroundColor: "#fff", alignItems: "center" },
-  tabActive: { backgroundColor: "#093A7D" },
-  tabText: { fontSize: 13, fontWeight: "700", color: "#093A7D" },
-  tabTextActive: { color: "#fff" },
-  emptyText: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 30 },
-  list: { width: "100%", gap: 10, marginTop: 16 },
-  card: { backgroundColor: "#fff", borderRadius: 16, padding: 12, gap: 10 },
-  cardHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
-  thumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: "#C06BE4",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  thumbImage: { width: "100%", height: "100%" },
-  cardInfo: { flex: 1, gap: 2 },
-  cardTitle: { fontSize: 14, fontWeight: "700", color: "#093A7D" },
-  cardMeta: { fontSize: 11, color: "#9B7FC7", textTransform: "capitalize" },
-  reasonText: { fontSize: 12, color: "#093A7D", fontStyle: "italic" },
-  actionsRow: { flexDirection: "row", gap: 8 },
-  rejectButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 18,
-    backgroundColor: "#F8ECFF",
-    alignItems: "center",
-  },
-  rejectButtonText: { fontSize: 12, fontWeight: "700", color: "#093A7D" },
-  removeButton: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 18,
-    backgroundColor: "#D0342C",
-    alignItems: "center",
-  },
-  removeButtonText: { fontSize: 12, fontWeight: "700", color: "#fff" },
-  restoreButton: {
-    alignSelf: "flex-start",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    backgroundColor: "#F8ECFF",
-  },
-  restoreButtonText: { fontSize: 12, fontWeight: "700", color: "#093A7D" },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    background: { flex: 1 },
+    container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
+    closeButton: { position: "absolute", top: 50, left: 16 },
+    title: { fontSize: 22, fontWeight: "700", color: p.text, marginBottom: 16 },
+    tabRow: { flexDirection: "row", gap: 8, width: "100%" },
+    tab: { flex: 1, paddingVertical: 10, borderRadius: 18, backgroundColor: p.card, alignItems: "center" },
+    tabActive: { backgroundColor: p.selectedBg },
+    tabText: { fontSize: 13, fontWeight: "700", color: p.text },
+    tabTextActive: { color: p.selectedText },
+    emptyText: { fontSize: 14, color: p.text, textAlign: "center", marginTop: 30 },
+    list: { width: "100%", gap: 10, marginTop: 16 },
+    card: { backgroundColor: p.card, borderRadius: 16, padding: 12, gap: 10 },
+    cardHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
+    thumb: {
+      width: 44,
+      height: 44,
+      borderRadius: 10,
+      backgroundColor: p.accent,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    thumbImage: { width: "100%", height: "100%" },
+    cardInfo: { flex: 1, gap: 2 },
+    cardTitle: { fontSize: 14, fontWeight: "700", color: p.text },
+    cardMeta: { fontSize: 11, color: p.textMuted, textTransform: "capitalize" },
+    reasonText: { fontSize: 12, color: p.text, fontStyle: "italic" },
+    actionsRow: { flexDirection: "row", gap: 8 },
+    rejectButton: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 18,
+      backgroundColor: p.gradient[0],
+      alignItems: "center",
+    },
+    rejectButtonText: { fontSize: 12, fontWeight: "700", color: p.text },
+    removeButton: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 18,
+      backgroundColor: "#D0342C",
+      alignItems: "center",
+    },
+    removeButtonText: { fontSize: 12, fontWeight: "700", color: "#fff" },
+    restoreButton: {
+      alignSelf: "flex-start",
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 18,
+      backgroundColor: p.gradient[0],
+    },
+    restoreButtonText: { fontSize: 12, fontWeight: "700", color: p.text },
+  });
+}

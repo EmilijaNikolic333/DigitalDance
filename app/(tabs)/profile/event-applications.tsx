@@ -1,11 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
+import { useTheme } from "@/contexts/theme-context";
 import type { ApplicantStatus } from "@/lib/database.types";
+import type { Palette } from "@/lib/theme";
 import {
   type ApplicantWithDancer,
   getApplicationsForEvent,
@@ -26,6 +28,8 @@ export default function EventApplicationsScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   useFocusEffect(
     useCallback(() => {
@@ -55,10 +59,10 @@ export default function EventApplicationsScreen() {
   };
 
   return (
-    <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+    <LinearGradient colors={palette.gradient} style={styles.background}>
       <ScrollView contentContainerStyle={styles.container}>
         <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
-          <Ionicons name="close" size={26} color="#093A7D" />
+          <Ionicons name="close" size={26} color={palette.text} />
         </Pressable>
 
         <Text style={styles.title}>Applications</Text>
@@ -67,7 +71,7 @@ export default function EventApplicationsScreen() {
         {loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
 
         {loading ? (
-          <ActivityIndicator size="large" color="#093A7D" style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color={palette.text} style={{ marginTop: 40 }} />
         ) : applications.length === 0 ? (
           <Text style={styles.emptyText}>No applications yet.</Text>
         ) : (
@@ -131,39 +135,41 @@ export default function EventApplicationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1 },
-  container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
-  closeButton: { position: "absolute", top: 16, left: 16 },
-  title: { fontSize: 22, fontWeight: "700", color: "#093A7D" },
-  subtitle: { fontSize: 13, color: "#9B7FC7", marginTop: 4, marginBottom: 8, textAlign: "center" },
-  emptyText: { fontSize: 14, color: "#093A7D", textAlign: "center", marginTop: 40 },
-  errorText: { fontSize: 12, color: "#D0342C", textAlign: "center", marginTop: 12, paddingHorizontal: 16 },
-  list: { width: "100%", marginTop: 16 },
-  card: {
-    width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 14,
-  },
-  cardTop: { flexDirection: "row", alignItems: "center", gap: 12 },
-  cardInfo: { flex: 1 },
-  name: { fontSize: 15, fontWeight: "700", color: "#093A7D" },
-  statusText: { fontSize: 12, fontWeight: "700", color: "#C06BE4", marginTop: 2 },
-  statusAccepted: { color: "#2E9E5B" },
-  statusRejected: { color: "#D0342C" },
-  message: { fontSize: 13, color: "#093A7D", lineHeight: 19, marginTop: 10 },
-  actionsRow: { flexDirection: "row", gap: 10, marginTop: 12 },
-  actionButton: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 9,
-    borderRadius: 14,
-    backgroundColor: "#F8ECFF",
-  },
-  actionButtonAccept: { backgroundColor: "#2E9E5B" },
-  actionButtonReject: { backgroundColor: "#D0342C" },
-  actionButtonText: { fontSize: 13, fontWeight: "700", color: "#093A7D" },
-  actionButtonTextActive: { color: "#fff" },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    background: { flex: 1 },
+    container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 40 },
+    closeButton: { position: "absolute", top: 16, left: 16 },
+    title: { fontSize: 22, fontWeight: "700", color: p.text },
+    subtitle: { fontSize: 13, color: p.textMuted, marginTop: 4, marginBottom: 8, textAlign: "center" },
+    emptyText: { fontSize: 14, color: p.text, textAlign: "center", marginTop: 40 },
+    errorText: { fontSize: 12, color: "#D0342C", textAlign: "center", marginTop: 12, paddingHorizontal: 16 },
+    list: { width: "100%", marginTop: 16 },
+    card: {
+      width: "100%",
+      backgroundColor: p.card,
+      borderRadius: 16,
+      padding: 14,
+      marginBottom: 14,
+    },
+    cardTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+    cardInfo: { flex: 1 },
+    name: { fontSize: 15, fontWeight: "700", color: p.text },
+    statusText: { fontSize: 12, fontWeight: "700", color: p.accent, marginTop: 2 },
+    statusAccepted: { color: "#2E9E5B" },
+    statusRejected: { color: "#D0342C" },
+    message: { fontSize: 13, color: p.text, lineHeight: 19, marginTop: 10 },
+    actionsRow: { flexDirection: "row", gap: 10, marginTop: 12 },
+    actionButton: {
+      flex: 1,
+      alignItems: "center",
+      paddingVertical: 9,
+      borderRadius: 14,
+      backgroundColor: p.gradient[0],
+    },
+    actionButtonAccept: { backgroundColor: "#2E9E5B" },
+    actionButtonReject: { backgroundColor: "#D0342C" },
+    actionButtonText: { fontSize: 13, fontWeight: "700", color: p.text },
+    actionButtonTextActive: { color: "#fff" },
+  });
+}

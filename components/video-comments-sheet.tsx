@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -17,8 +17,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
+import { useTheme } from "@/contexts/theme-context";
 import { goToUserProfile } from "@/lib/profile-navigation";
 import { supabase } from "@/lib/supabase";
+import type { Palette } from "@/lib/theme";
 import { addComment, getComments, type CommentWithAuthor, type ThreadedComment } from "@/services/comments";
 
 interface VideoCommentsSheetProps {
@@ -54,6 +56,8 @@ export function VideoCommentsSheet({
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList<ThreadedComment>>(null);
   const inputRef = useRef<TextInput>(null);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   // Only set when this sheet is opened from a /user/[id] profile screen - lets us avoid
   // re-navigating to the profile you're already looking at.
   const { id: viewingProfileId } = useLocalSearchParams<{ id?: string }>();
@@ -176,12 +180,12 @@ export function VideoCommentsSheet({
           <View style={styles.header}>
             <Text style={styles.headerTitle}>{totalCount === 1 ? "1 comment" : `${totalCount} comments`}</Text>
             <Pressable onPress={onClose} hitSlop={12}>
-              <Ionicons name="close" size={22} color="#093A7D" />
+              <Ionicons name="close" size={22} color={palette.text} />
             </Pressable>
           </View>
 
           {loading ? (
-            <ActivityIndicator size="large" color="#093A7D" style={styles.loading} />
+            <ActivityIndicator size="large" color={palette.text} style={styles.loading} />
           ) : loadError ? (
             <Text style={styles.error}>{loadError}</Text>
           ) : (
@@ -215,7 +219,7 @@ export function VideoCommentsSheet({
             <View style={styles.replyBanner}>
               <Text style={styles.replyBannerText}>Replying to {replyTarget.authorName}</Text>
               <Pressable onPress={() => setReplyTarget(null)} hitSlop={8}>
-                <Ionicons name="close" size={16} color="#9B7FC7" />
+                <Ionicons name="close" size={16} color={palette.textMuted} />
               </Pressable>
             </View>
           ) : null}
@@ -232,7 +236,7 @@ export function VideoCommentsSheet({
               value={text}
               onChangeText={setText}
               placeholder={replyTarget ? `Reply to ${replyTarget.authorName}...` : "Add a comment..."}
-              placeholderTextColor="#9AA5B8"
+              placeholderTextColor={palette.textMuted}
               multiline
             />
             <Pressable
@@ -253,84 +257,86 @@ export function VideoCommentsSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(9, 58, 125, 0.4)", justifyContent: "flex-end" },
-  sheet: {
-    minHeight: "45%",
-    maxHeight: "75%",
-    backgroundColor: "#F8ECFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 10,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(9, 58, 125, 0.2)",
-    alignSelf: "center",
-    marginBottom: 10,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  headerTitle: { fontSize: 15, fontWeight: "700", color: "#093A7D" },
-  loading: { marginTop: 30 },
-  list: { flex: 1 },
-  listContent: { flexGrow: 1, paddingHorizontal: 20, paddingBottom: 12, gap: 14 },
-  emptyWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
-  emptyText: { fontSize: 13, color: "#9B7FC7", textAlign: "center" },
-  commentRow: { flexDirection: "row", gap: 10 },
-  replyRow: { marginTop: 10, marginLeft: 30 },
-  commentBody: { flex: 1 },
-  commentHeaderRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
-  commentName: { fontSize: 13, fontWeight: "700", color: "#093A7D" },
-  commentTime: { fontSize: 11, color: "#9B7FC7" },
-  commentText: { fontSize: 14, color: "#093A7D", marginTop: 2, lineHeight: 19 },
-  replyButton: { fontSize: 12, fontWeight: "700", color: "#C06BE4", marginTop: 4 },
-  error: { color: "#D0342C", fontSize: 12, textAlign: "center", paddingHorizontal: 16, marginBottom: 6 },
-  replyBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginHorizontal: 16,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: "#fff",
-    borderRadius: 12,
-  },
-  replyBannerText: { fontSize: 12, color: "#093A7D", fontWeight: "700" },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(9, 58, 125, 0.08)",
-  },
-  input: {
-    flex: 1,
-    maxHeight: 90,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: "#093A7D",
-  },
-  sendButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "#C06BE4",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sendButtonDisabled: { opacity: 0.5 },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    overlay: { flex: 1, backgroundColor: "rgba(9, 58, 125, 0.4)", justifyContent: "flex-end" },
+    sheet: {
+      minHeight: "45%",
+      maxHeight: "75%",
+      backgroundColor: p.gradient[0],
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingTop: 10,
+    },
+    handle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: "rgba(192, 107, 228, 0.4)",
+      alignSelf: "center",
+      marginBottom: 10,
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 20,
+      paddingBottom: 12,
+    },
+    headerTitle: { fontSize: 15, fontWeight: "700", color: p.text },
+    loading: { marginTop: 30 },
+    list: { flex: 1 },
+    listContent: { flexGrow: 1, paddingHorizontal: 20, paddingBottom: 12, gap: 14 },
+    emptyWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
+    emptyText: { fontSize: 13, color: p.textMuted, textAlign: "center" },
+    commentRow: { flexDirection: "row", gap: 10 },
+    replyRow: { marginTop: 10, marginLeft: 30 },
+    commentBody: { flex: 1 },
+    commentHeaderRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
+    commentName: { fontSize: 13, fontWeight: "700", color: p.text },
+    commentTime: { fontSize: 11, color: p.textMuted },
+    commentText: { fontSize: 14, color: p.text, marginTop: 2, lineHeight: 19 },
+    replyButton: { fontSize: 12, fontWeight: "700", color: p.accent, marginTop: 4 },
+    error: { color: "#D0342C", fontSize: 12, textAlign: "center", paddingHorizontal: 16, marginBottom: 6 },
+    replyBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginHorizontal: 16,
+      marginBottom: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: p.card,
+      borderRadius: 12,
+    },
+    replyBannerText: { fontSize: 12, color: p.text, fontWeight: "700" },
+    inputRow: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      gap: 10,
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      borderTopWidth: 1,
+      borderTopColor: "rgba(192, 107, 228, 0.2)",
+    },
+    input: {
+      flex: 1,
+      maxHeight: 90,
+      backgroundColor: p.card,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      fontSize: 14,
+      color: p.text,
+    },
+    sendButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: p.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sendButtonDisabled: { opacity: 0.5 },
+  });
+}

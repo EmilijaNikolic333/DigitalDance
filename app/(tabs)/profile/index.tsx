@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ActionSheet } from "@/components/action-sheet";
@@ -13,7 +13,9 @@ import { ProfileEventCard } from "@/components/profile-event-card";
 import { ProfileVideoCard } from "@/components/profile-video-card";
 import { useRepostContext } from "@/contexts/repost-context";
 import { useSavedContext } from "@/contexts/saved-context";
+import { useTheme } from "@/contexts/theme-context";
 import type { Profile } from "@/lib/database.types";
+import { getPalette, type Palette } from "@/lib/theme";
 import { supabase } from "@/lib/supabase";
 import { getMyApplications, getMyAppliedEventIds, type MyApplication } from "@/services/applications";
 import { signOut } from "@/services/auth";
@@ -69,6 +71,8 @@ export default function ProfileScreen() {
   const hasLoadedRef = useRef(false);
   const { isVideoReposted, isEventReposted } = useRepostContext();
   const { isVideoSaved, isEventSaved } = useSavedContext();
+  const { darkMode, toggleDarkMode, palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
@@ -155,9 +159,9 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+      <LinearGradient colors={palette.gradient} style={styles.background}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#093A7D" />
+          <ActivityIndicator size="large" color={palette.text} />
         </View>
       </LinearGradient>
     );
@@ -165,7 +169,7 @@ export default function ProfileScreen() {
 
   if (profileError && !profile) {
     return (
-      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+      <LinearGradient colors={palette.gradient} style={styles.background}>
         <View style={styles.centered}>
           <Text style={styles.errorText}>Couldn&apos;t load your profile. Check your connection.</Text>
           <Pressable style={styles.retryButton} onPress={load}>
@@ -200,13 +204,15 @@ export default function ProfileScreen() {
 
   const organizerFields = (
     <>
-      {profile?.organization_name ? <InfoBlock label="Organization" value={profile.organization_name} /> : null}
+      {profile?.organization_name ? (
+        <InfoBlock label="Organization" value={profile.organization_name} dark={darkMode} />
+      ) : null}
       {profile?.about ? (
-        <InfoBlock label="About" value={profile.about} />
+        <InfoBlock label="About" value={profile.about} dark={darkMode} />
       ) : aboutMissing && !showSharedBioPrompt ? (
         bioPrompt
       ) : null}
-      {profile?.website ? <InfoBlock label="Website" value={profile.website} /> : null}
+      {profile?.website ? <InfoBlock label="Website" value={profile.website} dark={darkMode} /> : null}
     </>
   );
 
@@ -221,7 +227,7 @@ export default function ProfileScreen() {
   const dancerFields = (
     <>
       {profile?.bio ? (
-        <InfoBlock label="Bio" value={profile.bio} />
+        <InfoBlock label="Bio" value={profile.bio} dark={darkMode} />
       ) : bioMissing && !showSharedBioPrompt ? (
         bioPrompt
       ) : null}
@@ -238,21 +244,21 @@ export default function ProfileScreen() {
         </View>
       ) : null}
       {profile?.experience_level ? (
-        <InfoBlock label="Experience" value={EXPERIENCE_LABEL[profile.experience_level]} />
+        <InfoBlock label="Experience" value={EXPERIENCE_LABEL[profile.experience_level]} dark={darkMode} />
       ) : null}
-      {profile?.availability ? <InfoBlock label="Availability" value={profile.availability} /> : null}
+      {profile?.availability ? <InfoBlock label="Availability" value={profile.availability} dark={darkMode} /> : null}
     </>
   );
 
   return (
-    <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+    <LinearGradient colors={palette.gradient} style={styles.background}>
       <ScrollView contentContainerStyle={styles.container}>
         {profileError && profile ? (
           <Text style={styles.inlineError}>Couldn&apos;t refresh your profile. Check your connection.</Text>
         ) : null}
 
         <Pressable style={styles.optionsButton} onPress={() => setShowOptions(true)} hitSlop={12}>
-          <Ionicons name="ellipsis-horizontal" size={22} color="#093A7D" />
+          <Ionicons name="ellipsis-horizontal" size={22} color={palette.text} />
         </Pressable>
 
         <Pressable
@@ -260,12 +266,12 @@ export default function ProfileScreen() {
           onPress={() => router.push("/(tabs)/profile/notifications")}
           hitSlop={12}
         >
-          <Ionicons name="notifications-outline" size={24} color="#093A7D" />
+          <Ionicons name="notifications-outline" size={24} color={palette.text} />
           {unreadNotifications > 0 ? <View style={styles.notificationsBadge} /> : null}
         </Pressable>
 
         <View style={styles.headerRow}>
-          <LinearGradient colors={["#093A7D", "#C06BE4"]} style={styles.avatarRing}>
+          <LinearGradient colors={[palette.text, palette.accent]} style={styles.avatarRing}>
             <View style={styles.avatarGap}>
               <Avatar url={profile?.avatar_url} size={100} />
             </View>
@@ -288,7 +294,7 @@ export default function ProfileScreen() {
 
         {profile?.city ? (
           <View style={styles.row}>
-            <Ionicons name="location-outline" size={14} color="#C06BE4" />
+            <Ionicons name="location-outline" size={14} color={palette.accent} />
             <Text style={styles.rowText}>{profile.city}</Text>
           </View>
         ) : null}
@@ -345,7 +351,7 @@ export default function ProfileScreen() {
                   style={styles.addVideoButton}
                   onPress={() => router.push("/(tabs)/profile/new-event")}
                 >
-                  <Ionicons name="add-circle" size={26} color="#093A7D" />
+                  <Ionicons name="add-circle" size={26} color={palette.text} />
                   <Text style={styles.addVideoText}>Add new event</Text>
                 </Pressable>
                 <Text style={styles.addVideoSubtitle}>Post auditions and events to find your next dancers!</Text>
@@ -380,7 +386,7 @@ export default function ProfileScreen() {
                   style={styles.addVideoButton}
                   onPress={() => router.push("/(tabs)/profile/new-video")}
                 >
-                  <Ionicons name="add-circle" size={26} color="#093A7D" />
+                  <Ionicons name="add-circle" size={26} color={palette.text} />
                   <Text style={styles.addVideoText}>Add new video</Text>
                 </Pressable>
                 <Text style={styles.addVideoSubtitle}>Post your dance videos and connect with dancers worldwide!</Text>
@@ -641,6 +647,12 @@ export default function ProfileScreen() {
         onClose={() => setShowOptions(false)}
         items={[
           {
+            key: "dark-mode",
+            label: darkMode ? "Light mode" : "Dark mode",
+            icon: darkMode ? "sunny-outline" : "moon-outline",
+            onPress: toggleDarkMode,
+          },
+          {
             key: "blocked",
             label: "Blocked users",
             icon: "ban-outline",
@@ -662,191 +674,206 @@ export default function ProfileScreen() {
   );
 }
 
-function InfoBlock({ label, value }: { label: string; value: string }) {
+function InfoBlock({ label, value, dark }: { label: string; value: string; dark: boolean }) {
+  const p = getPalette(dark);
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionLabel}>{label}</Text>
-      <Text style={styles.sectionValue}>{value}</Text>
+    <View style={infoBlockStyles.section}>
+      <Text style={[infoBlockStyles.sectionLabel, { color: p.accent }]}>{label}</Text>
+      <Text style={[infoBlockStyles.sectionValue, { color: p.text }]}>{value}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1 },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 70, paddingBottom: 40 },
-  optionsButton: {
-    position: "absolute",
-    top: 44,
-    left: 16,
-    zIndex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  notificationsButton: {
-    position: "absolute",
-    top: 44,
-    right: 16,
-    zIndex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 8,
-  },
-  notificationsBadge: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: "#C06BE4",
-    borderWidth: 1.5,
-    borderColor: "#fff",
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 24,
-    width: "100%",
-  },
-  avatarRing: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 3,
-  },
-  avatarGap: {
-    width: 106,
-    height: 106,
-    borderRadius: 53,
-    backgroundColor: "#F8ECFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerButtons: {
-    width: 130,
-    alignItems: "center",
-    gap: 10,
-  },
-  logoSmall: { width: "100%", height: 60 },
-  editButtonSmall: {
-    backgroundColor: "#fff",
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  editButtonSmallText: { color: "#093A7D", fontWeight: "700", fontSize: 11, textAlign: "center" },
-  logoutButtonSmall: {
-    backgroundColor: "#093A7D",
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-  },
-  logoutSmallText: { color: "#fff", fontWeight: "700", fontSize: 11, textAlign: "center" },
-  name: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginTop: 16 },
-  aboutPlaceholder: {
-    fontSize: 13,
-    color: "#C06BE4",
-    fontWeight: "700",
-    textAlign: "center",
-    marginTop: 14,
-    paddingHorizontal: 16,
-  },
-  row: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
-  rowText: { fontSize: 13, color: "#C06BE4", fontWeight: "700" },
-  followStatsRow: { flexDirection: "row", gap: 28, marginTop: 16 },
-  followStat: { alignItems: "center" },
-  followStatCount: { fontSize: 16, fontWeight: "700", color: "#093A7D" },
-  followStatLabel: { fontSize: 11, color: "#9B7FC7", fontWeight: "700", marginTop: 1 },
-  dualRoleRow: { flexDirection: "row", width: "100%", marginTop: 20, gap: 12 },
-  roleColumn: { flex: 1, alignItems: "center" },
+const infoBlockStyles = StyleSheet.create({
   section: { width: "100%", marginTop: 20, alignItems: "center" },
   sectionLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#C06BE4",
     textTransform: "uppercase",
     marginBottom: 6,
     textAlign: "center",
   },
-  tagRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 10,
-    marginTop: 24,
-    width: "100%",
-  },
-  tag: {
-    backgroundColor: "#fff",
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 18,
-  },
-  tagSelected: { backgroundColor: "#093A7D" },
-  tagText: { fontSize: 12, fontWeight: "700", color: "#093A7D", letterSpacing: 0.5 },
-  tagTextSelected: { color: "#fff" },
-  subTagRow: { flexDirection: "row", gap: 8, marginTop: 14, marginBottom: 4 },
-  subTag: {
-    borderWidth: 1.5,
-    borderColor: "#C06BE4",
-    paddingVertical: 5,
-    paddingHorizontal: 14,
-    borderRadius: 14,
-  },
-  subTagSelected: { backgroundColor: "#C06BE4" },
-  subTagText: { fontSize: 11, fontWeight: "700", color: "#C06BE4" },
-  subTagTextSelected: { color: "#fff" },
-  tabContent: { width: "100%", alignItems: "center" },
-  emptyTabText: { fontSize: 13, color: "#C06BE4", fontWeight: "700", textAlign: "center", marginTop: 20 },
-  viewAllRow: { width: "100%", alignItems: "flex-end", marginTop: 16 },
-  viewAllText: { fontSize: 12, color: "#C06BE4", fontWeight: "700" },
-  sectionValue: { fontSize: 15, color: "#093A7D", lineHeight: 21, textAlign: "center" },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
-  chip: {
-    backgroundColor: "#fff",
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-  },
-  chipText: { color: "#093A7D", fontSize: 13, fontWeight: "700" },
-  addVideoButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 28,
-    alignSelf: "center",
-  },
-  addVideoText: { color: "#093A7D", fontWeight: "700", fontSize: 18 },
-  addVideoSubtitle: { fontSize: 12, color: "#9B7FC7", marginTop: 4, alignSelf: "center", textAlign: "center" },
-  sectionDivider: {
-    width: "100%",
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: "rgba(192, 107, 228, 0.4)",
-    marginTop: 32,
-  },
-  errorText: { fontSize: 14, color: "#093A7D", textAlign: "center", paddingHorizontal: 24 },
-  retryButton: {
-    marginTop: 16,
-    backgroundColor: "#093A7D",
-    paddingVertical: 10,
-    paddingHorizontal: 24,
-    borderRadius: 20,
-  },
-  retryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  inlineError: { fontSize: 12, color: "#D0342C", marginTop: 10, textAlign: "center" },
+  sectionValue: { fontSize: 15, lineHeight: 21, textAlign: "center" },
 });
+
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    background: { flex: 1 },
+    centered: { flex: 1, justifyContent: "center", alignItems: "center" },
+    container: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 70, paddingBottom: 40 },
+    optionsButton: {
+      position: "absolute",
+      top: 44,
+      left: 16,
+      zIndex: 1,
+      backgroundColor: p.card,
+      borderRadius: 20,
+      width: 40,
+      height: 40,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    notificationsButton: {
+      position: "absolute",
+      top: 44,
+      right: 16,
+      zIndex: 1,
+      backgroundColor: p.card,
+      borderRadius: 20,
+      padding: 8,
+    },
+    notificationsBadge: {
+      position: "absolute",
+      top: 6,
+      right: 6,
+      width: 9,
+      height: 9,
+      borderRadius: 5,
+      backgroundColor: p.accent,
+      borderWidth: 1.5,
+      borderColor: p.card,
+    },
+    headerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 24,
+      width: "100%",
+    },
+    avatarRing: {
+      width: 112,
+      height: 112,
+      borderRadius: 56,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 3,
+    },
+    avatarGap: {
+      width: 106,
+      height: 106,
+      borderRadius: 53,
+      backgroundColor: p.card,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    headerButtons: {
+      width: 130,
+      alignItems: "center",
+      gap: 10,
+    },
+    logoSmall: { width: "100%", height: 60 },
+    editButtonSmall: {
+      backgroundColor: p.card,
+      paddingVertical: 6,
+      paddingHorizontal: 16,
+      borderRadius: 14,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    editButtonSmallText: { color: p.text, fontWeight: "700", fontSize: 11, textAlign: "center" },
+    logoutButtonSmall: {
+      backgroundColor: p.buttonBg,
+      paddingVertical: 6,
+      paddingHorizontal: 16,
+      borderRadius: 14,
+    },
+    logoutSmallText: { color: p.buttonText, fontWeight: "700", fontSize: 11, textAlign: "center" },
+    name: { fontSize: 22, fontWeight: "700", color: p.text, marginTop: 16 },
+    aboutPlaceholder: {
+      fontSize: 13,
+      color: p.accent,
+      fontWeight: "700",
+      textAlign: "center",
+      marginTop: 14,
+      paddingHorizontal: 16,
+    },
+    row: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+    rowText: { fontSize: 13, color: p.accent, fontWeight: "700" },
+    followStatsRow: { flexDirection: "row", gap: 28, marginTop: 16 },
+    followStat: { alignItems: "center" },
+    followStatCount: { fontSize: 16, fontWeight: "700", color: p.text },
+    followStatLabel: { fontSize: 11, color: p.textMuted, fontWeight: "700", marginTop: 1 },
+    dualRoleRow: { flexDirection: "row", width: "100%", marginTop: 20, gap: 12 },
+    roleColumn: { flex: 1, alignItems: "center" },
+    section: { width: "100%", marginTop: 20, alignItems: "center" },
+    sectionLabel: {
+      fontSize: 12,
+      fontWeight: "700",
+      color: p.accent,
+      textTransform: "uppercase",
+      marginBottom: 6,
+      textAlign: "center",
+    },
+    tagRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      gap: 10,
+      marginTop: 24,
+      width: "100%",
+    },
+    tag: {
+      backgroundColor: p.card,
+      paddingVertical: 8,
+      paddingHorizontal: 18,
+      borderRadius: 18,
+    },
+    tagSelected: { backgroundColor: p.selectedBg },
+    tagText: { fontSize: 12, fontWeight: "700", color: p.text, letterSpacing: 0.5 },
+    tagTextSelected: { color: p.selectedText },
+    subTagRow: { flexDirection: "row", gap: 8, marginTop: 14, marginBottom: 4 },
+    subTag: {
+      borderWidth: 1.5,
+      borderColor: p.accent,
+      paddingVertical: 5,
+      paddingHorizontal: 14,
+      borderRadius: 14,
+    },
+    subTagSelected: { backgroundColor: p.accent },
+    subTagText: { fontSize: 11, fontWeight: "700", color: p.accent },
+    subTagTextSelected: { color: "#fff" },
+    tabContent: { width: "100%", alignItems: "center" },
+    emptyTabText: { fontSize: 13, color: p.accent, fontWeight: "700", textAlign: "center", marginTop: 20 },
+    viewAllRow: { width: "100%", alignItems: "flex-end", marginTop: 16 },
+    viewAllText: { fontSize: 12, color: p.accent, fontWeight: "700" },
+    sectionValue: { fontSize: 15, color: p.text, lineHeight: 21, textAlign: "center" },
+    chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "center" },
+    chip: {
+      backgroundColor: p.card,
+      paddingVertical: 6,
+      paddingHorizontal: 14,
+      borderRadius: 16,
+    },
+    chipText: { color: p.text, fontSize: 13, fontWeight: "700" },
+    addVideoButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      marginTop: 28,
+      alignSelf: "center",
+    },
+    addVideoText: { color: p.text, fontWeight: "700", fontSize: 18 },
+    addVideoSubtitle: { fontSize: 12, color: p.textMuted, marginTop: 4, alignSelf: "center", textAlign: "center" },
+    sectionDivider: {
+      width: "100%",
+      height: 2,
+      borderRadius: 1,
+      backgroundColor: "rgba(192, 107, 228, 0.4)",
+      marginTop: 32,
+    },
+    errorText: { fontSize: 14, color: p.text, textAlign: "center", paddingHorizontal: 24 },
+    retryButton: {
+      marginTop: 16,
+      backgroundColor: p.buttonBg,
+      paddingVertical: 10,
+      paddingHorizontal: 24,
+      borderRadius: 20,
+    },
+    retryButtonText: { color: p.buttonText, fontWeight: "700", fontSize: 14 },
+    inlineError: { fontSize: 12, color: "#D0342C", marginTop: 10, textAlign: "center" },
+  });
+}

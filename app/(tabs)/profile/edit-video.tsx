@@ -5,7 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams } from "expo-router";
 import { createVideoPlayer } from "expo-video";
 import * as VideoThumbnails from "expo-video-thumbnails";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,7 +19,9 @@ import {
   View,
 } from "react-native";
 
+import { useTheme } from "@/contexts/theme-context";
 import { supabase } from "@/lib/supabase";
+import type { Palette } from "@/lib/theme";
 import { type Song, searchSongs } from "@/services/music";
 import {
   deleteVideo,
@@ -66,6 +68,8 @@ export default function EditVideoScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
 
   useEffect(() => {
     getVideoById(id).then((video) => {
@@ -244,9 +248,9 @@ export default function EditVideoScreen() {
 
   if (loading) {
     return (
-      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+      <LinearGradient colors={palette.gradient} style={styles.background}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#093A7D" />
+          <ActivityIndicator size="large" color={palette.text} />
         </View>
       </LinearGradient>
     );
@@ -254,10 +258,10 @@ export default function EditVideoScreen() {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <LinearGradient colors={["#F8ECFF", "#D294FB"]} style={styles.background}>
+      <LinearGradient colors={palette.gradient} style={styles.background}>
         <ScrollView contentContainerStyle={styles.detailsContainer} keyboardShouldPersistTaps="handled">
           <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
-            <Ionicons name="close" size={26} color="#093A7D" />
+            <Ionicons name="close" size={26} color={palette.text} />
           </Pressable>
 
           <Text style={styles.title}>Edit video</Text>
@@ -265,7 +269,7 @@ export default function EditVideoScreen() {
           <Text style={styles.label}>Cover</Text>
           <Text style={styles.helperText}>Pick a frame from your video</Text>
           {generatingFrames ? (
-            <ActivityIndicator color="#093A7D" style={{ marginBottom: 20 }} />
+            <ActivityIndicator color={palette.text} style={{ marginBottom: 20 }} />
           ) : (
             <ScrollView
               horizontal
@@ -274,7 +278,7 @@ export default function EditVideoScreen() {
               style={styles.frameScroll}
             >
               <Pressable style={styles.addFrameTile} onPress={addCoverFromGallery}>
-                <Ionicons name="add" size={22} color="#093A7D" />
+                <Ionicons name="add" size={22} color={palette.text} />
                 <Text style={styles.addFrameTileText}>Add from gallery</Text>
               </Pressable>
 
@@ -301,7 +305,7 @@ export default function EditVideoScreen() {
             value={caption}
             onChangeText={setCaption}
             placeholder="Write a description..."
-            placeholderTextColor="#9AA5B8"
+            placeholderTextColor={palette.textMuted}
             multiline
           />
 
@@ -325,7 +329,7 @@ export default function EditVideoScreen() {
                 <Image source={{ uri: selectedSong.artworkUrl }} style={styles.songArtwork} />
               ) : (
                 <View style={[styles.songArtwork, styles.songArtworkPlaceholder]}>
-                  <Ionicons name="musical-notes" size={18} color="#093A7D" />
+                  <Ionicons name="musical-notes" size={18} color={palette.text} />
                 </View>
               )}
               <View style={styles.songInfo}>
@@ -337,7 +341,7 @@ export default function EditVideoScreen() {
                 </Text>
               </View>
               <Pressable onPress={() => setSelectedSong(null)} hitSlop={8}>
-                <Ionicons name="close-circle" size={22} color="#093A7D" />
+                <Ionicons name="close-circle" size={22} color={palette.text} />
               </Pressable>
             </View>
           ) : (
@@ -347,9 +351,9 @@ export default function EditVideoScreen() {
                 value={songQuery}
                 onChangeText={setSongQuery}
                 placeholder="Search for a song..."
-                placeholderTextColor="#9AA5B8"
+                placeholderTextColor={palette.textMuted}
               />
-              {searching ? <ActivityIndicator color="#093A7D" style={{ marginBottom: 12 }} /> : null}
+              {searching ? <ActivityIndicator color={palette.text} style={{ marginBottom: 12 }} /> : null}
               {songResults.map((song) => (
                 <Pressable
                   key={song.id}
@@ -393,106 +397,108 @@ export default function EditVideoScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  background: { flex: 1 },
-  centered: { flex: 1, alignItems: "center", justifyContent: "center" },
-  detailsContainer: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 60 },
-  closeButton: { position: "absolute", top: 16, left: 16 },
-  title: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginBottom: 24 },
-  error: { color: "#D0342C", fontSize: 13, marginBottom: 12, textAlign: "center" },
-  label: { fontSize: 14, fontWeight: "700", color: "#093A7D", alignSelf: "flex-start", marginBottom: 4 },
-  helperText: { fontSize: 12, color: "#9B7FC7", alignSelf: "flex-start", marginBottom: 10 },
-  frameScroll: { width: "100%", marginBottom: 20 },
-  frameRow: { gap: 8 },
-  addFrameTile: {
-    width: 70,
-    height: 120,
-    borderRadius: 12,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    padding: 6,
-  },
-  addFrameTileText: { color: "#093A7D", fontSize: 10, fontWeight: "700", textAlign: "center" },
-  frameThumb: {
-    width: 70,
-    height: 120,
-    borderRadius: 12,
-    backgroundColor: "#fff",
-  },
-  frameThumbSelected: {
-    borderWidth: 3,
-    borderColor: "#093A7D",
-  },
-  frameCheckBadge: {
-    position: "absolute",
-    top: 6,
-    right: 6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "#093A7D",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  input: {
-    width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: "#093A7D",
-    marginBottom: 20,
-  },
-  inputMultiline: { minHeight: 70, textAlignVertical: "top" },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, width: "100%", marginBottom: 20 },
-  chip: { backgroundColor: "#fff", paddingVertical: 8, paddingHorizontal: 16, borderRadius: 18 },
-  chipSelected: { backgroundColor: "#093A7D" },
-  chipText: { color: "#093A7D", fontSize: 13, fontWeight: "700" },
-  chipTextSelected: { color: "#fff" },
-  songResultRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 8,
-    width: "100%",
-    marginBottom: 8,
-  },
-  selectedSongRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    padding: 8,
-    width: "100%",
-    marginBottom: 20,
-  },
-  songArtwork: { width: 44, height: 44, borderRadius: 8 },
-  songArtworkPlaceholder: { backgroundColor: "#F8ECFF", alignItems: "center", justifyContent: "center" },
-  songInfo: { flex: 1 },
-  songTitle: { fontSize: 13, fontWeight: "700", color: "#093A7D" },
-  songArtist: { fontSize: 12, color: "#9B7FC7" },
-  postButton: {
-    marginTop: 10,
-    backgroundColor: "#093A7D",
-    paddingVertical: 15,
-    paddingHorizontal: 48,
-    borderRadius: 28,
-    alignItems: "center",
-    width: "100%",
-  },
-  postButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  deleteButton: {
-    marginTop: 14,
-    paddingVertical: 12,
-    alignItems: "center",
-    width: "100%",
-  },
-  deleteButtonText: { color: "#D0342C", fontWeight: "700", fontSize: 15 },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    flex: { flex: 1 },
+    background: { flex: 1 },
+    centered: { flex: 1, alignItems: "center", justifyContent: "center" },
+    detailsContainer: { flexGrow: 1, alignItems: "center", padding: 24, paddingTop: 60, paddingBottom: 60 },
+    closeButton: { position: "absolute", top: 16, left: 16 },
+    title: { fontSize: 22, fontWeight: "700", color: p.text, marginBottom: 24 },
+    error: { color: "#D0342C", fontSize: 13, marginBottom: 12, textAlign: "center" },
+    label: { fontSize: 14, fontWeight: "700", color: p.text, alignSelf: "flex-start", marginBottom: 4 },
+    helperText: { fontSize: 12, color: p.textMuted, alignSelf: "flex-start", marginBottom: 10 },
+    frameScroll: { width: "100%", marginBottom: 20 },
+    frameRow: { gap: 8 },
+    addFrameTile: {
+      width: 70,
+      height: 120,
+      borderRadius: 12,
+      backgroundColor: p.card,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      padding: 6,
+    },
+    addFrameTileText: { color: p.text, fontSize: 10, fontWeight: "700", textAlign: "center" },
+    frameThumb: {
+      width: 70,
+      height: 120,
+      borderRadius: 12,
+      backgroundColor: p.card,
+    },
+    frameThumbSelected: {
+      borderWidth: 3,
+      borderColor: p.text,
+    },
+    frameCheckBadge: {
+      position: "absolute",
+      top: 6,
+      right: 6,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: p.buttonBg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    input: {
+      width: "100%",
+      backgroundColor: p.card,
+      borderRadius: 20,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
+      fontSize: 15,
+      color: p.text,
+      marginBottom: 20,
+    },
+    inputMultiline: { minHeight: 70, textAlignVertical: "top" },
+    chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, width: "100%", marginBottom: 20 },
+    chip: { backgroundColor: p.card, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 18 },
+    chipSelected: { backgroundColor: p.selectedBg },
+    chipText: { color: p.text, fontSize: 13, fontWeight: "700" },
+    chipTextSelected: { color: p.selectedText },
+    songResultRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: p.card,
+      borderRadius: 14,
+      padding: 8,
+      width: "100%",
+      marginBottom: 8,
+    },
+    selectedSongRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: p.card,
+      borderRadius: 14,
+      padding: 8,
+      width: "100%",
+      marginBottom: 20,
+    },
+    songArtwork: { width: 44, height: 44, borderRadius: 8 },
+    songArtworkPlaceholder: { backgroundColor: p.gradient[0], alignItems: "center", justifyContent: "center" },
+    songInfo: { flex: 1 },
+    songTitle: { fontSize: 13, fontWeight: "700", color: p.text },
+    songArtist: { fontSize: 12, color: p.textMuted },
+    postButton: {
+      marginTop: 10,
+      backgroundColor: p.buttonBg,
+      paddingVertical: 15,
+      paddingHorizontal: 48,
+      borderRadius: 28,
+      alignItems: "center",
+      width: "100%",
+    },
+    postButtonText: { color: p.buttonText, fontWeight: "700", fontSize: 16 },
+    deleteButton: {
+      marginTop: 14,
+      paddingVertical: 12,
+      alignItems: "center",
+      width: "100%",
+    },
+    deleteButtonText: { color: "#D0342C", fontWeight: "700", fontSize: 15 },
+  });
+}

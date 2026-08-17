@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -20,10 +20,12 @@ import { ShareToSheet } from "@/components/share-to-sheet";
 import { useFollowContext } from "@/contexts/follow-context";
 import { useRepostContext } from "@/contexts/repost-context";
 import { useSavedContext } from "@/contexts/saved-context";
+import { useTheme } from "@/contexts/theme-context";
 import { APPLICATION_STATUS_LABEL, APPLICATION_STATUS_STYLE } from "@/lib/application-status";
 import type { Applicant } from "@/lib/database.types";
 import { goToUserProfile } from "@/lib/profile-navigation";
 import { supabase } from "@/lib/supabase";
+import type { Palette } from "@/lib/theme";
 import { applyToEvent, cancelApplication, getMyApplication } from "@/services/applications";
 import { type EventWithOrganizer, getEventById } from "@/services/events";
 import { isFollowing as fetchIsFollowing, toggleFollow } from "@/services/follows";
@@ -68,6 +70,8 @@ export default function EventDetailScreen() {
   const { isEventSaved, setEventSaved } = useSavedContext();
   const { isEventReposted, setEventReposted } = useRepostContext();
   const { isFollowingUser, setFollowingUser } = useFollowContext();
+  const { palette } = useTheme();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const followingOrganizer = event?.organizer_id
     ? isFollowingUser(event.organizer_id, serverFollowingOrganizer)
     : false;
@@ -150,7 +154,7 @@ export default function EventDetailScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#093A7D" />
+        <ActivityIndicator size="large" color={palette.text} />
       </View>
     );
   }
@@ -201,7 +205,7 @@ export default function EventDetailScreen() {
             <Ionicons name="calendar" size={48} color="#fff" />
           )}
           <Pressable onPress={() => router.back()} style={styles.closeButton} hitSlop={12}>
-            <Ionicons name="close" size={22} color="#093A7D" />
+            <Ionicons name="close" size={22} color={palette.text} />
           </Pressable>
           <View style={styles.actionRow}>
             {!isOwnEvent ? (
@@ -210,21 +214,21 @@ export default function EventDetailScreen() {
                   <Ionicons
                     name={saved ? "bookmark" : "bookmark-outline"}
                     size={20}
-                    color={saved ? "#C06BE4" : "#093A7D"}
+                    color={saved ? palette.accent : palette.text}
                   />
                 </Pressable>
                 <Pressable onPress={handleToggleRepost} style={styles.coverActionButton} hitSlop={12}>
-                  <Ionicons name="repeat" size={20} color={reposted ? "#C06BE4" : "#093A7D"} />
+                  <Ionicons name="repeat" size={20} color={reposted ? palette.accent : palette.text} />
                 </Pressable>
               </>
             ) : null}
             <Pressable onPress={() => setShowShare(true)} style={styles.coverActionButton} hitSlop={12}>
-              <Ionicons name="paper-plane-outline" size={20} color="#093A7D" />
+              <Ionicons name="paper-plane-outline" size={20} color={palette.text} />
             </Pressable>
           </View>
           {actorId ? (
             <Pressable style={styles.actorPill} onPress={() => goToUserProfile(actorId, currentUserId)}>
-              <Ionicons name={actorIcon ?? "bookmark"} size={16} color="#C06BE4" />
+              <Ionicons name={actorIcon ?? "bookmark"} size={16} color={palette.accent} />
               <Avatar url={actorAvatar} size={26} />
               <Text style={styles.actorName} numberOfLines={1}>
                 {actorName || "Unknown"}
@@ -257,12 +261,12 @@ export default function EventDetailScreen() {
           <Text style={styles.description}>{event.description}</Text>
 
           <View style={styles.metaRow}>
-            <Ionicons name="calendar-outline" size={16} color="#C06BE4" />
+            <Ionicons name="calendar-outline" size={16} color={palette.accent} />
             <Text style={styles.metaText}>{formatEventDate(event.event_date)}</Text>
           </View>
           {event.city ? (
             <View style={styles.metaRow}>
-              <Ionicons name="location-outline" size={16} color="#C06BE4" />
+              <Ionicons name="location-outline" size={16} color={palette.accent} />
               <Text style={styles.metaText}>{event.city}</Text>
             </View>
           ) : null}
@@ -320,7 +324,7 @@ export default function EventDetailScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <Pressable onPress={() => setShowApplyModal(false)} style={styles.modalCloseButton} hitSlop={12}>
-              <Ionicons name="close" size={22} color="#093A7D" />
+              <Ionicons name="close" size={22} color={palette.text} />
             </Pressable>
 
             <Text style={styles.modalTitle}>Sign up for this event</Text>
@@ -331,7 +335,7 @@ export default function EventDetailScreen() {
               value={message}
               onChangeText={setMessage}
               placeholder="Tell the organizer about yourself..."
-              placeholderTextColor="#9AA5B8"
+              placeholderTextColor={palette.textMuted}
               multiline
             />
 
@@ -349,119 +353,121 @@ export default function EventDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1, backgroundColor: "#F8ECFF" },
-  centered: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F8ECFF" },
-  notFoundText: { fontSize: 15, color: "#093A7D" },
-  container: { paddingBottom: 40 },
-  cover: {
-    width: "100%",
-    height: 240,
-    backgroundColor: "#C06BE4",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  coverImage: { width: "100%", height: "100%" },
-  actionRow: {
-    position: "absolute",
-    top: 50,
-    left: 60,
-    flexDirection: "row",
-    gap: 8,
-  },
-  coverActionButton: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 6,
-  },
-  closeButton: {
-    position: "absolute",
-    top: 50,
-    left: 16,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 6,
-  },
-  actorPill: {
-    position: "absolute",
-    top: 50,
-    right: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(9, 58, 125, 0.7)",
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    maxWidth: 200,
-  },
-  actorName: { color: "#fff", fontWeight: "700", fontSize: 13, flexShrink: 1 },
-  content: { padding: 24 },
-  title: { fontSize: 22, fontWeight: "700", color: "#093A7D", marginBottom: 8 },
-  organizerRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
-  organizerAvatarWrap: { width: 28, height: 28 },
-  organizerText: { fontSize: 13, fontWeight: "700", color: "#093A7D" },
-  description: { fontSize: 14, color: "#093A7D", lineHeight: 21, marginBottom: 16 },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
-  metaText: { fontSize: 14, color: "#093A7D", fontWeight: "700" },
-  sectionHeading: { fontSize: 15, fontWeight: "700", color: "#093A7D", marginTop: 16, marginBottom: 10 },
-  detailsCard: { backgroundColor: "#fff", borderRadius: 16, padding: 16, gap: 12 },
-  detailRow: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
-  detailLabel: { fontSize: 13, color: "#9B7FC7", fontWeight: "700" },
-  detailValue: { fontSize: 13, color: "#093A7D", fontWeight: "700", flexShrink: 1, textAlign: "right" },
-  detailValueMultiline: { textAlign: "left", flex: 1 },
-  signUpButton: {
-    marginTop: 24,
-    backgroundColor: "#C06BE4",
-    paddingVertical: 15,
-    borderRadius: 28,
-    alignItems: "center",
-  },
-  signUpButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  appliedBadge: {
-    marginTop: 24,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#fff",
-    paddingVertical: 14,
-    borderRadius: 28,
-  },
-  appliedText: { color: "#093A7D", fontWeight: "700", fontSize: 15 },
-  cancelButton: {
-    marginTop: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  cancelButtonText: { color: "#D0342C", fontWeight: "700", fontSize: 14 },
-  error: { color: "#D0342C", fontSize: 13, marginBottom: 12, textAlign: "center" },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(9, 58, 125, 0.4)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  modalCard: {
-    width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 24,
-  },
-  modalCloseButton: { position: "absolute", top: 14, left: 14, zIndex: 1 },
-  modalTitle: { fontSize: 18, fontWeight: "700", color: "#093A7D", textAlign: "center", marginBottom: 6 },
-  modalSubtitle: { fontSize: 12, color: "#9B7FC7", textAlign: "center", marginBottom: 16 },
-  modalInput: {
-    width: "100%",
-    minHeight: 90,
-    backgroundColor: "#F8ECFF",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: "#093A7D",
-    textAlignVertical: "top",
-    marginBottom: 16,
-  },
-});
+function createStyles(p: Palette) {
+  return StyleSheet.create({
+    background: { flex: 1, backgroundColor: p.gradient[0] },
+    centered: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: p.gradient[0] },
+    notFoundText: { fontSize: 15, color: p.text },
+    container: { paddingBottom: 40 },
+    cover: {
+      width: "100%",
+      height: 240,
+      backgroundColor: p.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    coverImage: { width: "100%", height: "100%" },
+    actionRow: {
+      position: "absolute",
+      top: 50,
+      left: 60,
+      flexDirection: "row",
+      gap: 8,
+    },
+    coverActionButton: {
+      backgroundColor: p.card,
+      borderRadius: 16,
+      padding: 6,
+    },
+    closeButton: {
+      position: "absolute",
+      top: 50,
+      left: 16,
+      backgroundColor: p.card,
+      borderRadius: 16,
+      padding: 6,
+    },
+    actorPill: {
+      position: "absolute",
+      top: 50,
+      right: 16,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: "rgba(9, 58, 125, 0.7)",
+      borderRadius: 20,
+      paddingVertical: 6,
+      paddingHorizontal: 10,
+      maxWidth: 200,
+    },
+    actorName: { color: "#fff", fontWeight: "700", fontSize: 13, flexShrink: 1 },
+    content: { padding: 24 },
+    title: { fontSize: 22, fontWeight: "700", color: p.text, marginBottom: 8 },
+    organizerRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
+    organizerAvatarWrap: { width: 28, height: 28 },
+    organizerText: { fontSize: 13, fontWeight: "700", color: p.text },
+    description: { fontSize: 14, color: p.text, lineHeight: 21, marginBottom: 16 },
+    metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+    metaText: { fontSize: 14, color: p.text, fontWeight: "700" },
+    sectionHeading: { fontSize: 15, fontWeight: "700", color: p.text, marginTop: 16, marginBottom: 10 },
+    detailsCard: { backgroundColor: p.card, borderRadius: 16, padding: 16, gap: 12 },
+    detailRow: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
+    detailLabel: { fontSize: 13, color: p.textMuted, fontWeight: "700" },
+    detailValue: { fontSize: 13, color: p.text, fontWeight: "700", flexShrink: 1, textAlign: "right" },
+    detailValueMultiline: { textAlign: "left", flex: 1 },
+    signUpButton: {
+      marginTop: 24,
+      backgroundColor: p.accent,
+      paddingVertical: 15,
+      borderRadius: 28,
+      alignItems: "center",
+    },
+    signUpButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    appliedBadge: {
+      marginTop: 24,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: p.card,
+      paddingVertical: 14,
+      borderRadius: 28,
+    },
+    appliedText: { color: p.text, fontWeight: "700", fontSize: 15 },
+    cancelButton: {
+      marginTop: 12,
+      paddingVertical: 12,
+      alignItems: "center",
+    },
+    cancelButtonText: { color: "#D0342C", fontWeight: "700", fontSize: 14 },
+    error: { color: "#D0342C", fontSize: 13, marginBottom: 12, textAlign: "center" },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(9, 58, 125, 0.4)",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 24,
+    },
+    modalCard: {
+      width: "100%",
+      backgroundColor: p.card,
+      borderRadius: 20,
+      padding: 24,
+    },
+    modalCloseButton: { position: "absolute", top: 14, left: 14, zIndex: 1 },
+    modalTitle: { fontSize: 18, fontWeight: "700", color: p.text, textAlign: "center", marginBottom: 6 },
+    modalSubtitle: { fontSize: 12, color: p.textMuted, textAlign: "center", marginBottom: 16 },
+    modalInput: {
+      width: "100%",
+      minHeight: 90,
+      backgroundColor: p.gradient[0],
+      borderRadius: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      fontSize: 14,
+      color: p.text,
+      textAlignVertical: "top",
+      marginBottom: 16,
+    },
+  });
+}
