@@ -24,6 +24,7 @@ import MapView, { Marker, type Region } from "react-native-maps";
 import { useTheme } from "@/contexts/theme-context";
 import type { EventType } from "@/lib/database.types";
 import { isExpoGo } from "@/lib/is-expo-go";
+import { DANCE_STYLES } from "@/lib/profile-options";
 import { supabase } from "@/lib/supabase";
 import type { Palette } from "@/lib/theme";
 import { createEvent, type GeocodedPlace, reverseGeocode, searchPlace, uploadEventCover } from "@/services/events";
@@ -64,6 +65,7 @@ export default function NewEventScreen() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [eventType, setEventType] = useState<EventType | null>(null);
+  const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [requirements, setRequirements] = useState("");
   const [price, setPrice] = useState("");
   const [dateTime, setDateTime] = useState<Date | null>(null);
@@ -83,6 +85,12 @@ export default function NewEventScreen() {
   // date/time step local drafts
   const [dateDraft, setDateDraft] = useState(dateTime ?? new Date());
   const [timeDraft, setTimeDraft] = useState(dateTime ?? new Date());
+
+  const toggleStyle = (styleValue: string) => {
+    setSelectedStyles((current) =>
+      current.includes(styleValue) ? current.filter((s) => s !== styleValue) : [...current, styleValue]
+    );
+  };
 
   const pickCover = async () => {
     setError(null);
@@ -235,6 +243,7 @@ export default function NewEventScreen() {
       requirements: requirements.trim(),
       cover_image_url: coverUrl,
       price: price.trim() ? Number(price) : null,
+      dance_styles: selectedStyles,
     });
 
     setPosting(false);
@@ -429,6 +438,22 @@ export default function NewEventScreen() {
             ))}
           </View>
 
+          <Text style={styles.label}>Dance styles (optional)</Text>
+          <Text style={styles.helperText}>Helps us recommend this event to the right dancers</Text>
+          <View style={styles.chipRow}>
+            {DANCE_STYLES.map((s) => (
+              <Pressable
+                key={s}
+                style={[styles.chip, selectedStyles.includes(s) && styles.chipSelected]}
+                onPress={() => toggleStyle(s)}
+              >
+                <Text style={[styles.chipText, selectedStyles.includes(s) && styles.chipTextSelected]}>
+                  #{s.replace(" ", "")}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+
           <Text style={styles.label}>Date</Text>
           <Pressable style={styles.fieldButton} onPress={() => setStep("date")}>
             <Ionicons name="calendar-outline" size={18} color={palette.text} />
@@ -500,6 +525,7 @@ function createStyles(p: Palette) {
     coverImage: { width: "100%", height: "100%" },
     coverText: { color: p.text, fontSize: 13, fontWeight: "700" },
     label: { fontSize: 14, fontWeight: "700", color: p.text, alignSelf: "flex-start", marginBottom: 6 },
+    helperText: { fontSize: 12, color: p.textMuted, alignSelf: "flex-start", marginBottom: 10 },
     input: {
       width: "100%",
       backgroundColor: p.card,

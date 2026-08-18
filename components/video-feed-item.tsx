@@ -26,6 +26,8 @@ interface VideoFeedItemProps {
   active: boolean;
   /** Opens the comments sheet as soon as this item mounts - e.g. arriving from a "new comment" notification. */
   initialShowComments?: boolean;
+  /** Short "why this was recommended" text from the AI agent - only set on the Recommended tab. */
+  reason?: string;
 }
 
 function formatTime(seconds: number) {
@@ -35,7 +37,7 @@ function formatTime(seconds: number) {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export function VideoFeedItem({ video, height, active, initialShowComments }: VideoFeedItemProps) {
+export function VideoFeedItem({ video, height, active, initialShowComments, reason }: VideoFeedItemProps) {
   const [muted, setMuted] = useState(false);
   const [displayedViews, setDisplayedViews] = useState(video.views_count);
   const [expanded, setExpanded] = useState(false);
@@ -304,6 +306,14 @@ export function VideoFeedItem({ video, height, active, initialShowComments }: Vi
             <Text style={styles.chipText}>#{video.dance_style.replace(" ", "")}</Text>
           </View>
         ) : null}
+        {reason ? (
+          <View style={styles.reasonRow}>
+            <Ionicons name="sparkles" size={12} color="#fff" />
+            <Text style={styles.reasonText} numberOfLines={2}>
+              {reason}
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.songRow}>
           <Ionicons name="musical-notes" size={13} color="#fff" />
           <Text style={styles.songText} numberOfLines={1}>
@@ -384,6 +394,8 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   chipText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  reasonRow: { flexDirection: "row", alignItems: "flex-start", gap: 6, marginTop: 6 },
+  reasonText: { color: "#fff", fontSize: 12, fontWeight: "600", opacity: 0.9, flexShrink: 1, ...TEXT_SHADOW },
   songRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
   songText: { color: "#fff", fontSize: 13, fontWeight: "700", flexShrink: 1, ...TEXT_SHADOW },
   progressRow: {

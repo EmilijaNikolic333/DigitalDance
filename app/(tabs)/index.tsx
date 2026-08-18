@@ -1,7 +1,7 @@
 import { useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -15,15 +15,32 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { VideoFeedItem } from "@/components/video-feed-item";
 import { useTheme } from "@/contexts/theme-context";
-import { type FeedVideo, getFeedVideos } from "@/services/videos";
+import {
+  getFeedRecommendationsCache,
+  isRecommendationsStale,
+  refreshFeedRecommendations,
+} from "@/services/recommendations";
+import { type FeedVideo, getFeedVideos, getRecommendedFeedVideos } from "@/services/videos";
+
+type FeedTab = "spotlight" | "recommended";
+type RecommendedVideo = FeedVideo & { reason: string };
 
 export default function FeedScreen() {
+  const [activeTab, setActiveTab] = useState<FeedTab>("spotlight");
+
   const [videos, setVideos] = useState<FeedVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasLoadedRef = useRef(false);
+
+  const [recommendedVideos, setRecommendedVideos] = useState<RecommendedVideo[]>([]);
+  const [recommendedLoaded, setRecommendedLoaded] = useState(false);
+  const [recommendedLoading, setRecommendedLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [recommendedError, setRecommendedError] = useState<string | null>(null);
+
   const [containerHeight, setContainerHeight] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const hasLoadedRef = useRef(false);
 
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
@@ -41,6 +58,36 @@ export default function FeedScreen() {
     }, [load])
   );
 
+  const loadRecommended = useCallback(async (forceRefresh: boolean) => {
+    setRecommendedLoading(true);
+    setRecommendedError(null);
+
+    const { updatedAt } = await getFeedRecommendationsCache();
+    if (forceRefresh || isRecommendationsStale(updatedAt)) {
+      setGenerating(true);
+      const { error: refreshError } = await refreshFeedRecommendations();
+      setGenerating(false);
+      if (refreshError) {
+        setRecommendedError(refreshError);
+        setRecommendedLoading(false);
+        setRecommendedLoaded(true);
+        return;
+      }
+    }
+
+    const { data, error: loadError } = await getRecommendedFeedVideos();
+    setRecommendedVideos(data);
+    setRecommendedError(loadError ?? null);
+    setRecommendedLoading(false);
+    setRecommendedLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "recommended" && !recommendedLoaded) {
+      loadRecommended(false);
+    }
+  }, [activeTab, recommendedLoaded, loadRecommended]);
+
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0) {
       setActiveId(viewableItems[0].item.id);
@@ -53,23 +100,37 @@ export default function FeedScreen() {
   const { darkMode } = useTheme();
 
   const header = (
-    <Image
-      source={darkMode ? require("@/assets/images/icon-dark.png") : require("@/assets/images/icon.png")}
-      style={[styles.headerLogo, { top: insets.top + 8 }]}
-      contentFit="contain"
-    />
+    <View style={[styles.headerWrap, { top: insets.top + 8 }]} pointerEvents="box-none">
+      <Image
+        source={darkMode ? require("@/assets/images/icon-dark.png") : require("@/assets/images/icon.png")}
+        style={styles.headerLogo}
+        contentFit="contain"
+      />
+      <Pressable style={styles.labelLeft} onPress={() => setActiveTab("spotlight")} hitSlop={8}>
+        <Text style={[styles.tabText, activeTab === "spotlight" && styles.tabTextActive]}>Spotlight</Text>
+      </Pressable>
+      <Pressable style={styles.labelRight} onPress={() => setActiveTab("recommended")} hitSlop={8}>
+        <Text style={[styles.tabText, activeTab === "recommended" && styles.tabTextActive]}>Your Rhythm</Text>
+      </Pressable>
+    </View>
   );
 
-  if (loading) {
+  const activeVideos: FeedVideo[] = activeTab === "spotlight" ? videos : recommendedVideos;
+  const activeLoading = activeTab === "spotlight" ? loading : recommendedLoading && !recommendedLoaded;
+
+  if (activeLoading) {
     return (
       <View style={styles.centered}>
         {header}
         <ActivityIndicator size="large" color="#fff" />
+        {activeTab === "recommended" && generating ? (
+          <Text style={styles.emptyText}>Your AI agent is picking videos for you...</Text>
+        ) : null}
       </View>
     );
   }
 
-  if (error) {
+  if (activeTab === "spotlight" && error) {
     return (
       <View style={styles.centered}>
         {header}
@@ -81,11 +142,32 @@ export default function FeedScreen() {
     );
   }
 
-  if (videos.length === 0) {
+  if (activeTab === "recommended" && recommendedError) {
     return (
       <View style={styles.centered}>
         {header}
-        <Text style={styles.emptyText}>No videos yet. Be the first to post one!</Text>
+        <Text style={styles.emptyText}>Couldn&apos;t load recommendations: {recommendedError}</Text>
+        <Pressable style={styles.retryButton} onPress={() => loadRecommended(true)}>
+          <Text style={styles.retryButtonText}>Try again</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (activeVideos.length === 0) {
+    return (
+      <View style={styles.centered}>
+        {header}
+        <Text style={styles.emptyText}>
+          {activeTab === "spotlight"
+            ? "No videos yet. Be the first to post one!"
+            : "Like or save a few videos so we can learn your taste, then check back here."}
+        </Text>
+        {activeTab === "recommended" ? (
+          <Pressable style={styles.retryButton} onPress={() => loadRecommended(true)}>
+            <Text style={styles.retryButtonText}>Refresh</Text>
+          </Pressable>
+        ) : null}
       </View>
     );
   }
@@ -94,10 +176,16 @@ export default function FeedScreen() {
     <View style={styles.container} onLayout={(e) => setContainerHeight(e.nativeEvent.layout.height)}>
       {containerHeight > 0 ? (
         <FlatList
-          data={videos}
+          key={activeTab}
+          data={activeVideos}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <VideoFeedItem video={item} height={containerHeight} active={isFocused && item.id === activeId} />
+            <VideoFeedItem
+              video={item}
+              height={containerHeight}
+              active={isFocused && item.id === activeId}
+              reason={activeTab === "recommended" ? (item as RecommendedVideo).reason : undefined}
+            />
           )}
           pagingEnabled
           showsVerticalScrollIndicator={false}
@@ -125,11 +213,19 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   retryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
-  headerLogo: {
+  headerWrap: {
     position: "absolute",
-    alignSelf: "center",
-    width: 270,
-    height: 50,
+    left: 0,
+    right: 0,
+    alignItems: "center",
     zIndex: 10,
   },
+  headerLogo: {
+    width: 270,
+    height: 50,
+  },
+  labelLeft: { position: "absolute", left: 16, top: 14, zIndex: 11 },
+  labelRight: { position: "absolute", right: 16, top: 14, zIndex: 11 },
+  tabText: { color: "rgba(192, 107, 228, 0.7)", fontSize: 16, fontWeight: "700" },
+  tabTextActive: { color: "#C06BE4", textDecorationLine: "underline" },
 });

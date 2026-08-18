@@ -26,6 +26,7 @@ import type { Applicant } from "@/lib/database.types";
 import { goToUserProfile } from "@/lib/profile-navigation";
 import { supabase } from "@/lib/supabase";
 import type { Palette } from "@/lib/theme";
+import { suggestApplicationMessage } from "@/services/application-assist";
 import { applyToEvent, cancelApplication, getMyApplication } from "@/services/applications";
 import { type EventWithOrganizer, getEventById } from "@/services/events";
 import { isFollowing as fetchIsFollowing, toggleFollow } from "@/services/follows";
@@ -80,6 +81,7 @@ export default function EventDetailScreen() {
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
 
   useEffect(() => {
     Promise.all([getEventById(id), getMyApplication(id), supabase.auth.getUser()]).then(
@@ -109,6 +111,19 @@ export default function EventDetailScreen() {
       return;
     }
     setFollowingUser(organizerId, confirmedFollowing);
+  };
+
+  const handleSuggestMessage = async () => {
+    setApplyError(null);
+    setSuggesting(true);
+    const { message: suggested, error } = await suggestApplicationMessage(id);
+    setSuggesting(false);
+
+    if (error || !suggested) {
+      setApplyError(error ?? "Couldn't generate a suggestion.");
+      return;
+    }
+    setMessage(suggested);
   };
 
   const handleApply = async () => {
@@ -330,6 +345,17 @@ export default function EventDetailScreen() {
             <Text style={styles.modalTitle}>Sign up for this event</Text>
             <Text style={styles.modalSubtitle}>Add a message for the organizer (optional).</Text>
 
+            <Pressable style={styles.suggestButton} onPress={handleSuggestMessage} disabled={suggesting}>
+              {suggesting ? (
+                <ActivityIndicator size="small" color={palette.accent} />
+              ) : (
+                <>
+                  <Ionicons name="sparkles" size={14} color={palette.accent} />
+                  <Text style={styles.suggestButtonText}>Suggest message</Text>
+                </>
+              )}
+            </Pressable>
+
             <TextInput
               style={styles.modalInput}
               value={message}
@@ -457,6 +483,20 @@ function createStyles(p: Palette) {
     modalCloseButton: { position: "absolute", top: 14, left: 14, zIndex: 1 },
     modalTitle: { fontSize: 18, fontWeight: "700", color: p.text, textAlign: "center", marginBottom: 6 },
     modalSubtitle: { fontSize: 12, color: p.textMuted, textAlign: "center", marginBottom: 16 },
+    suggestButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      alignSelf: "center",
+      backgroundColor: p.card,
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 16,
+      marginBottom: 12,
+      minHeight: 32,
+    },
+    suggestButtonText: { fontSize: 12, fontWeight: "700", color: p.accent },
     modalInput: {
       width: "100%",
       minHeight: 90,

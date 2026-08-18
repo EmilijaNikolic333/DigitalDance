@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Calendar, type DateData } from "react-native-calendars";
 import MapView, { Marker, type Region } from "react-native-maps";
@@ -12,7 +12,12 @@ import { useTheme } from "@/contexts/theme-context";
 import { isExpoGo } from "@/lib/is-expo-go";
 import type { Palette } from "@/lib/theme";
 import { getMyAppliedEventIds } from "@/services/applications";
-import { type EventWithOrganizer, getActiveEvents } from "@/services/events";
+import { type EventWithOrganizer, getActiveEvents, getRecommendedEvents } from "@/services/events";
+import {
+  getEventRecommendationsCache,
+  isRecommendationsStale,
+  refreshEventRecommendations,
+} from "@/services/recommendations";
 
 /** Local-time YYYY-MM-DD key, matching how dates are shown elsewhere (device local time, not UTC). */
 function toDateKey(iso: string) {
@@ -44,6 +49,13 @@ export default function EventsListScreen() {
   const { darkMode, palette } = useTheme();
   const styles = useMemo(() => createStyles(palette), [palette]);
 
+  const [eventsTab, setEventsTab] = useState<"all" | "recommended">("all");
+  const [recommendedEvents, setRecommendedEvents] = useState<(EventWithOrganizer & { reason: string })[]>([]);
+  const [recommendedLoaded, setRecommendedLoaded] = useState(false);
+  const [recommendedLoading, setRecommendedLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [recommendedError, setRecommendedError] = useState<string | null>(null);
+
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
     Promise.all([getActiveEvents(), getMyAppliedEventIds()]).then(([{ data, error: loadError }, appliedIds]) => {
@@ -60,6 +72,36 @@ export default function EventsListScreen() {
       load();
     }, [load])
   );
+
+  const loadRecommended = useCallback(async (forceRefresh: boolean) => {
+    setRecommendedLoading(true);
+    setRecommendedError(null);
+
+    const { updatedAt } = await getEventRecommendationsCache();
+    if (forceRefresh || isRecommendationsStale(updatedAt)) {
+      setGenerating(true);
+      const { error: refreshError } = await refreshEventRecommendations();
+      setGenerating(false);
+      if (refreshError) {
+        setRecommendedError(refreshError);
+        setRecommendedLoading(false);
+        setRecommendedLoaded(true);
+        return;
+      }
+    }
+
+    const { data, error: loadError } = await getRecommendedEvents();
+    setRecommendedEvents(data);
+    setRecommendedError(loadError ?? null);
+    setRecommendedLoading(false);
+    setRecommendedLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (eventsTab === "recommended" && !recommendedLoaded) {
+      loadRecommended(false);
+    }
+  }, [eventsTab, recommendedLoaded, loadRecommended]);
 
   const eventsWithLocation = events.filter((e) => e.location_lat !== null && e.location_lng !== null);
 
@@ -199,19 +241,65 @@ export default function EventsListScreen() {
           ) : null}
         </View>
 
-        {loading ? (
-          <ActivityIndicator size="large" color={palette.text} style={{ marginTop: 40 }} />
-        ) : error ? (
+        <View style={styles.tabRow}>
+          <Pressable style={[styles.tab, eventsTab === "all" && styles.tabActive]} onPress={() => setEventsTab("all")}>
+            <Text style={[styles.tabText, eventsTab === "all" && styles.tabTextActive]}>The Stage</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.tab, eventsTab === "recommended" && styles.tabActive]}
+            onPress={() => setEventsTab("recommended")}
+          >
+            <Text style={[styles.tabText, eventsTab === "recommended" && styles.tabTextActive]}>Your Rhythm</Text>
+          </Pressable>
+        </View>
+
+        {eventsTab === "all" ? (
+          loading ? (
+            <ActivityIndicator size="large" color={palette.text} style={{ marginTop: 40 }} />
+          ) : error ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.emptyText}>Couldn&apos;t load events. Check your connection.</Text>
+              <Pressable style={styles.retryButton} onPress={load}>
+                <Text style={styles.retryButtonText}>Try again</Text>
+              </Pressable>
+            </View>
+          ) : events.length === 0 ? (
+            <Text style={styles.emptyText}>No events yet. Check back soon!</Text>
+          ) : (
+            events.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                onPress={() => goToEvent(event.id)}
+                isApplied={appliedEventIds.has(event.id)}
+                isSaved={event.isSaved}
+                isReposted={event.isReposted}
+              />
+            ))
+          )
+        ) : recommendedLoading && !recommendedLoaded ? (
           <View style={styles.errorBox}>
-            <Text style={styles.emptyText}>Couldn&apos;t load events. Check your connection.</Text>
-            <Pressable style={styles.retryButton} onPress={load}>
+            <ActivityIndicator size="large" color={palette.text} />
+            {generating ? <Text style={styles.emptyText}>Your AI agent is picking events for you...</Text> : null}
+          </View>
+        ) : recommendedError ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.emptyText}>Couldn&apos;t load recommendations: {recommendedError}</Text>
+            <Pressable style={styles.retryButton} onPress={() => loadRecommended(true)}>
               <Text style={styles.retryButtonText}>Try again</Text>
             </Pressable>
           </View>
-        ) : events.length === 0 ? (
-          <Text style={styles.emptyText}>No events yet. Check back soon!</Text>
+        ) : recommendedEvents.length === 0 ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.emptyText}>
+              Save or repost a few events so we can learn what you&apos;re looking for, then check back here.
+            </Text>
+            <Pressable style={styles.retryButton} onPress={() => loadRecommended(true)}>
+              <Text style={styles.retryButtonText}>Refresh</Text>
+            </Pressable>
+          </View>
         ) : (
-          events.map((event) => (
+          recommendedEvents.map((event) => (
             <EventCard
               key={event.id}
               event={event}
@@ -219,6 +307,7 @@ export default function EventsListScreen() {
               isApplied={appliedEventIds.has(event.id)}
               isSaved={event.isSaved}
               isReposted={event.isReposted}
+              reason={event.reason}
             />
           ))
         )}
@@ -233,6 +322,11 @@ function createStyles(p: Palette) {
     container: { alignItems: "center", padding: 20, paddingTop: 60, paddingBottom: 40 },
     logo: { width: "100%", height: 60, marginBottom: 8 },
     subtitle: { fontSize: 13, color: p.textMuted, textAlign: "center", marginBottom: 16, paddingHorizontal: 16 },
+    tabRow: { flexDirection: "row", gap: 8, width: "100%", marginBottom: 14 },
+    tab: { flex: 1, paddingVertical: 10, borderRadius: 18, backgroundColor: p.card, alignItems: "center" },
+    tabActive: { backgroundColor: p.selectedBg },
+    tabText: { fontSize: 13, fontWeight: "700", color: p.text },
+    tabTextActive: { color: p.selectedText },
     mapCard: {
       width: "100%",
       height: 200,

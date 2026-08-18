@@ -1,6 +1,7 @@
 import type { Profile, Video } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { getBlockedUserIds } from "@/services/blocks";
+import { getFeedRecommendationsCache } from "@/services/recommendations";
 
 export type FeedVideo = Video & {
   author: Pick<Profile, "id" | "full_name" | "avatar_url"> | null;
@@ -98,6 +99,61 @@ export async function getVideosByUser(userId: string): Promise<{ data: OwnVideo[
 }
 
 /** All videos for the swipeable feed, newest first, each with its author's name/avatar. */
+/** Attaches author/likes/comments/follow/save/repost info to a raw list of videos - shared by the
+ * plain chronological feed and the AI-recommended feed, which both need the same enrichment. */
+async function enrichVideos(videos: Video[]): Promise<FeedVideo[]> {
+  if (videos.length === 0) return [];
+
+  const userIds = [...new Set(videos.map((v) => v.user_id))];
+  const { data: profiles } = await supabase.from("profiles").select("id, full_name, avatar_url").in("id", userIds);
+
+  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const currentUserId = session?.user?.id;
+
+  const videoIds = videos.map((v) => v.id);
+  const [{ data: likes }, commentsCountByVideo, { data: followingRows }, { data: savedRows }, { data: repostedRows }] =
+    await Promise.all([
+      supabase.from("likes").select("video_id, user_id").in("video_id", videoIds),
+      getCountByVideoId("comments", videoIds),
+      currentUserId
+        ? supabase.from("follows").select("following_id").eq("follower_id", currentUserId).in("following_id", userIds)
+        : Promise.resolve({ data: [] as { following_id: string }[] }),
+      currentUserId
+        ? supabase.from("saved_videos").select("video_id").eq("user_id", currentUserId).in("video_id", videoIds)
+        : Promise.resolve({ data: [] as { video_id: string }[] }),
+      currentUserId
+        ? supabase.from("reposted_videos").select("video_id").eq("user_id", currentUserId).in("video_id", videoIds)
+        : Promise.resolve({ data: [] as { video_id: string }[] }),
+    ]);
+
+  const likesCountByVideo = new Map<string, number>();
+  const likedByMe = new Set<string>();
+  for (const like of likes ?? []) {
+    likesCountByVideo.set(like.video_id, (likesCountByVideo.get(like.video_id) ?? 0) + 1);
+    if (like.user_id === currentUserId) likedByMe.add(like.video_id);
+  }
+
+  const followingSet = new Set((followingRows ?? []).map((f) => f.following_id));
+  const savedSet = new Set((savedRows ?? []).map((r) => r.video_id));
+  const repostedSet = new Set((repostedRows ?? []).map((r) => r.video_id));
+
+  return videos.map((video) => ({
+    ...video,
+    author: profileById.get(video.user_id) ?? null,
+    likesCount: likesCountByVideo.get(video.id) ?? 0,
+    isLiked: likedByMe.has(video.id),
+    commentsCount: commentsCountByVideo.get(video.id) ?? 0,
+    isFollowingAuthor: followingSet.has(video.user_id),
+    isOwnVideo: video.user_id === currentUserId,
+    isSaved: savedSet.has(video.id),
+    isReposted: repostedSet.has(video.id),
+  }));
+}
+
 export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: string }> {
   try {
     const blockedIds = await getBlockedUserIds();
@@ -110,63 +166,45 @@ export async function getFeedVideos(): Promise<{ data: FeedVideo[]; error?: stri
       console.error("getFeedVideos failed:", error.message, error);
       return { data: [], error: error.message };
     }
-    if (!videos || videos.length === 0) return { data: [] };
 
-    const userIds = [...new Set((videos as Video[]).map((v) => v.user_id))];
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, full_name, avatar_url")
-      .in("id", userIds);
-
-    const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const currentUserId = session?.user?.id;
-
-    const videoIds = (videos as Video[]).map((v) => v.id);
-    const [{ data: likes }, commentsCountByVideo, { data: followingRows }, { data: savedRows }, { data: repostedRows }] =
-      await Promise.all([
-        supabase.from("likes").select("video_id, user_id").in("video_id", videoIds),
-        getCountByVideoId("comments", videoIds),
-        currentUserId
-          ? supabase.from("follows").select("following_id").eq("follower_id", currentUserId).in("following_id", userIds)
-          : Promise.resolve({ data: [] as { following_id: string }[] }),
-        currentUserId
-          ? supabase.from("saved_videos").select("video_id").eq("user_id", currentUserId).in("video_id", videoIds)
-          : Promise.resolve({ data: [] as { video_id: string }[] }),
-        currentUserId
-          ? supabase.from("reposted_videos").select("video_id").eq("user_id", currentUserId).in("video_id", videoIds)
-          : Promise.resolve({ data: [] as { video_id: string }[] }),
-      ]);
-
-    const likesCountByVideo = new Map<string, number>();
-    const likedByMe = new Set<string>();
-    for (const like of likes ?? []) {
-      likesCountByVideo.set(like.video_id, (likesCountByVideo.get(like.video_id) ?? 0) + 1);
-      if (like.user_id === currentUserId) likedByMe.add(like.video_id);
-    }
-
-    const followingSet = new Set((followingRows ?? []).map((f) => f.following_id));
-    const savedSet = new Set((savedRows ?? []).map((r) => r.video_id));
-    const repostedSet = new Set((repostedRows ?? []).map((r) => r.video_id));
-
-    return {
-      data: (videos as Video[]).map((video) => ({
-        ...video,
-        author: profileById.get(video.user_id) ?? null,
-        likesCount: likesCountByVideo.get(video.id) ?? 0,
-        isLiked: likedByMe.has(video.id),
-        commentsCount: commentsCountByVideo.get(video.id) ?? 0,
-        isFollowingAuthor: followingSet.has(video.user_id),
-        isOwnVideo: video.user_id === currentUserId,
-        isSaved: savedSet.has(video.id),
-        isReposted: repostedSet.has(video.id),
-      })),
-    };
+    return { data: await enrichVideos((videos as Video[]) ?? []) };
   } catch (err) {
     console.error("getFeedVideos failed:", err);
+    return { data: [], error: err instanceof Error ? err.message : "Network error" };
+  }
+}
+
+/** The Feed's "Recommended" tab - videos picked by the AI recommendation agent, in its ranked
+ * order, each with a short reason. Falls back to an empty list if no recommendations are cached
+ * yet (e.g. brand new user, or the agent hasn't been triggered) - the caller should offer a
+ * refresh in that case rather than show a permanently empty screen. */
+export async function getRecommendedFeedVideos(): Promise<{
+  data: (FeedVideo & { reason: string })[];
+  error?: string;
+}> {
+  try {
+    const { items } = await getFeedRecommendationsCache();
+    if (items.length === 0) return { data: [] };
+
+    const ids = items.map((item) => item.id);
+    const { data: videos, error } = await supabase.from("videos").select("*").eq("is_hidden", false).in("id", ids);
+    if (error) {
+      console.error("getRecommendedFeedVideos failed:", error.message, error);
+      return { data: [], error: error.message };
+    }
+
+    const enriched = await enrichVideos((videos as Video[]) ?? []);
+    const enrichedById = new Map(enriched.map((v) => [v.id, v]));
+    const reasonById = new Map(items.map((item) => [item.id, item.reason]));
+
+    return {
+      data: ids
+        .map((id) => enrichedById.get(id))
+        .filter((v): v is FeedVideo => !!v)
+        .map((v) => ({ ...v, reason: reasonById.get(v.id) ?? "" })),
+    };
+  } catch (err) {
+    console.error("getRecommendedFeedVideos failed:", err);
     return { data: [], error: err instanceof Error ? err.message : "Network error" };
   }
 }

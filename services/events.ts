@@ -3,6 +3,7 @@ import * as Location from "expo-location";
 import type { Event, EventType, Profile } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { getBlockedUserIds } from "@/services/blocks";
+import { getEventRecommendationsCache } from "@/services/recommendations";
 
 export type EventWithOrganizer = Event & {
   organizer: Pick<Profile, "id" | "full_name" | "avatar_url" | "organization_name"> | null;
@@ -72,6 +73,40 @@ export async function getEventsByOrganizer(organizerId: string): Promise<{ data:
   return fetchEventsByOrganizer(organizerId);
 }
 
+/** Attaches organizer/saved/reposted info to a raw list of events - shared by the plain active
+ * events list and the AI-recommended events, which both need the same enrichment. */
+async function enrichEvents(events: Event[]): Promise<EventWithOrganizer[]> {
+  if (events.length === 0) return [];
+
+  const organizerIds = [...new Set(events.map((e) => e.organizer_id))];
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const viewerId = session?.user?.id;
+
+  const eventIds = events.map((e) => e.id);
+  const [{ data: organizers }, savedResult, repostedResult] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, avatar_url, organization_name").in("id", organizerIds),
+    viewerId
+      ? supabase.from("saved_events").select("event_id").eq("user_id", viewerId).in("event_id", eventIds)
+      : Promise.resolve({ data: [] as { event_id: string }[] }),
+    viewerId
+      ? supabase.from("reposted_events").select("event_id").eq("user_id", viewerId).in("event_id", eventIds)
+      : Promise.resolve({ data: [] as { event_id: string }[] }),
+  ]);
+
+  const organizerById = new Map((organizers ?? []).map((o) => [o.id, o]));
+  const savedSet = new Set((savedResult.data ?? []).map((r) => r.event_id));
+  const repostedSet = new Set((repostedResult.data ?? []).map((r) => r.event_id));
+
+  return events.map((event) => ({
+    ...event,
+    organizer: organizerById.get(event.organizer_id) ?? null,
+    isSaved: savedSet.has(event.id),
+    isReposted: repostedSet.has(event.id),
+  }));
+}
+
 /** All active events for the public feed, soonest first, each with its organizer's name/avatar. */
 export async function getActiveEvents(): Promise<{ data: EventWithOrganizer[]; error?: string }> {
   try {
@@ -90,39 +125,48 @@ export async function getActiveEvents(): Promise<{ data: EventWithOrganizer[]; e
       console.error("getActiveEvents failed:", error.message, error);
       return { data: [], error: error.message };
     }
-    if (!events || events.length === 0) return { data: [] };
 
-    const organizerIds = [...new Set((events as Event[]).map((e) => e.organizer_id))];
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const viewerId = session?.user?.id;
-
-    const eventIds = (events as Event[]).map((e) => e.id);
-    const [{ data: organizers }, savedResult, repostedResult] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, avatar_url, organization_name").in("id", organizerIds),
-      viewerId
-        ? supabase.from("saved_events").select("event_id").eq("user_id", viewerId).in("event_id", eventIds)
-        : Promise.resolve({ data: [] as { event_id: string }[] }),
-      viewerId
-        ? supabase.from("reposted_events").select("event_id").eq("user_id", viewerId).in("event_id", eventIds)
-        : Promise.resolve({ data: [] as { event_id: string }[] }),
-    ]);
-
-    const organizerById = new Map((organizers ?? []).map((o) => [o.id, o]));
-    const savedSet = new Set((savedResult.data ?? []).map((r) => r.event_id));
-    const repostedSet = new Set((repostedResult.data ?? []).map((r) => r.event_id));
-
-    return {
-      data: (events as Event[]).map((event) => ({
-        ...event,
-        organizer: organizerById.get(event.organizer_id) ?? null,
-        isSaved: savedSet.has(event.id),
-        isReposted: repostedSet.has(event.id),
-      })),
-    };
+    return { data: await enrichEvents((events as Event[]) ?? []) };
   } catch (err) {
     console.error("getActiveEvents failed:", err);
+    return { data: [], error: err instanceof Error ? err.message : "Network error" };
+  }
+}
+
+/** The Events "Recommended" tab - events picked by the AI recommendation agent, in its ranked
+ * order, each with a short reason. Falls back to an empty list if no recommendations are cached
+ * yet - the caller should offer a refresh in that case rather than show a permanently empty screen. */
+export async function getRecommendedEvents(): Promise<{
+  data: (EventWithOrganizer & { reason: string })[];
+  error?: string;
+}> {
+  try {
+    const { items } = await getEventRecommendationsCache();
+    if (items.length === 0) return { data: [] };
+
+    const ids = items.map((item) => item.id);
+    const { data: events, error } = await supabase
+      .from("events")
+      .select("*")
+      .eq("is_hidden", false)
+      .in("id", ids);
+    if (error) {
+      console.error("getRecommendedEvents failed:", error.message, error);
+      return { data: [], error: error.message };
+    }
+
+    const enriched = await enrichEvents((events as Event[]) ?? []);
+    const enrichedById = new Map(enriched.map((e) => [e.id, e]));
+    const reasonById = new Map(items.map((item) => [item.id, item.reason]));
+
+    return {
+      data: ids
+        .map((id) => enrichedById.get(id))
+        .filter((e): e is EventWithOrganizer => !!e)
+        .map((e) => ({ ...e, reason: reasonById.get(e.id) ?? "" })),
+    };
+  } catch (err) {
+    console.error("getRecommendedEvents failed:", err);
     return { data: [], error: err instanceof Error ? err.message : "Network error" };
   }
 }
@@ -212,6 +256,7 @@ export async function createEvent(input: {
   requirements: string;
   cover_image_url: string | null;
   price: number | null;
+  dance_styles: string[];
 }) {
   const {
     data: { session },
@@ -233,6 +278,7 @@ export async function createEvent(input: {
       requirements: input.requirements,
       cover_image_url: input.cover_image_url,
       price: input.price,
+      dance_styles: input.dance_styles,
       status: "active",
     })
     .select("id")
@@ -273,6 +319,7 @@ export async function updateEvent(
     requirements: string;
     cover_image_url: string | null;
     price: number | null;
+    dance_styles: string[];
   }
 ) {
   return supabase
@@ -288,6 +335,7 @@ export async function updateEvent(
       requirements: input.requirements,
       cover_image_url: input.cover_image_url,
       price: input.price,
+      dance_styles: input.dance_styles,
     })
     .eq("id", id);
 }

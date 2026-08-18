@@ -81,6 +81,8 @@ export interface Event {
   status: EventStatus;
   cover_image_url: string | null;
   price: number | null;
+  // stilovi plesa koje organizator trazi - koristi se za pretragu i preporuke
+  dance_styles: string[];
   is_hidden: boolean;
   created_at: string;
 }

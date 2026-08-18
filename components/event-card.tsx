@@ -27,9 +27,11 @@ interface EventCardProps {
   isApplied?: boolean;
   isSaved?: boolean;
   isReposted?: boolean;
+  /** Short "why this was recommended" text from the AI agent - only set on the Recommended tab. */
+  reason?: string;
 }
 
-export function EventCard({ event, onPress, isApplied, isSaved, isReposted }: EventCardProps) {
+export function EventCard({ event, onPress, isApplied, isSaved, isReposted, reason }: EventCardProps) {
   const { isEventReposted, setEventReposted } = useRepostContext();
   const reposted = isEventReposted(event.id, isReposted ?? false);
   const { isEventSaved, setEventSaved } = useSavedContext();
@@ -92,6 +94,14 @@ export function EventCard({ event, onPress, isApplied, isSaved, isReposted }: Ev
             </Text>
           </View>
         ) : null}
+        {reason ? (
+          <View style={styles.reasonRow}>
+            <Ionicons name="sparkles" size={12} color={palette.accent} />
+            <Text style={styles.reasonText} numberOfLines={2}>
+              {reason}
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.detailsButton}>
           <Text style={styles.detailsButtonText}>View details</Text>
@@ -148,6 +158,8 @@ function createStyles(p: Palette) {
     description: { fontSize: 12, color: p.text, opacity: 0.8, marginTop: 2 },
     metaRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
     metaText: { fontSize: 11, color: p.textMuted },
+    reasonRow: { flexDirection: "row", alignItems: "flex-start", gap: 5, marginTop: 4 },
+    reasonText: { fontSize: 11, color: p.text, fontWeight: "600", flexShrink: 1 },
     detailsButton: {
       alignSelf: "flex-end",
       backgroundColor: p.buttonBg,
