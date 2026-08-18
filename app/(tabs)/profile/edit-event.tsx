@@ -24,6 +24,7 @@ import MapView, { Marker, type Region } from "react-native-maps";
 import { useTheme } from "@/contexts/theme-context";
 import type { EventType } from "@/lib/database.types";
 import { isExpoGo } from "@/lib/is-expo-go";
+import { DARK_MAP_STYLE } from "@/lib/map-style";
 import { DANCE_STYLES } from "@/lib/profile-options";
 import { supabase } from "@/lib/supabase";
 import type { Palette } from "@/lib/theme";
@@ -367,6 +368,8 @@ export default function EditEventScreen() {
               style={styles.map}
               region={region}
               onPress={(e) => handleMapPress(e.nativeEvent.coordinate)}
+              userInterfaceStyle={darkMode ? "dark" : "light"}
+              customMapStyle={darkMode ? DARK_MAP_STYLE : undefined}
             >
               {marker ? (
                 <Marker coordinate={marker} anchor={{ x: 0.5, y: 1 }}>

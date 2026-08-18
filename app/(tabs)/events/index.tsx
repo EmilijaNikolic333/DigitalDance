@@ -10,6 +10,7 @@ import MapView, { Marker, type Region } from "react-native-maps";
 import { EventCard } from "@/components/event-card";
 import { useTheme } from "@/contexts/theme-context";
 import { isExpoGo } from "@/lib/is-expo-go";
+import { DARK_MAP_STYLE } from "@/lib/map-style";
 import type { Palette } from "@/lib/theme";
 import { getMyAppliedEventIds } from "@/services/applications";
 import { type EventWithOrganizer, getActiveEvents, getRecommendedEvents } from "@/services/events";
@@ -164,7 +165,12 @@ export default function EventsListScreen() {
 
         <View style={styles.mapCard}>
           {isExpoGo ? (
-            <MapView style={styles.map} region={region}>
+            <MapView
+              style={styles.map}
+              region={region}
+              userInterfaceStyle={darkMode ? "dark" : "light"}
+              customMapStyle={darkMode ? DARK_MAP_STYLE : undefined}
+            >
               {eventsWithLocation.map((event) => (
                 <Marker
                   key={event.id}
