@@ -36,7 +36,6 @@ export default function FeedScreen() {
   const [recommendedVideos, setRecommendedVideos] = useState<RecommendedVideo[]>([]);
   const [recommendedLoaded, setRecommendedLoaded] = useState(false);
   const [recommendedLoading, setRecommendedLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [recommendedError, setRecommendedError] = useState<string | null>(null);
 
   const [containerHeight, setContainerHeight] = useState(0);
@@ -64,9 +63,7 @@ export default function FeedScreen() {
 
     const { updatedAt } = await getFeedRecommendationsCache();
     if (forceRefresh || isRecommendationsStale(updatedAt)) {
-      setGenerating(true);
       const { error: refreshError } = await refreshFeedRecommendations();
-      setGenerating(false);
       if (refreshError) {
         setRecommendedError(refreshError);
         setRecommendedLoading(false);
@@ -123,9 +120,6 @@ export default function FeedScreen() {
       <View style={styles.centered}>
         {header}
         <ActivityIndicator size="large" color="#fff" />
-        {activeTab === "recommended" && generating ? (
-          <Text style={styles.emptyText}>Your AI agent is picking videos for you...</Text>
-        ) : null}
       </View>
     );
   }
@@ -184,7 +178,6 @@ export default function FeedScreen() {
               video={item}
               height={containerHeight}
               active={isFocused && item.id === activeId}
-              reason={activeTab === "recommended" ? (item as RecommendedVideo).reason : undefined}
             />
           )}
           pagingEnabled

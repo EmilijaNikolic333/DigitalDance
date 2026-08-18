@@ -54,7 +54,6 @@ export default function EventsListScreen() {
   const [recommendedEvents, setRecommendedEvents] = useState<(EventWithOrganizer & { reason: string })[]>([]);
   const [recommendedLoaded, setRecommendedLoaded] = useState(false);
   const [recommendedLoading, setRecommendedLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [recommendedError, setRecommendedError] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -80,9 +79,7 @@ export default function EventsListScreen() {
 
     const { updatedAt } = await getEventRecommendationsCache();
     if (forceRefresh || isRecommendationsStale(updatedAt)) {
-      setGenerating(true);
       const { error: refreshError } = await refreshEventRecommendations();
-      setGenerating(false);
       if (refreshError) {
         setRecommendedError(refreshError);
         setRecommendedLoading(false);
@@ -286,7 +283,6 @@ export default function EventsListScreen() {
         ) : recommendedLoading && !recommendedLoaded ? (
           <View style={styles.errorBox}>
             <ActivityIndicator size="large" color={palette.text} />
-            {generating ? <Text style={styles.emptyText}>Your AI agent is picking events for you...</Text> : null}
           </View>
         ) : recommendedError ? (
           <View style={styles.errorBox}>
@@ -313,7 +309,6 @@ export default function EventsListScreen() {
               isApplied={appliedEventIds.has(event.id)}
               isSaved={event.isSaved}
               isReposted={event.isReposted}
-              reason={event.reason}
             />
           ))
         )}
