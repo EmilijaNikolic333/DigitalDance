@@ -116,6 +116,25 @@ export default function ProfileScreen() {
     }
   }, [tabParam, eventsSubTabParam, applicationsSubTabParam, tabsSectionY]);
 
+  // Keeps the notification badge current while this screen is sitting open - without this,
+  // getUnreadNotificationsCount() only re-runs on focus (leave the tab and come back).
+  useEffect(() => {
+    if (!profile?.id) return;
+
+    const channel = supabase
+      .channel(`profile-notifications-${profile.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${profile.id}` },
+        () => setUnreadNotifications((count) => count + 1)
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.id]);
+
   const load = useCallback(() => {
     if (!hasLoadedRef.current) setLoading(true);
     supabase.auth.getSession().then(({ data: { session } }) => {

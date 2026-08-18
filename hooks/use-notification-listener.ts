@@ -7,8 +7,8 @@ import { requestNotificationPermissions, showLocalNotification } from "@/service
 
 /**
  * Watches the notifications table in realtime and surfaces new rows as device notifications.
- * We don't have real push set up yet, so this only fires while the app is running (foreground
- * or backgrounded, not fully killed).
+ * This only fires while the app is running (foreground or backgrounded, not fully killed) -
+ * there's no real push set up.
  */
 export function useNotificationListener(userId: string | null) {
   useEffect(() => {
