@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
 
-import { supabase } from "@/lib/supabase";
+import { createChannel, supabase } from "@/lib/supabase";
 import { requestNotificationPermissions, showLocalNotification } from "@/services/local-notifications";
 
 /**
@@ -16,8 +16,7 @@ export function useNotificationListener(userId: string | null) {
 
     requestNotificationPermissions();
 
-    const channel = supabase
-      .channel(`notifications-${userId}`)
+    const channel = createChannel(`notifications-${userId}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },

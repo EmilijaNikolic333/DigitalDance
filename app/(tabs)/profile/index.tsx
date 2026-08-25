@@ -18,7 +18,7 @@ import { useSavedContext } from "@/contexts/saved-context";
 import { useTheme } from "@/contexts/theme-context";
 import type { EventRating, Profile } from "@/lib/database.types";
 import { getPalette, type Palette } from "@/lib/theme";
-import { supabase } from "@/lib/supabase";
+import { createChannel, supabase } from "@/lib/supabase";
 import { getMyApplications, getMyAppliedEventIds, type MyApplication } from "@/services/applications";
 import { signOut } from "@/services/auth";
 import { getOwnEvents, type OwnEvent } from "@/services/events";
@@ -121,8 +121,7 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (!profile?.id) return;
 
-    const channel = supabase
-      .channel(`profile-notifications-${profile.id}`)
+    const channel = createChannel(`profile-notifications-${profile.id}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${profile.id}` },
