@@ -6,6 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import { Avatar } from "@/components/avatar";
 import { useTheme } from "@/contexts/theme-context";
+import { goToUserProfile } from "@/lib/profile-navigation";
 import type { Palette } from "@/lib/theme";
 import { type BlockedUser, getBlockedUsers, unblockUser } from "@/services/blocks";
 
@@ -61,7 +62,9 @@ export default function BlockedUsersScreen() {
           <View style={styles.list}>
             {users.map((user) => (
               <View key={user.id} style={styles.row}>
-                <Avatar url={user.avatar_url} size={44} />
+                <Pressable onPress={() => goToUserProfile(user.id, null)} hitSlop={4}>
+                  <Avatar url={user.avatar_url} size={44} />
+                </Pressable>
                 <Text style={styles.name} numberOfLines={1}>
                   {user.full_name || "Unnamed user"}
                 </Text>

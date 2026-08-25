@@ -170,3 +170,68 @@ export async function restoreContent(contentType: ReportContentType, contentId: 
   }
   return {};
 }
+
+export interface ModerationPreview {
+  type: ReportContentType;
+  title: string;
+  description: string | null;
+  authorName: string;
+  createdAt: string;
+  // video-only
+  videoUrl?: string;
+  danceStyle?: string | null;
+  // event-only
+  coverImageUrl?: string | null;
+  eventDate?: string;
+  city?: string | null;
+  requirements?: string | null;
+}
+
+/** Loads a video or event's full content for admin review, deliberately ignoring is_hidden -
+ * unlike the normal viewing screens, a moderator needs to see reported/removed content too. */
+export async function getModerationPreview(
+  contentType: ReportContentType,
+  contentId: string
+): Promise<ModerationPreview | null> {
+  if (contentType === "video") {
+    const { data: video } = await supabase.from("videos").select("*").eq("id", contentId).single();
+    if (!video) return null;
+
+    const { data: author } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", video.user_id)
+      .maybeSingle();
+
+    return {
+      type: "video",
+      title: video.title,
+      description: video.description,
+      authorName: author?.full_name ?? "Unknown",
+      createdAt: video.created_at,
+      videoUrl: video.video_url,
+      danceStyle: video.dance_style,
+    };
+  }
+
+  const { data: event } = await supabase.from("events").select("*").eq("id", contentId).single();
+  if (!event) return null;
+
+  const { data: organizer } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", event.organizer_id)
+    .maybeSingle();
+
+  return {
+    type: "event",
+    title: event.title,
+    description: event.description,
+    authorName: organizer?.full_name ?? "Unknown",
+    createdAt: event.created_at,
+    coverImageUrl: event.cover_image_url,
+    eventDate: event.event_date,
+    city: event.city,
+    requirements: event.requirements,
+  };
+}

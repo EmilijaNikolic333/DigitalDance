@@ -119,7 +119,15 @@ export default function ReportsScreen() {
             <View style={styles.list}>
               {pending.map((report) => (
                 <View key={report.id} style={styles.card}>
-                  <View style={styles.cardHeader}>
+                  <Pressable
+                    style={styles.cardHeader}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(tabs)/profile/moderate-preview",
+                        params: { type: report.content_type, id: report.content_id },
+                      })
+                    }
+                  >
                     <View style={styles.thumb}>
                       {report.contentThumbnail ? (
                         <Image source={{ uri: report.contentThumbnail }} style={styles.thumbImage} contentFit="cover" />
@@ -135,7 +143,8 @@ export default function ReportsScreen() {
                         {report.content_type} · reported by {report.reporter?.full_name || "someone"}
                       </Text>
                     </View>
-                  </View>
+                    <Ionicons name="chevron-forward" size={16} color={palette.textMuted} />
+                  </Pressable>
 
                   {report.reason ? <Text style={styles.reasonText}>&quot;{report.reason}&quot;</Text> : null}
 
@@ -171,7 +180,15 @@ export default function ReportsScreen() {
               const key = `${item.type}-${item.id}`;
               return (
                 <View key={key} style={styles.card}>
-                  <View style={styles.cardHeader}>
+                  <Pressable
+                    style={styles.cardHeader}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(tabs)/profile/moderate-preview",
+                        params: { type: item.type, id: item.id },
+                      })
+                    }
+                  >
                     <View style={styles.thumb}>
                       {item.thumbnail ? (
                         <Image source={{ uri: item.thumbnail }} style={styles.thumbImage} contentFit="cover" />
@@ -185,7 +202,8 @@ export default function ReportsScreen() {
                       </Text>
                       <Text style={styles.cardMeta}>{item.type}</Text>
                     </View>
-                  </View>
+                    <Ionicons name="chevron-forward" size={16} color={palette.textMuted} />
+                  </Pressable>
 
                   <Pressable style={styles.restoreButton} onPress={() => handleRestore(item)} disabled={busyKey === key}>
                     {busyKey === key ? (
