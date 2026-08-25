@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "@/components/avatar";
 import { ShareToSheet } from "@/components/share-to-sheet";
+import { VideoLikesSheet } from "@/components/video-likes-sheet";
 import { useRepostContext } from "@/contexts/repost-context";
 import { useSavedContext } from "@/contexts/saved-context";
 import { useTheme } from "@/contexts/theme-context";
@@ -46,6 +47,7 @@ export function ProfileVideoCard({
   authorAvatar,
 }: ProfileVideoCardProps) {
   const [showShare, setShowShare] = useState(false);
+  const [showLikes, setShowLikes] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { isVideoReposted, setVideoReposted } = useRepostContext();
   const reposted = isVideoReposted(video.id, video.isReposted ?? false);
@@ -145,9 +147,16 @@ export function ProfileVideoCard({
             <Text style={styles.chipText}>#{video.dance_style.replace(" ", "")}</Text>
           </View>
         ) : null}
+        {onEditPress ? (
+          <Pressable style={styles.likesRow} onPress={() => setShowLikes(true)} hitSlop={4}>
+            <Ionicons name="heart" size={14} color={palette.accent} />
+            <Text style={styles.likesText}>{video.likesCount}</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <ShareToSheet videoId={video.id} visible={showShare} onClose={() => setShowShare(false)} />
+      <VideoLikesSheet videoId={video.id} visible={showLikes} onClose={() => setShowLikes(false)} />
     </Pressable>
   );
 }
@@ -203,5 +212,13 @@ function createStyles(p: Palette) {
       borderRadius: 12,
     },
     chipText: { color: p.text, fontSize: 12, fontWeight: "700" },
+    likesRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      alignSelf: "flex-end",
+      marginTop: 4,
+    },
+    likesText: { fontSize: 13, fontWeight: "700", color: p.text },
   });
 }
